@@ -1,0 +1,21 @@
+# Copyright 2021 dwellir
+# See LICENSE file for licensing details.
+name: polkadot
+display-name: Polkadot node
+summary: Run nodes on Polkadot.
+description: |
+    Starts a polkadot node on selected network.
+tags:
+  - misc
+summary: |
+  TODO: fill out the charm's summary
+
+provides:
+  node-prometheus:
+    interface: prometheus-manual
+  polkadot-prometheus:
+    interface: prometheus-manual
+  grafana-agent:
+    interface: cos_agent
+  rpc-url:
+    interface: rpc-url

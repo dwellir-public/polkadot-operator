@@ -1,0 +1,15 @@
+[Unit]
+Description=Polkadot Node
+After=network.target
+Documentation=https://github.com/paritytech/polkadot
+
+[Service]
+EnvironmentFile=-/etc/default/polkadot
+ExecStart=/home/polkadot/polkadot $POLKADOT_CLI_ARGS
+User=polkadot
+Group=polkadot
+Restart=always
+RestartSec=120
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,23 @@
+# Copyright 2021 dwellir
+# See LICENSE file for licensing details.
+#
+options:
+  binary-url:
+    type: string
+    default: ""
+    description: "Path to download binary from. E.g. https://github.com/paritytech/polkadot/releases/download/v0.9.10/polkadot"
+  binary-check:
+    type: boolean
+    default: true
+    description: "Downloads the sha256 of the binary and performs checksum check."
+  docker-tag:
+    type: string
+    default: ""
+    description: "The tag of the docker image to extract binary from. E.g. v1.5.0"
+  service-args:
+    type: string
+    default: ""
+    description: |
+      Extra arguments that the service should run with.
+
+      '--chain=... --rpc-port=...' are required to set for the charm to run.

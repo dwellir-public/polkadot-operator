@@ -1,0 +1,18 @@
+#!/bin/sh -e
+# Copyright 2021 dwellir
+# See LICENSE file for licensing details.
+
+if [ -z "$VIRTUAL_ENV" -a -d venv/ ]; then
+    . venv/bin/activate
+fi
+
+if [ -z "$PYTHONPATH" ]; then
+    export PYTHONPATH=src
+else
+    export PYTHONPATH="src:$PYTHONPATH"
+fi
+
+
+python3 -m flake8 --ignore E501 -v "$@"
+coverage run --source=src -m unittest -v "$@"
+coverage report -m
