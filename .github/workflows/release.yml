@@ -8,7 +8,7 @@ on:
 jobs:
   build:
     name: Build nextcloud charm
-    uses: canonical/data-platform-workflows/.github/workflows/build_charm_without_cache.yaml
+    uses: canonical/data-platform-workflows/.github/workflows/build_charm_without_cache.yaml@v2
 
   release:
     name: Release charm
