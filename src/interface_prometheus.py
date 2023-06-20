@@ -19,7 +19,7 @@ class PrometheusProvider(Object):
         super().__init__(charm, relation_name)
         uuid = str(uuid4())
         self.job = {
-            "job_name": f"{relation_name}",
+            "job_name": f"{socket.gethostname()}-{relation_name}",
             "job_data": {
                 "honor_timestamps": True,
                 "scrape_interval": "15s",
@@ -36,7 +36,7 @@ class PrometheusProvider(Object):
         # NOTE
         # request_id must be unique for every relation and unit in the current model, hence the use of UUID.
         # job_name in Prometheus will become (job_name + "-" + request_id). Note the dash between those two variables that will be automatically added by the Prometheus charm.
-        # Example of a resulting job_name in Prometheus: node-prometheus-14242306-4fd0-49aa-b979-7d94c7fd680c
+        # Example of a resulting job_name in Prometheus: juju-a4c6ea-0-node-prometheus-14242306-4fd0-49aa-b979-7d94c7fd680c
         
         self.framework.observe(
             charm.on[relation_name].relation_joined, self._on_relation_joined
