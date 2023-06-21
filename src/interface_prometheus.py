@@ -18,7 +18,7 @@ class PrometheusProvider(Object):
         """
         super().__init__(charm, relation_name)
         self.job = {
-            "job_name": f'{socket.gethostname()}_{self.model.name}_{relation_name}-{uuid4()}',
+            "job_name": f'{socket.gethostname()}_{self.model.name}_{relation_name}_uuid-{uuid4()}',
             "job_data": {
                 "honor_timestamps": True,
                 "scrape_interval": "15s",
