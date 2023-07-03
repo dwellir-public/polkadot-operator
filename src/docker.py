@@ -30,7 +30,7 @@ class Docker():
         elif self.chain_name == 'zeitgeist':
             self.__extract_from_docker('zeitgeistpm/zeitgeist-node-parachain', '/usr/local/bin/zeitgeist')
         elif self.chain_name in ['phala', 'khala']:
-            self.__extract_from_docker('phalanetwork/{self.chain_name}-node', '/usr/local/bin/khala-node')
+            self.__extract_from_docker(f'phalanetwork/{self.chain_name}-node', '/usr/local/bin/khala-node')
         elif self.chain_name == 'heiko' or self.chain_name == 'parallel':
             self.__extract_from_docker('parallelfinance/parallel', '/usr/local/bin/parallel')
         elif self.chain_name == 'turing':
