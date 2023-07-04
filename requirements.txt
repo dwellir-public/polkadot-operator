@@ -1,5 +1,3 @@
 ops == 2.0
 requests
 charmhelpers == 1.2.1
-cosl
-pydantic
