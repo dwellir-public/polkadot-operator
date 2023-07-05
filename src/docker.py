@@ -53,7 +53,12 @@ class Docker():
 
     def __extract_from_docker(self, docker_image: str, docker_binary_path: str, *args) -> None:
         docker_image_and_tag = f'{docker_image}:{self.docker_tag}'
-        sp.run(['docker', 'pull', docker_image_and_tag], check=True)
+
+        try:
+            sp.run(['docker', 'pull', docker_image_and_tag], stderr=sp.PIPE, check=True)
+        except sp.CalledProcessError as err:
+            raise ValueError(f"Could not pull {docker_image_and_tag} check 'docker-tag'!") from err
+
         sp.run(['docker', 'create', '--name', 'tmp', docker_image_and_tag], check=False)
         utils.stop_polkadot()
         sp.run(['docker', 'cp', f'tmp:{docker_binary_path}', utils.BINARY_PATH], check=True)
