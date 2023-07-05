@@ -117,23 +117,24 @@ class PolkadotCharm(CharmBase):
         self.update_status()
 
     def update_status(self) -> None:
-        if utils.service_started(iterations=4):
-            self.unit.status = ActiveStatus("Service running")
+        if utils.service_started():
+            rpc_port = ServiceArgs(self._stored.service_args).rpc_port
+            attempts = 10
+            for i in range(attempts):
+                time.sleep(5)
+                try:
+                    self.unit.status = ActiveStatus("Syncing: {}, Validating: {}".format(
+                        str(PolkadotRpcWrapper(rpc_port).is_syncing()),
+                        str(PolkadotRpcWrapper(rpc_port).is_validating())))
+                    self.unit.set_workload_version(PolkadotRpcWrapper(rpc_port).get_version())
+                    break
+                except Exception as e:
+                    logger.warning(e)
+                    self.unit.status = MaintenanceStatus("HTTP server not responding (attempt {}/{})".format(i, attempts))
+            if type(self.unit.status) != ActiveStatus:
+                self.unit.status = BlockedStatus("Service running but HTTP server unavailable")
         else:
             self.unit.status = WaitingStatus("Service not running")
-        rpc_port = ServiceArgs(self._stored.service_args).rpc_port
-        attempts = 10
-        for i in range(attempts):
-            try:
-                self.unit.status = ActiveStatus("Syncing: {}, Validating: {}".format(
-                    str(PolkadotRpcWrapper(rpc_port).is_syncing()),
-                    str(PolkadotRpcWrapper(rpc_port).is_validating())))
-                self.unit.set_workload_version(PolkadotRpcWrapper(rpc_port).get_version())
-                break
-            except Exception as e:
-                logger.warning(e)
-                self.unit.status = MaintenanceStatus("HTTP server not responding. Attempt {}/{}".format(i, attempts))
-            time.sleep(5)
 
     def _on_start(self, event: ops.StartEvent) -> None:
         utils.start_polkadot()
