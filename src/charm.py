@@ -12,7 +12,6 @@ develop a new k8s charm using the Operator Framework:
 
 import logging
 from pathlib import Path
-import os
 from requests.exceptions import ConnectionError as RequestsConnectionError
 from urllib3.exceptions import NewConnectionError, MaxRetryError
 import time
@@ -118,38 +117,27 @@ class PolkadotCharm(CharmBase):
     def _on_update_status(self, event):
         self.update_status()
 
-    def update_status(self):
-        for i in range(3):
-            time.sleep(5)
-            service_started = os.system('service polkadot status')
-            if service_started == 0:
-                self.unit.status = MaintenanceStatus("Service is running.")
-                break
-        if service_started != 0:
-            self.unit.status = WaitingStatus("Service is not running!")
-            return False
+    def update_status(self) -> None:
+        if utils.service_started(iterations=4):
+            self.unit.status = MaintenanceStatus("Service running")
+        else:
+            self.unit.status = BlockedStatus("Service not running")
         is_syncing = False
         is_validating = False
         rpc_port = ServiceArgs(self._stored.service_args).rpc_port
         attempts = 10
-        http_working = False
         for i in range(attempts):
-            time.sleep(5)  # To give polkadot service time to start its http server
+            time.sleep(5)
             try:
                 is_syncing = PolkadotRpcWrapper(rpc_port).is_syncing()
                 is_validating = PolkadotRpcWrapper(rpc_port).is_validating()
                 version = PolkadotRpcWrapper(rpc_port).get_version()
-                http_working = True
                 self.unit.status = ActiveStatus("Syncing: {}, Validating: {}".format(str(is_syncing), str(is_validating)))
                 self.unit.set_workload_version(version)
                 break
             except Exception as e:
                 logger.warning(e)
-                self.unit.status = WaitingStatus("HTTP server not responding. Attempt {}/{}".format(i, attempts))
-        if not http_working:
-            self.unit.status = MaintenanceStatus("HTTP server not responding!")
-            return False
-        return True
+                self.unit.status = MaintenanceStatus("HTTP server not responding. Attempt {}/{}".format(i, attempts))
 
     def _on_start(self, event):
         utils.start_polkadot()
@@ -191,7 +179,7 @@ class PolkadotCharm(CharmBase):
     def _on_restart_node_service_action(self, event):
         utils.stop_polkadot()
         utils.start_polkadot()
-        if not self.update_status():
+        if not utils.service_started():
             event.fail("Could not start service")
         return
 

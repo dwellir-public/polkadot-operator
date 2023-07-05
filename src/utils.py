@@ -5,7 +5,9 @@ import subprocess as sp
 from pathlib import Path
 import shutil
 import sys
+import os
 import hashlib
+import time
 import logging
 import re
 from docker import Docker
@@ -146,6 +148,15 @@ def start_polkadot():
     sp.run(['chown', f'{USER}:{USER}', BINARY_PATH], check=False)
     sp.run(['chmod', '+x', BINARY_PATH], check=False)
     sp.run(['systemctl', 'start', f'{USER}.service'], check=False)
+
+
+def service_started(iterations: int = 3) -> bool:
+    for _ in range(iterations):
+        time.sleep(5)
+        service_status = os.system('service polkadot status')
+        if service_status == 0:
+            return True
+    return False
 
 
 def write_node_key_file(key):
