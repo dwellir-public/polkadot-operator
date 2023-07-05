@@ -152,10 +152,10 @@ def start_polkadot():
 
 def service_started(iterations: int = 3) -> bool:
     for _ in range(iterations):
-        time.sleep(5)
         service_status = os.system('service polkadot status')
         if service_status == 0:
             return True
+        time.sleep(5)
     return False
 
 

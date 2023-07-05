@@ -119,25 +119,22 @@ class PolkadotCharm(CharmBase):
 
     def update_status(self) -> None:
         if utils.service_started(iterations=4):
-            self.unit.status = MaintenanceStatus("Service running")
+            self.unit.status = ActiveStatus("Service running")
         else:
             self.unit.status = BlockedStatus("Service not running")
-        is_syncing = False
-        is_validating = False
         rpc_port = ServiceArgs(self._stored.service_args).rpc_port
         attempts = 10
         for i in range(attempts):
-            time.sleep(5)
             try:
-                is_syncing = PolkadotRpcWrapper(rpc_port).is_syncing()
-                is_validating = PolkadotRpcWrapper(rpc_port).is_validating()
-                version = PolkadotRpcWrapper(rpc_port).get_version()
-                self.unit.status = ActiveStatus("Syncing: {}, Validating: {}".format(str(is_syncing), str(is_validating)))
-                self.unit.set_workload_version(version)
+                self.unit.status = ActiveStatus("Syncing: {}, Validating: {}".format(
+                    str(PolkadotRpcWrapper(rpc_port).is_syncing()),
+                    str(PolkadotRpcWrapper(rpc_port).is_validating())))
+                self.unit.set_workload_version(PolkadotRpcWrapper(rpc_port).get_version())
                 break
             except Exception as e:
                 logger.warning(e)
                 self.unit.status = MaintenanceStatus("HTTP server not responding. Attempt {}/{}".format(i, attempts))
+            time.sleep(5)
 
     def _on_start(self, event):
         utils.start_polkadot()
