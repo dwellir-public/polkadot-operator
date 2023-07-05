@@ -13,7 +13,7 @@ develop a new k8s charm using the Operator Framework:
 import logging
 from pathlib import Path
 import os
-from requests.exceptions import ConnectionError
+from requests.exceptions import ConnectionError as RequestsConnectionError
 from urllib3.exceptions import NewConnectionError, MaxRetryError
 import time
 import re
@@ -251,7 +251,7 @@ class PolkadotCharm(CharmBase):
                 else:
                     event.fail(f'Error trying to get peer count:\n{peer_list}')
 
-        except (ConnectionError, NewConnectionError, MaxRetryError) as e:
+        except (RequestsConnectionError, NewConnectionError, MaxRetryError) as e:
             logger.warning(e)
             event.fail(f'Unable to establish connection')
         except Exception as e:
