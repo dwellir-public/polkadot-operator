@@ -19,8 +19,6 @@ import re
 
 import ops
 from ops.charm import CharmBase, ActionEvent
-from ops.main import main
-from ops.framework import StoredState
 from ops.model import ActiveStatus, MaintenanceStatus, WaitingStatus, BlockedStatus
 
 from interface_prometheus import PrometheusProvider
@@ -37,7 +35,7 @@ logger = logging.getLogger(__name__)
 class PolkadotCharm(CharmBase):
     """Charm the service."""
 
-    _stored = StoredState()
+    _stored = ops.framework.StoredState()
 
     def __init__(self, *args):
         super().__init__(*args)
@@ -244,4 +242,4 @@ class PolkadotCharm(CharmBase):
 
 
 if __name__ == "__main__":
-    main(PolkadotCharm)
+    ops.main.main(PolkadotCharm)
