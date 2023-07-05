@@ -69,24 +69,23 @@ class PolkadotCharm(CharmBase):
                                  service_args=self.config.get('service-args'))
 
     def _on_install(self, event):
-        self.unit.status = MaintenanceStatus("Begin installing polkadot")
+        self.unit.status = MaintenanceStatus("Begin installing charm")
         service_args_obj = ServiceArgs(self.config.get('service-args'))
         # Setup polkadot group and user, disable login
         utils.setup_group_and_user()
         # Create environment file for polkadot service arguments
         utils.create_env_file_for_service()
         # Download and prepare the binary
-        self.unit.status = MaintenanceStatus("Begin installing binary...")
+        self.unit.status = MaintenanceStatus("Installing binary")
         utils.install_binary(self.config, service_args_obj.chain_name)
-        self.unit.status = MaintenanceStatus("Binary installed.")
         # Install polkadot.service file
+        self.unit.status = MaintenanceStatus("Installing service")
         source_path = Path(self.charm_dir / 'templates/etc/systemd/system/polkadot.service')
         utils.install_service_file(source_path)
         utils.update_service_args(service_args_obj.service_args_string)
-        self.unit.status = MaintenanceStatus(f"Service installed")
-        self.unit.status = MaintenanceStatus("Begin installing node exporter")
+        self.unit.status = MaintenanceStatus("Installing node exporter")
         utils.install_node_exporter()
-        self.unit.status = MaintenanceStatus("Node exporter installed")
+        self.unit.status = MaintenanceStatus("Charm install complete")
 
     def _on_config_changed(self, event):
         try:
@@ -98,22 +97,20 @@ class PolkadotCharm(CharmBase):
 
         # Update of polkadot binary requested
         if self._stored.binary_url != self.config.get('binary-url') or self._stored.docker_tag != self.config.get('docker-tag'):
-            self.unit.status = MaintenanceStatus("Begin installing binary...")
+            self.unit.status = MaintenanceStatus("Installing binary")
             try:
                 utils.install_binary(self.config, service_args_obj.chain_name)
             except ValueError as e:
                 self.unit.status = BlockedStatus(str(e))
                 event.defer()
                 return
-            self.unit.status = MaintenanceStatus("Binary installed.")
             self._stored.binary_url = self.config.get('binary-url')
             self._stored.docker_tag = self.config.get('docker-tag')
 
         # Update of polkadot service arguments requested
         if self._stored.service_args != self.config.get('service-args'):
-            self.unit.status = MaintenanceStatus("Updating service args...")
+            self.unit.status = MaintenanceStatus("Updating service args")
             utils.update_service_args(service_args_obj.service_args_string)
-            self.unit.status = MaintenanceStatus("Service args updated.")
             self._stored.service_args = self.config.get('service-args')
 
         self.update_status()
@@ -126,7 +123,7 @@ class PolkadotCharm(CharmBase):
             time.sleep(5)
             service_started = os.system('service polkadot status')
             if service_started == 0:
-                self.unit.status = MaintenanceStatus(f"Service is running.")
+                self.unit.status = MaintenanceStatus("Service is running.")
                 break
         if service_started != 0:
             self.unit.status = WaitingStatus("Service is not running!")
@@ -253,10 +250,10 @@ class PolkadotCharm(CharmBase):
 
         except (RequestsConnectionError, NewConnectionError, MaxRetryError) as e:
             logger.warning(e)
-            event.fail(f'Unable to establish connection')
+            event.fail('Unable to establish connection')
         except Exception as e:
             logger.warning(e)
-            event.fail(f'Error trying to get chain info')
+            event.fail('Error trying to get chain info')
 
         # TODO: what could be other causes of failing the action?
 
