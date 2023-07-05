@@ -196,7 +196,6 @@ class PolkadotCharm(CharmBase):
             # If a relay DB also exists, we're on a parachain
             event.set_results(results={'disk-usage-relay': relay_du})
             event.set_results(results={'disk-usage-para': chain_du})
-
         # Client
         event.set_results(results={'client-service-args': utils.get_service_args()})
         event.set_results(results={'client-binary-version': utils.get_binary_version()})
@@ -207,7 +206,6 @@ class PolkadotCharm(CharmBase):
             event.set_results(results={'client-proc-cmdline': proc_cmdline})
         else:
             event.set_results(results={'client-proc-cmdline': 'process not found'})
-
         # Chain info
         if utils.is_relay_chain_node():
             event.set_results(results={'chain-node-type': 'Relay Chain node'})
@@ -216,11 +214,9 @@ class PolkadotCharm(CharmBase):
             event.set_results(results={'chain-node-relay': utils.get_relay_for_parachain()})
         try:
             rpc_port = ServiceArgs(self._stored.service_args).rpc_port
-
             block_height = PolkadotRpcWrapper(rpc_port).get_block_height()
             if block_height:
                 event.set_results(results={'chain-block-height': block_height})
-
             peer_list, success = PolkadotRpcWrapper(rpc_port).get_system_peers()
             if peer_list and success:
                 event.set_results(results={'chain-peer-count': len(peer_list)})
@@ -230,15 +226,12 @@ class PolkadotCharm(CharmBase):
                     event.fail('Error trying to use an unsafe RPC method, check if the node has `--rpc-methods unsafe` enabled')
                 else:
                     event.fail(f'Error trying to get peer count:\n{peer_list}')
-
         except (RequestsConnectionError, NewConnectionError, MaxRetryError) as e:
             logger.warning(e)
             event.fail('Unable to establish connection')
         except Exception as e:
             logger.warning(e)
             event.fail('Error trying to get chain info')
-
-        # TODO: what could be other causes of failing the action?
 
 
 if __name__ == "__main__":
