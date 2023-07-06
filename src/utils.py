@@ -45,6 +45,8 @@ def install_binary(config, chain_name):
 def install_binary_from_url(url, binary_check):
     # Download polkadot binary to memory and compute sha256 hash
     binary_response = requests.get(url, allow_redirects=True, timeout=None)
+    if binary_response.status_code != 200:
+        raise ValueError(f"Download binary failed with: {binary_response.text}. Check 'binary-url'!")
     if binary_check:
         binary_hash = hashlib.sha256(binary_response.content).hexdigest()
 
