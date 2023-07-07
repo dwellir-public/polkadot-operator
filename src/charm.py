@@ -48,6 +48,8 @@ class PolkadotCharm(CharmBase):
             relation_name="grafana-agent",
             metrics_endpoints=[{"port": 9615, "path": "/metrics"}],
             refresh_events=[self.on.update_status, self.on.upgrade_charm],
+            metrics_rules_dir="./src/alert_rules/prometheus",
+            logs_rules_dir="./src/alert_rules/loki"
         )
         self.framework.observe(self.on.install, self._on_install)
         self.framework.observe(self.on.config_changed, self._on_config_changed)

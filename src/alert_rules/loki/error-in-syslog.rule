@@ -1,0 +1,29 @@
+groups:
+  - name: DEV__polkadot-operator_loki_rules
+    rules:
+      - alert: DEV__ErrorInSyslog
+        expr: count_over_time({filename="/var/log/syslog", juju_charm=~".*"} |= `ERROR` [1m]) > 1
+        for: 5m
+        labels:
+          severity: error
+        annotations:
+          summary: "syslog contains ERROR"
+          description: >
+            Alert if 'ERROR' was found in the syslog (file {{ $labels.filename}}).
+            Model: {{ $labels.juju_model }}
+            Unit: {{ $labels.juju_unit }}
+            Instance: {{ $labels.instance }}
+            LABELS = {{ $labels }}
+      - alert: DEV__TargetOverTime
+        expr: count_over_time({filename="/var/log/syslog", juju_charm=~".*", juju_application="polkadot"} |= `target` [1m]) > 10
+        for: 5m
+        labels:
+          severity: error
+        annotations:
+          summary: "Excessive amount of 'target' found"
+          description: >
+            Alert if 'target' found over 10 times in the syslog (file {{ $labels.filename}}).
+            Model: {{ $labels.juju_model }}
+            Unit: {{ $labels.juju_unit }}
+            Instance: {{ $labels.instance }}
+            LABELS = {{ $labels }}
