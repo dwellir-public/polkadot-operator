@@ -22,7 +22,7 @@ class PolkadotRpcWrapper():
         response_json = json.loads(response.text)
         return response_json['result']
 
-    def is_syncing(self):
+    def is_syncing(self) -> str:
         """
         Checks if polkadot service is still syncing.
         Should return False when node is done syncing and ready to use as a validator.
@@ -34,7 +34,7 @@ class PolkadotRpcWrapper():
         response_json = json.loads(response.text)
         return response_json['result']['isSyncing']
 
-    def is_validating(self):
+    def is_validating(self) -> bool:
         """
         Checks if polkadot service is started as Authority (E.g. is_validating() -> True)
         :return: boolean
