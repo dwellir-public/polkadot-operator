@@ -1,8 +1,9 @@
 groups:
-  - name: DEV__polkadot-operator_prometheus_rules
+  - name: BlockProductionStopped
+    interval: 1m
     rules:
-      - alert: DEV__BlockProductionStopped
-        expr: increase(substrate_block_height{juju_charm=~".*",status="best"}[5m]) < 100000
+      - alert: Polkadot_BlockProductionStopped
+        expr: increase(substrate_block_height{juju_charm=~".*",status="best"}[5m]) < 1
         for: 5m
         labels:
           severity: critical

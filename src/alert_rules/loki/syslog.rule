@@ -1,26 +1,27 @@
 groups:
-  - name: DEV__polkadot-operator_loki_rules
+  - name: CountLogMessage
+    interval: 1m
     rules:
-      - alert: DEV__ErrorInSyslog
+      - alert: Polkadot_Error
         expr: count_over_time({filename="/var/log/syslog", juju_charm=~".*"} |= `ERROR` [1m]) > 1
         for: 5m
         labels:
           severity: error
         annotations:
-          summary: "syslog contains ERROR"
+          summary: "Message 'ERROR' found in syslog"
           description: >
-            Alert if 'ERROR' was found in the syslog (file {{ $labels.filename}}).
+            Alert if 'ERROR' found in the syslog (file {{ $labels.filename}}).
             Model: {{ $labels.juju_model }}
             Unit: {{ $labels.juju_unit }}
             Instance: {{ $labels.instance }}
             LABELS = {{ $labels }}
-      - alert: DEV__TargetOverTime
+      - alert: Polkadot_Target
         expr: count_over_time({filename="/var/log/syslog", juju_charm=~".*", juju_application="polkadot"} |= `target` [1m]) > 10
         for: 5m
         labels:
           severity: error
         annotations:
-          summary: "Excessive amount of 'target' found"
+          summary: "Message 'target' found excessively in syslog"
           description: >
             Alert if 'target' found over 10 times in the syslog (file {{ $labels.filename}}).
             Model: {{ $labels.juju_model }}
