@@ -17,7 +17,7 @@ from urllib3.exceptions import NewConnectionError, MaxRetryError
 import time
 import re
 
-import ops
+from ops import main, framework, ConfigChangedEvent, InstallEvent, StartEvent, StopEvent, UpdateStatusEvent
 from ops.charm import CharmBase, ActionEvent
 from ops.model import ActiveStatus, MaintenanceStatus, WaitingStatus, BlockedStatus
 
@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 class PolkadotCharm(CharmBase):
     """Charm the service."""
 
-    _stored = ops.framework.StoredState()
+    _stored = framework.StoredState()
 
     def __init__(self, *args):
         super().__init__(*args)
@@ -66,7 +66,7 @@ class PolkadotCharm(CharmBase):
                                  docker_tag=self.config.get('docker-tag'),
                                  service_args=self.config.get('service-args'))
 
-    def _on_install(self, event: ops.InstallEvent) -> None:
+    def _on_install(self, event: InstallEvent) -> None:
         self.unit.status = MaintenanceStatus("Begin installing charm")
         service_args_obj = ServiceArgs(self.config.get('service-args'))
         # Setup polkadot group and user, disable login
@@ -85,7 +85,7 @@ class PolkadotCharm(CharmBase):
         utils.install_node_exporter()
         self.unit.status = MaintenanceStatus("Charm install complete")
 
-    def _on_config_changed(self, event: ops.ConfigChangedEvent) -> None:
+    def _on_config_changed(self, event: ConfigChangedEvent) -> None:
         try:
             service_args_obj = ServiceArgs(self.config.get('service-args'))
         except ValueError as e:
@@ -113,7 +113,7 @@ class PolkadotCharm(CharmBase):
 
         self.update_status()
 
-    def _on_update_status(self, event: ops.UpdateStatusEvent) -> None:
+    def _on_update_status(self, event: UpdateStatusEvent) -> None:
         self.update_status()
 
     def update_status(self) -> None:
@@ -136,11 +136,11 @@ class PolkadotCharm(CharmBase):
         else:
             self.unit.status = WaitingStatus("Service not running")
 
-    def _on_start(self, event: ops.StartEvent) -> None:
+    def _on_start(self, event: StartEvent) -> None:
         utils.start_polkadot()
         self.update_status()
 
-    def _on_stop(self, event: ops.StopEvent) -> None:
+    def _on_stop(self, event: StopEvent) -> None:
         utils.stop_polkadot()
         self.unit.status = ActiveStatus("Service stopped")
 
@@ -236,4 +236,4 @@ class PolkadotCharm(CharmBase):
 
 
 if __name__ == "__main__":
-    ops.main.main(PolkadotCharm)
+    main.main(PolkadotCharm)
