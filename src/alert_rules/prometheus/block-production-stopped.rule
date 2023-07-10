@@ -2,17 +2,12 @@ groups:
   - name: BlockProductionStopped
     interval: 1m
     rules:
-      - alert: Polkadot_BlockProductionStopped
-        expr: increase(substrate_block_height{juju_charm=~".*",status="best"}[5m]) < 1
+      - alert: Polkadot_BlockProduction
+        expr: increase(substrate_block_height{juju_charm=~".*",status="best"}[2m]) < 2
         for: 5m
         labels:
           severity: critical
         annotations:
-          summary: "Block sync too slow for polkadot-operator-node"
+          summary: "Block sync too slow for {{ $labels.juju_model}}"
           description: >
-            The polkadot-operator node has produced less than 5 blocks in past 5 minutes.
-            Blocks produced in the past 5 minutes is currently: {{ $value }}
-            Model: {{ $labels.juju_model }}
-            Unit: {{ $labels.juju_unit }}
-            Instance: {{ $labels.instance }}
-            LABELS = {{ $labels }}
+            The polkadot-operator node has produced less than 1 block per minute in past 5 minutes.
