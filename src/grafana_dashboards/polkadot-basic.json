@@ -2613,7 +2613,7 @@
         },
         "definition": "label_values(up,juju_model)",
         "hide": 0,
-        "includeAll": true,
+        "includeAll": false,
         "label": "Juju model",
         "multi": false,
         "name": "juju_model",
