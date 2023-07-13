@@ -117,7 +117,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "${Prefix}_block_height{status=\"best\",juju_model=\"${juju_model}\"}",
+          "expr": "${Prefix}_block_height{status=\"best\",juju_model=\"${juju_model}\",juju_application=~\"$juju_application\",juju_unit=~\"$juju_unit\"}",
           "hide": false,
           "instant": false,
           "legendFormat": "__auto",
@@ -2447,16 +2447,13 @@
     "POLKADOT"
   ],
   "templating": {
+    "enable": true,
     "list": [
       {
         "current": {
           "selected": false,
-          "text": [
-            ""
-          ],
-          "value": [
-            ""
-          ]
+          "text": "",
+          "value": ""
         },
         "hide": 0,
         "includeAll": true,
@@ -2497,10 +2494,10 @@
         "current": {
           "selected": false,
           "text": [
-            "All"
+            ""
           ],
           "value": [
-            "All"
+            ""
           ]
         },
         "datasource": {
@@ -2532,10 +2529,10 @@
         "current": {
           "selected": false,
           "text": [
-            "All"
+            ""
           ],
           "value": [
-            "All"
+            ""
           ]
         },
         "datasource": {
@@ -2545,7 +2542,7 @@
         "hide": 0,
         "includeAll": true,
         "label": "Juju application",
-        "multi": true,
+        "multi": false,
         "name": "juju_application",
         "options": [],
         "query": {
@@ -2602,10 +2599,10 @@
         "current": {
           "selected": false,
           "text": [
-            "polkadot-cos-test"
+            ""
           ],
           "value": [
-            "polkadot-cos-test"
+            ""
           ]
         },
         "datasource": {
