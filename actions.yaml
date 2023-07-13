@@ -26,7 +26,7 @@ insert-key:
   required: [ mnemonic, address ]
 
 restart-node-service:
-  description: "Restarting the service running the blockchain node."
+  description: "Restarts the service running the blockchain node."
 
 set-node-key:
   description: |
@@ -40,4 +40,4 @@ set-node-key:
   required: [ key ]
 
 get-node-info:
-  description: "Gets information about the node."
+  description: "Gets system information about the node for debugging purposes."

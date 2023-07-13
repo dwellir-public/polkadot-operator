@@ -30,14 +30,14 @@ WRITEME
 
 ### In AWS
 
-    juju deploy polkadot binary-url=https://github.com/paritytech/polkadot/releases/download/v0.9.10/polkadot --constraints "instance-type=t3.medium root-disk=200G"
+    juju deploy polkadot binary-url=https://github.com/paritytech/polkadot/releases/download/v0.9.43/polkadot --constraints "instance-type=t3.medium root-disk=200G"
     juju deploy prometheus2 prometheus
     juju relate polkadot:polkadot-prometheus prometheus:manual-jobs
     juju relate polkadot:node-prometheus prometheus:manual-jobs
 
 ### In LXD
 
-    juju deploy polkadot --config binary-url=https://github.com/paritytech/polkadot/releases/download/v0.9.10/polkadot
+    juju deploy polkadot --config binary-url=https://github.com/paritytech/polkadot/releases/download/v0.9.43/polkadot
     juju deploy prometheus2 prometheus
     juju relate polkadot:polkadot-prometheus prometheus:manual-jobs
     juju relate polkadot:node-prometheus prometheus:manual-jobs

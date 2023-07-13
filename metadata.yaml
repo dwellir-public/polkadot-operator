@@ -2,13 +2,18 @@
 # See LICENSE file for licensing details.
 name: polkadot
 display-name: Polkadot node
-summary: Run nodes on Polkadot.
+summary: Runs a Polkadot node.
 description: |
-    Starts a polkadot node on selected network.
+    The charm can be deployed either as a validator, collator, bootnode, or RPC on any Polkadot derived blockchain, also known as parachains. The deployment config differs depending on the chain that is being deployed.
+
+    The charm starts the Polkadot client as a service, taking startup arguments from /etc/default/polkadot and is set by the juju config *service-args*. The Polkadot client itself is downloaded and installed from the config *binary-url*.
+
+    The charm is maintained by https://dwellir.com also offering services within blockchain and web3. 
+
 tags:
   - misc
 summary: |
-  TODO: fill out the charm's summary
+  Polkadot is a web3 blockchain ecosystem.
 
 provides:
   node-prometheus:
