@@ -2455,7 +2455,7 @@
           "text": "",
           "value": ""
         },
-        "hide": 0,
+        "hide": 2,
         "includeAll": true,
         "label": "Loki datasource",
         "multi": true,
@@ -2477,7 +2477,7 @@
             ""
           ]
         },
-        "hide": 0,
+        "hide": 2,
         "includeAll": true,
         "label": "Prometheus datasource",
         "multi": true,
@@ -2574,7 +2574,7 @@
           "uid": "${prometheusds}"
         },
         "definition": "label_values(up{juju_model=~\"$juju_model\"},juju_model_uuid)",
-        "hide": 0,
+        "hide": 2,
         "includeAll": true,
         "label": "Juju model uuid",
         "multi": false,
