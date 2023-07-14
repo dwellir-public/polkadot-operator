@@ -49,23 +49,27 @@ There are a number of different node types in the Polkadot ecosystem, all which 
 
     juju deploy polkadot --config binary-url=... --config service-args="--chain=... --name=MyRPC --rpc-port=... --rpc-methods=Safe"
 
-### In AWS
+### Juju relations/integrations
 
-    juju deploy polkadot <node configurations> --constraints "instance-type=t3.medium root-disk=200G"
-    juju deploy prometheus2 prometheus
-    juju relate polkadot:polkadot-prometheus prometheus:manual-jobs
-    juju relate polkadot:node-prometheus prometheus:manual-jobs
+a is Prometheus, which also exists [as a charm](https://charmhub.io/prometheus2)
 
-### In LXD
+#### In LXD
 
     juju deploy polkadot <node configurations>
     juju deploy prometheus2 prometheus
     juju relate polkadot:polkadot-prometheus prometheus:manual-jobs
     juju relate polkadot:node-prometheus prometheus:manual-jobs
 
-### With grafana
+#### In AWS
 
-If you're using a local grafana deployment in your monitoring stack:
+    juju deploy polkadot <node configurations> --constraints "instance-type=t3.medium root-disk=200G"
+    juju deploy prometheus2 prometheus
+    juju relate polkadot:polkadot-prometheus prometheus:manual-jobs
+    juju relate polkadot:node-prometheus prometheus:manual-jobs
+
+#### Add Grafana
+
+If you want to use a [Grafana instance deployed with Juju](https://charmhub.io/grafana) in your monitoring stack:
 
     juju deploy grafana
     juju relate prometheus:grafana-source grafana:grafana-source
@@ -73,7 +77,28 @@ If you're using a local grafana deployment in your monitoring stack:
 
 ## Building
 
-Build the charm with charmcraft. See [charmcraft.yaml](charmcraft.yaml)
+Though this charm is published on Charmhub there is also the alternative to build it locally, and to deploy it from that local build. It is built with the package charmcraft. See [charmcraft.yaml](charmcraft.yaml) for build details.
     
     sudo snap install charmcraft --classic
-    charmcraft pack
+    charmcraft pack  # assumes pwd is the polkadot-operator root directory
+
+## System requirements
+
+*Disclaimer: the system requriements to run a node in the Polkadot ecosystem varies, both depending on which chain is being run and which type of node it is. The example below should therefore be vetted against updated and reliable resources depending on your deployment specifications.*
+
+This list of reference hardware is from [the official Polkadot docs](https://wiki.polkadot.network/docs/maintain-guides-how-to-validate-polkadot) and is an example of good practice for a validator node:
+
+- CPU
+  - x86-64 compatible;
+  - Intel Ice Lake, or newer (Xeon or Core series); AMD Zen3, or newer (EPYC or Ryzen);
+  - 4 physical cores @ 3.4GHz;
+  - Simultaneous multithreading disabled (Hyper-Threading on Intel, SMT on AMD);
+  - Prefer single-threaded performance over higher cores count.
+- Storage
+  - An NVMe SSD of 1 TB (As it should be reasonably sized to deal with blockchain growth). An estimation of current chain snapshot sizes can be found [here](https://paranodes.io/DBSize). In general, the latency is more important than the throughput.
+- Memory
+  - 32 GB DDR4 ECC.
+- System
+  - Linux Kernel 5.16 or newer.
+- Network
+  - The minimum symmetric networking speed is set to 500 Mbit/s (= 62.5 MB/s). This is required to support a large number of parachains and allow for proper congestion control in busy network situations.
