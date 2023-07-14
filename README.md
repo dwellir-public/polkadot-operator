@@ -37,13 +37,19 @@ There are a number of different node types in the Polkadot ecosystem, all which 
 
     juju deploy polkadot --config binary-url=... --config service-args="--validator --chain=... --rpc-port=..."
 
+Running a validator also requries setting a session key, which can be done by running the Juju action `insert-key`.
+
 #### Deploying a collator
 
     juju deploy polkadot --config binary-url=... --config service-args="--collator --chain=... --rpc-port=..."
 
+Running a collator also requries setting a node key, which can be done by running the Juju action `set-node-key`.
+
 #### Deploying a bootnode
 
     juju deploy polkadot --config binary-url=... --config service-args="--chain=... --rpc-port=... --listen-addr=/ip4/0.0.0.0/tcp/<port> --listen-addr=/ip4/0.0.0.0/tcp/<port>/ws"
+
+Running a bootnode also requries setting a node key, which can be done by running the Juju action `set-node-key`.
 
 #### Deploying an RPC node
 
