@@ -72,6 +72,18 @@ If you want to use a [Grafana instance deployed with Juju](https://charmhub.io/g
     juju relate prometheus:grafana-source grafana:grafana-source
     juju run-action --wait grafana/0 get-admin-password
 
+#### The COS stack
+
+An alternative to deploying a Prometheus instance which each node is to use what is known as the [Canonical Observability Stack](https://charmhub.io/topics/canonical-observability-stack). By levering the topology model of Juju and charm relations to automate integration, it provides an observability suite based on best-in-class, open-source observability tools.
+
+The `cos_agent` interface is already supported by this Polkadot operator charm so if you've deployed an instance of the COS, integrate it with your node like this:
+
+    juju deploy grafana-agent --channel edge          # In the same model as the Polkadot node
+    juju relate grafana-agent <COS interfaces>
+    juju relate polkadot:grafana-agent grafana-agent  # grafana-agent is also the name for the interface in this charm
+
+Find more details on how to deploy and use COS [here](https://charmhub.io/topics/canonical-observability-stack/tutorials/instrumenting-machine-charms).
+
 ## Building
 
 Though this charm is published on Charmhub there is also the alternative to build it locally, and to deploy it from that local build. It is built with the package charmcraft. See [charmcraft.yaml](charmcraft.yaml) for build details.
