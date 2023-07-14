@@ -1,0 +1,13 @@
+groups:
+  - name: General
+    interval: 1m
+    rules:
+      - alert: Exporter_Down
+        expr: up == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Prometheus exporter is down: {{ $labels.instance }}"
+          description: >
+            The {{ $labels.instance }} instance has not been able to be scraped by Prometheus in the past 5 minutes.

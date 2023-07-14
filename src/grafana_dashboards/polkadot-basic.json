@@ -117,7 +117,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "${Prefix}_block_height{status=\"best\",juju_model=\"${juju_model}\"}",
+          "expr": "${Prefix}_block_height{status=\"best\",juju_model=\"${juju_model}\",juju_unit=~\"$juju_unit\"}",
           "hide": false,
           "instant": false,
           "legendFormat": "__auto",
@@ -212,7 +212,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "sum(increase(${Prefix}_rpc_requests_started{juju_model=\"${juju_model}\"}[1h]))/1000000",
+          "expr": "sum(increase(${Prefix}_rpc_requests_started{juju_model=\"${juju_model}\",juju_unit=~\"$juju_unit\"}[1h]))/1000000",
           "format": "time_series",
           "instant": false,
           "interval": "1h",
@@ -308,7 +308,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "increase(${Prefix}_rpc_sessions_opened{juju_model=\"${juju_model}\"}[1h])",
+          "expr": "increase(${Prefix}_rpc_sessions_opened{juju_model=\"${juju_model}\",juju_unit=~\"$juju_unit\"}[1h])",
           "format": "time_series",
           "interval": "1h",
           "legendFormat": "Sessions started",
@@ -420,7 +420,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "increase(${Prefix}_rpc_sessions_opened{juju_model=\"${juju_model}\"}[1d])",
+          "expr": "increase(${Prefix}_rpc_sessions_opened{juju_model=\"${juju_model}\",juju_unit=~\"$juju_unit\"}[1d])",
           "format": "time_series",
           "interval": "1d",
           "legendFormat": "Sessions started",
@@ -515,7 +515,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "sum(increase(${Prefix}_rpc_requests_started{juju_model=\"${juju_model}\"}[1d]))/1000000",
+          "expr": "sum(increase(${Prefix}_rpc_requests_started{juju_model=\"${juju_model}\",juju_unit=~\"$juju_unit\"}[1d]))/1000000",
           "format": "time_series",
           "instant": false,
           "interval": "1d",
@@ -617,7 +617,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(${Prefix}_rpc_requests_started{juju_model=\"${juju_model}\",protocol=\"ws\"}[5m])",
+          "expr": "rate(${Prefix}_rpc_requests_started{juju_model=\"${juju_model}\",juju_unit=~\"$juju_unit\",protocol=\"ws\"}[5m])",
           "format": "time_series",
           "interval": "",
           "legendFormat": "__auto",
@@ -718,7 +718,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(${Prefix}_rpc_requests_started{juju_model=\"${juju_model}\",protocol=\"http\"}[5m])",
+          "expr": "rate(${Prefix}_rpc_requests_started{juju_model=\"${juju_model}\",juju_unit=~\"$juju_unit\",protocol=\"http\"}[5m])",
           "format": "time_series",
           "interval": "",
           "legendFormat": "__auto",
@@ -817,7 +817,7 @@
             "uid": "${prometheusds}"
           },
           "exemplar": true,
-          "expr": "${Prefix}_rpc_sessions_opened{juju_model=\"${juju_model}\"} - ${Prefix}_rpc_sessions_closed{juju_model=\"${juju_model}\"}",
+          "expr": "${Prefix}_rpc_sessions_opened{juju_model=\"${juju_model}\",juju_unit=~\"$juju_unit\"} - ${Prefix}_rpc_sessions_closed{juju_model=\"${juju_model}\",juju_unit=~\"$juju_unit\"}",
           "format": "time_series",
           "interval": "",
           "legendFormat": "request started",
@@ -915,7 +915,7 @@
             "uid": "${prometheusds}"
           },
           "exemplar": true,
-          "expr": "rate(node_network_transmit_bytes_total{juju_model=\"${juju_model}\"}[$__rate_interval])/1000",
+          "expr": "rate(node_network_transmit_bytes_total{juju_model=\"${juju_model}\",juju_unit=~\"$juju_unit\"}[$__rate_interval])/1000",
           "format": "time_series",
           "interval": "",
           "legendFormat": "request started",
@@ -1012,7 +1012,7 @@
             "uid": "${prometheusds}"
           },
           "exemplar": true,
-          "expr": "histogram_quantile(0.95, sum(rate(${Prefix}_rpc_calls_time_bucket{juju_model=\"${juju_model}\"}[5m])) by (le))",
+          "expr": "histogram_quantile(0.95, sum(rate(${Prefix}_rpc_calls_time_bucket{juju_model=\"${juju_model}\",juju_unit=~\"$juju_unit\"}[5m])) by (le))",
           "format": "time_series",
           "hide": false,
           "interval": "",
@@ -1111,7 +1111,7 @@
             "uid": "${prometheusds}"
           },
           "exemplar": true,
-          "expr": "rate(${Prefix}_rpc_requests_started{juju_model=\"${juju_model}\"}[1h])*86400",
+          "expr": "rate(${Prefix}_rpc_requests_started{juju_model=\"${juju_model}\",juju_unit=~\"$juju_unit\"}[1h])*86400",
           "format": "time_series",
           "interval": "",
           "legendFormat": "",
@@ -1211,7 +1211,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(${Prefix}_rpc_calls_started{juju_model=\"${juju_model}\"}[5m])",
+          "expr": "rate(${Prefix}_rpc_calls_started{juju_model=\"${juju_model}\",juju_unit=~\"$juju_unit\"}[5m])",
           "format": "time_series",
           "interval": "",
           "legendFormat": "{{method}}",
@@ -1310,7 +1310,7 @@
             "uid": "${prometheusds}"
           },
           "exemplar": true,
-          "expr": "${Prefix}_rpc_sessions_closed{juju_model=\"${juju_model}\"}",
+          "expr": "${Prefix}_rpc_sessions_closed{juju_model=\"${juju_model}\",juju_unit=~\"$juju_unit\"}",
           "format": "time_series",
           "interval": "",
           "legendFormat": "request started",
@@ -1372,7 +1372,7 @@
             "uid": "${prometheusds}"
           },
           "exemplar": true,
-          "expr": "increase(${Prefix}_rpc_requests_started{juju_model=\"${juju_model}\"}[24h])",
+          "expr": "increase(${Prefix}_rpc_requests_started{juju_model=\"${juju_model}\",juju_unit=~\"$juju_unit\"}[24h])",
           "format": "time_series",
           "instant": false,
           "interval": "",
@@ -1449,7 +1449,7 @@
             "uid": "${prometheusds}"
           },
           "exemplar": true,
-          "expr": "${Prefix}_block_height{juju_model=\"${juju_model}\"}",
+          "expr": "${Prefix}_block_height{juju_model=\"${juju_model}\",juju_unit=~\"$juju_unit\"}",
           "interval": "",
           "legendFormat": "{{status}}",
           "refId": "B"
@@ -1563,7 +1563,7 @@
             "uid": "${prometheusds}"
           },
           "exemplar": true,
-          "expr": "histogram_quantile(0.95, sum(rate(${Prefix}_block_verification_and_import_time_bucket{juju_model=\"${juju_model}\"}[5m])) by (le))",
+          "expr": "histogram_quantile(0.95, sum(rate(${Prefix}_block_verification_and_import_time_bucket{juju_model=\"${juju_model}\",juju_unit=~\"$juju_unit\"}[5m])) by (le))",
           "format": "time_series",
           "hide": false,
           "interval": "",
@@ -1626,7 +1626,7 @@
             "uid": "${prometheusds}"
           },
           "exemplar": true,
-          "expr": "resets(${Prefix}_rpc_requests_started{juju_model=\"${juju_model}\"}[24h])",
+          "expr": "resets(${Prefix}_rpc_requests_started{juju_model=\"${juju_model}\",juju_unit=~\"$juju_unit\"}[24h])",
           "format": "time_series",
           "instant": false,
           "interval": "",
@@ -1690,20 +1690,20 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "${Prefix}_sub_libp2p_peers_count{juju_model=\"${juju_model}\"}",
+          "expr": "${Prefix}_sub_libp2p_peers_count{juju_model=\"${juju_model}\",juju_unit=~\"$juju_unit\"}",
           "instant": false,
           "interval": "",
           "legendFormat": "Peers count",
           "refId": "A"
         },
         {
-          "expr": "${Prefix}_sub_libp2p_peerset_num_discovered{juju_model=\"${juju_model}\"}",
+          "expr": "${Prefix}_sub_libp2p_peerset_num_discovered{juju_model=\"${juju_model}\",juju_unit=~\"$juju_unit\"}",
           "interval": "",
           "legendFormat": "Discovered peers",
           "refId": "C"
         },
         {
-          "expr": "${Prefix}_sub_libp2p_peerset_num_requested{juju_model=\"${juju_model}\"}",
+          "expr": "${Prefix}_sub_libp2p_peerset_num_requested{juju_model=\"${juju_model}\",juju_unit=~\"$juju_unit\"}",
           "interval": "",
           "legendFormat": "Requested peers",
           "refId": "B"
@@ -1793,7 +1793,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "${Prefix}_sync_peers{juju_model=\"${juju_model}\"}",
+          "expr": "${Prefix}_sync_peers{juju_model=\"${juju_model}\",juju_unit=~\"$juju_unit\"}",
           "interval": "",
           "legendFormat": "",
           "refId": "A"
@@ -1898,7 +1898,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "rate(${Prefix}_tasks_polling_duration_bucket{juju_model=\"${juju_model}\"}[5m])",
+          "expr": "rate(${Prefix}_tasks_polling_duration_bucket{juju_model=\"${juju_model}\",juju_unit=~\"$juju_unit\"}[5m])",
           "interval": "",
           "legendFormat": "{{task_name}}",
           "refId": "A"
@@ -1989,7 +1989,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "rate(${Prefix}_tasks_polling_started_total{juju_model=\"${juju_model}\"}[1m]) - rate(${Prefix}_tasks_polling_duration_count{juju_model=\"${juju_model}\"}[1m])",
+          "expr": "rate(${Prefix}_tasks_polling_started_total{juju_model=\"${juju_model}\",juju_unit=~\"$juju_unit\"}[1m]) - rate(${Prefix}_tasks_polling_duration_count{juju_model=\"${juju_model}\",juju_unit=~\"$juju_unit\"}[1m])",
           "interval": "",
           "legendFormat": "{{task_name}}",
           "refId": "A"
@@ -2080,7 +2080,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "${Prefix}_state_db_cache_bytes{juju_model=\"${juju_model}\"}",
+          "expr": "${Prefix}_state_db_cache_bytes{juju_model=\"${juju_model}\",juju_unit=~\"$juju_unit\"}",
           "interval": "",
           "legendFormat": "{{subtype}}",
           "refId": "A"
@@ -2169,7 +2169,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "${Prefix}_sync_queued_blocks{juju_model=\"${juju_model}\"}",
+          "expr": "${Prefix}_sync_queued_blocks{juju_model=\"${juju_model}\",juju_unit=~\"$juju_unit\"}",
           "refId": "A"
         }
       ],
@@ -2254,7 +2254,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "${Prefix}_state_cache_bytes{juju_model=\"${juju_model}\"}",
+          "expr": "${Prefix}_state_cache_bytes{juju_model=\"${juju_model}\",juju_unit=~\"$juju_unit\"}",
           "interval": "",
           "legendFormat": "",
           "refId": "A"
@@ -2343,7 +2343,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "${Prefix}_number_leaves{juju_model=\"${juju_model}\"}",
+          "expr": "${Prefix}_number_leaves{juju_model=\"${juju_model}\",juju_unit=~\"$juju_unit\"}",
           "interval": "",
           "legendFormat": "",
           "refId": "A"
@@ -2429,7 +2429,7 @@
       "pluginVersion": "9.4.1",
       "targets": [
         {
-          "expr": "${Prefix}_ready_transactions_number{juju_model=\"${juju_model}\"}",
+          "expr": "${Prefix}_ready_transactions_number{juju_model=\"${juju_model}\",juju_unit=~\"$juju_unit\"}",
           "legendFormat": "Number of transactions in the ready queue",
           "refId": "A"
         }
@@ -2447,7 +2447,188 @@
     "POLKADOT"
   ],
   "templating": {
+    "enable": true,
     "list": [
+      {
+        "current": {
+          "selected": false,
+          "text": "",
+          "value": ""
+        },
+        "hide": 2,
+        "includeAll": true,
+        "label": "Loki datasource",
+        "multi": true,
+        "name": "lokids",
+        "options": [],
+        "query": "loki",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "type": "datasource"
+      },
+      {
+        "current": {
+          "selected": false,
+          "text": [
+            ""
+          ],
+          "value": [
+            ""
+          ]
+        },
+        "hide": 2,
+        "includeAll": true,
+        "label": "Prometheus datasource",
+        "multi": true,
+        "name": "prometheusds",
+        "options": [],
+        "query": "prometheus",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "type": "datasource"
+      },
+      {
+        "allValue": ".*",
+        "current": {
+          "selected": false,
+          "text": [
+            ""
+          ],
+          "value": [
+            ""
+          ]
+        },
+        "datasource": {
+          "uid": "${prometheusds}"
+        },
+        "definition": "label_values(up{juju_model=~\"$juju_model\",juju_model_uuid=~\"$juju_model_uuid\",juju_application=~\"$juju_application\"},juju_unit)",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Juju unit",
+        "multi": true,
+        "name": "juju_unit",
+        "options": [],
+        "query": {
+          "query": "label_values(up{juju_model=~\"$juju_model\",juju_model_uuid=~\"$juju_model_uuid\",juju_application=~\"$juju_application\"},juju_unit)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "allValue": ".*",
+        "current": {
+          "selected": false,
+          "text": [
+            ""
+          ],
+          "value": [
+            ""
+          ]
+        },
+        "datasource": {
+          "uid": "${prometheusds}"
+        },
+        "definition": "label_values(up{juju_model=~\"$juju_model\",juju_model_uuid=~\"$juju_model_uuid\"},juju_application)",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Juju application",
+        "multi": false,
+        "name": "juju_application",
+        "options": [],
+        "query": {
+          "query": "label_values(up{juju_model=~\"$juju_model\",juju_model_uuid=~\"$juju_model_uuid\"},juju_application)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "allValue": ".*",
+        "current": {
+          "selected": false,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "All"
+          ]
+        },
+        "datasource": {
+          "uid": "${prometheusds}"
+        },
+        "definition": "label_values(up{juju_model=~\"$juju_model\"},juju_model_uuid)",
+        "hide": 2,
+        "includeAll": true,
+        "label": "Juju model uuid",
+        "multi": false,
+        "name": "juju_model_uuid",
+        "options": [],
+        "query": {
+          "query": "label_values(up{juju_model=~\"$juju_model\"},juju_model_uuid)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "allValue": ".*",
+        "current": {
+          "selected": false,
+          "text": [
+            ""
+          ],
+          "value": [
+            ""
+          ]
+        },
+        "datasource": {
+          "uid": "${prometheusds}"
+        },
+        "definition": "label_values(up,juju_model)",
+        "hide": 0,
+        "includeAll": false,
+        "label": "Juju model",
+        "multi": false,
+        "name": "juju_model",
+        "options": [],
+        "query": {
+          "query": "label_values(up,juju_model)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
       {
         "current": {
           "selected": false,
@@ -2484,7 +2665,7 @@
     ]
   },
   "time": {
-    "from": "now-7d",
+    "from": "now-2d",
     "to": "now"
   },
   "timepicker": {
@@ -2501,8 +2682,8 @@
     ]
   },
   "timezone": "",
-  "title": "Generic JuJuTopolgy Polkadot Dashboard",
-  "uid": "polkadot-k8s",
-  "version": 31,
+  "title": "Polkadot-Dotsama Ecosystem Dashboard",
+  "uid": "dwellir-polkadot-generic",
+  "version": 1,
   "weekStart": ""
 }
