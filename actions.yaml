@@ -2,10 +2,10 @@
 # See LICENSE file for licensing details.
 
 get-session-key:
-  description: "Runs author_rotateKeys to get a session-key."
+  description: "Runs author_rotateKeys and returns a new session-key."
 
 has-session-key:
-  description: "Check if node has a session key, using RPC call."
+  description: "Checks if node has a session key, using a RPC call."
   params:
     key:
       description: "Key to check if exist on node. E.g. key='0xhjd39djk309'"
@@ -14,8 +14,8 @@ has-session-key:
 
 insert-key:
   description: |
-    Insert a key in the nodes keystore using RPC call. WARNING: don't do double signing!
-    A new key can be generated using subkey E.g 'subkey generate --network efinity'
+    Inserts a key in the keystore of the node using a local RPC call. WARNING: don't do double signing by inserting the same key for two nodes!
+    Keys are generated using the external tool subkey (not provided by the charm) E.g 'subkey generate --network efinity'
   params:
     mnemonic:
       description: "The private part of the key as a seed phrase. E.g. mnemonic='reunion learn town satisfy social split ticket improve sunset faculty tail adjust'"
@@ -26,12 +26,12 @@ insert-key:
   required: [ mnemonic, address ]
 
 restart-node-service:
-  description: "Restarting the service running the blockchain node."
+  description: "This actions restarts the service running the blockchain node."
 
 set-node-key:
   description: |
     Sets a new private key in '/home/polkadot/node-key' and restarts the node service.
-    A node key can be generated with `subkey generate-node-key --file node-key`.
+    A node key can be generated with the external tool subkey (not provided by the charm) E.g. `subkey generate-node-key --file node-key`.
     The content of node-key is the private key and what should be used for the 'key' parameter.
   params:
     key:
@@ -40,4 +40,4 @@ set-node-key:
   required: [ key ]
 
 get-node-info:
-  description: "Gets information about the node."
+  description: "Gets system information about the node for debugging purposes."
