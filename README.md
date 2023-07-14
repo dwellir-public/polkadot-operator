@@ -59,8 +59,8 @@ One of the interfaces used in this charm is to connect with Prometheus, which al
 
 Here is an example where the Polkadot and Prometheus charms are deployed in a Juju model residing in an AWS cloud, and then related to each other:
 
-    juju deploy polkadot <node configurations> --constraints "instance-type=t3.medium root-disk=200G"
-    juju deploy prometheus2 prometheus --constraints "instance-type=t3.small root-disk=20G"
+    juju deploy polkadot <node configurations> --constraints "instance-type=t3.medium root-disk=400G"
+    juju deploy prometheus2 prometheus --constraints
     juju relate polkadot:polkadot-prometheus prometheus:manual-jobs  # Polkadot node data
     juju relate polkadot:node-prometheus prometheus:manual-jobs      # Container system data
 
