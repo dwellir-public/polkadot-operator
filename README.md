@@ -55,6 +55,12 @@ Running a bootnode also requries setting a node key, which can be done by runnin
 
     juju deploy polkadot --config binary-url=... --config service-args="--chain=... --name=MyRPC --rpc-port=... --rpc-methods=Safe"
 
+### Deploying other Polkadot ecosystem chains
+
+As mentioned at the top of the readme, [Polkadot](https://polkadot.network/) is a web3 blockchain ecosystem, sometimes referred to as the "DotSama ecosystem", which includes a number of Polkadot derived parachains. Due to them being derived from the original relaychain code, and kept up to date, this charm can easily run them as well. But since they run completely separate networks, they do need other chain specifications. For some of the chains, the specifications are included in the binary but for some of them, specifications need to be supplied using a JSON file. In [service_args.py](src/service_args.py), we define chain name aliases for some of these chains. E.g. if one uses `--chain=peregrine` in the `service-args` config, what actually happens is that both the binary **and** the JSON specification file are extracted from the `peregrine` Docker image. Then the name `peregrine` is replaced with the path to the JSON in the argument given to the blockchain client binary, so that is what's run when the charm starts the client.
+
+For more information regarding parachains and node operations, please visit the [Polkadot wiki](https://wiki.polkadot.network/docs/learn-parachains-index).
+
 ### Juju relations/integrations
 
 A powerful feature of the Juju framework is the ability to relate (integrate in Juju 3+) charms to each other. By relating two charms, they exchange data based on the interface used. There are a number of existing interfaces for well-known applications and several are being employed in this charm.
