@@ -109,6 +109,8 @@ class ServiceArgs():
             self.__aleph_zero()
         elif self.chain_name in ['pendulum', 'amplitude']:
             self.__pendulum()
+        elif self.chain_name == 'tinkernet':
+            self.__tinkernet()
 
     def __peregrine(self):
         self.__replace_chain_name(Path(utils.HOME_PATH, 'dev-specs/kilt-parachain/peregrine-kilt.json'), 0)
@@ -188,3 +190,13 @@ class ServiceArgs():
 
         self.__replace_chain_name(chain_json_path, 0)
         self.__replace_chain_name(relay_json_path, 1)
+
+    def __tinkernet(self):
+        if exists(utils.BINARY_PATH):
+            chain_json_url = f'https://github.com/InvArch/InvArch-Node/releases/download/v{utils.get_binary_version()}/tinker-raw.json'
+        else:
+            chain_json_url = 'https://github.com/InvArch/InvArch-Node/blob/main/res/tinker/tinker-raw.json'
+        chain_json_path = f"{utils.CHAIN_SPEC_PATH}/tinker-raw.json"
+
+        utils.download_chain_spec(chain_json_url, 'tinker-raw.json')
+        self.__replace_chain_name(chain_json_path, 0)
