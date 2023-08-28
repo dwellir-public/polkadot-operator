@@ -173,7 +173,7 @@ def get_disk_usage(path: Path) -> str:
         return ''
     command = ['du', str(path), '-hs']
     output = sp.run(command, stdout=sp.PIPE, check=False).stdout.decode('utf-8')
-    size = re.search(r'(\d+(\.\d+)?[GMT])', output).group(1)
+    size = re.search(r'(\d+(\.\d+)?[GKMT])', output).group(1)
     return size
 
 
