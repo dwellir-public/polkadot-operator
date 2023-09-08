@@ -111,6 +111,8 @@ class ServiceArgs():
             self.__pendulum()
         elif self.chain_name == 'tinkernet':
             self.__tinkernet()
+        elif self.chain_name == 'clover':
+            self.__clover()
 
     def __peregrine(self):
         self.__replace_chain_name(Path(utils.HOME_PATH, 'dev-specs/kilt-parachain/peregrine-kilt.json'), 0)
@@ -200,3 +202,6 @@ class ServiceArgs():
 
         utils.download_chain_spec(chain_json_url, 'tinker-raw.json')
         self.__replace_chain_name(chain_json_path, 0)
+
+    def __clover(self):
+        self.__replace_chain_name(Path(utils.HOME_PATH, 'specs/clover-para-raw.json'), 0)
