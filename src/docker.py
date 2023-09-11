@@ -48,6 +48,9 @@ class Docker():
             self.__extract_from_docker('pendulumchain/pendulum-collator', '/usr/local/bin/pendulum-collator')
         elif self.chain_name == 'kapex':
             self.__extract_from_docker('totemlive/totem-parachain-collator', '/usr/local/bin/totem-parachain-collator')
+        elif self.chain_name == 'clover':
+            self.__extract_from_docker('cloverio/clover-para', '/opt/clover/bin/clover',
+                                       f'docker cp tmp:/opt/specs {utils.HOME_PATH}', f'chown -R polkadot:polkadot {Path(utils.HOME_PATH, "specs")}')
         else:
             raise ValueError(f"{self.chain_name} is not a supported chain using Docker!")
 
