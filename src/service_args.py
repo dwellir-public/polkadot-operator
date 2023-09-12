@@ -209,4 +209,4 @@ class ServiceArgs():
         self.__replace_chain_name(Path(utils.HOME_PATH, 'specs/clover-para-raw.json'), 0)
 
     def __polkadex(self):
-        self.__replace_chain_name(Path(utils.HOME_PATH, 'customSpecRaw.json'), 0)
+        self.__replace_chain_name(Path(utils.HOME_PATH, 'polkadot-parachain-raw.json'), 0)

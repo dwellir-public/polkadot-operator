@@ -50,7 +50,7 @@ class Docker():
         elif self.chain_name == 'clover':
             self.__extract_from_docker('cloverio/clover-para', '/opt/clover/bin/clover', '/opt/specs')
         elif self.chain_name == 'polkadex':
-            self.__extract_from_docker('polkadex/mainnet', '/usr/local/bin/polkadex-node', '/data/customSpecRaw.json')
+            self.__extract_from_docker('polkadex/parachain', '/data/bin/parachain-polkadex-node', '/data/polkadot-parachain-raw.json')
         else:
             raise ValueError(f"{self.chain_name} is not a supported chain using Docker!")
 
