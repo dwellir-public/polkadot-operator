@@ -36,12 +36,42 @@ def install_binary(config, chain_name):
     if config.get('binary-url') and config.get('docker-tag'):
         raise ValueError("Only one of 'binary-url' or 'docker-tag' can be set at the same time!")
     if config.get('binary-url'):
-        install_binary_from_url(config.get('binary-url'), config.get('binary-check'))
+        if config.get('binary-url').endswith('.deb'):
+            install_deb_from_url(config.get('binary-url'))
+        else:
+            install_binary_from_url(config.get('binary-url'), config.get('binary-check'))
     elif config.get('docker-tag'):
         install_docker()
         Docker(chain_name, config.get('docker-tag')).extract_resources_from_docker()
     else:
         raise ValueError("Either 'binary-url' or 'docker-tag' must be set!")
+
+
+def find_binary_installed_by_deb(package_name: str, ) -> str:
+    files = sp.check_output(['dpkg', '-L', package_name]).decode().split('\n')[:-1]
+    bin_files = [file for file in files if file.startswith('/bin/')]
+    logger.debug('Found files in /bin/ %s', str(bin_files))
+    if len(bin_files) > 1:
+        raise Exception(f'Found more than one file installed in /bin/ by package {package_name}. Cannot be sure which one to use.')
+    return bin_files[0]
+
+
+def install_deb_from_url(url: str) -> None:
+    deb_response = requests.get(url, allow_redirects=True, timeout=None)
+    deb_path = Path(HOME_PATH, url.split('/')[-1])
+    with open(deb_path, 'wb') as f:
+        f.write(deb_response.content)
+    package_name = sp.check_output(['dpkg-deb', '-f', deb_path, 'Package']).decode('utf-8').strip()
+    logger.debug('Installing package %s from deb file %s', package_name, str(deb_path))
+    stop_polkadot()
+    sp.check_call(['dpkg', '--purge', package_name])
+    sp.check_call(['dpkg', '--install', deb_path])
+    installed_binary = find_binary_installed_by_deb(package_name)
+    if os.path.exists(BINARY_PATH):
+        os.remove(BINARY_PATH)
+    os.symlink(installed_binary, BINARY_PATH)
+    start_polkadot()
+    os.remove(deb_path)
 
 
 def install_binary_from_url(url, binary_check):

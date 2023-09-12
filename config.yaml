@@ -5,7 +5,9 @@ options:
   binary-url:
     type: string
     default: ""
-    description: "Path to download binary from. E.g. https://github.com/paritytech/polkadot/releases/download/v0.9.10/polkadot"
+    description: |
+      Path to download binary or .deb file from. E.g. https://github.com/paritytech/polkadot/releases/download/v0.9.10/polkadot
+      Different installation methods will depending on if the file is a .deb or not.
   binary-check:
     type: boolean
     default: true
