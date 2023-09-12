@@ -51,6 +51,9 @@ class Docker():
         elif self.chain_name == 'clover':
             self.__extract_from_docker('cloverio/clover-para', '/opt/clover/bin/clover',
                                        f'docker cp tmp:/opt/specs {utils.HOME_PATH}', f'chown -R polkadot:polkadot {Path(utils.HOME_PATH, "specs")}')
+        elif self.chain_name == 'polkadex':
+            self.__extract_from_docker('polkadex/mainnet', '/usr/local/bin/polkadex-node',
+                                       f'docker cp tmp:/data/customSpecRaw.json {utils.HOME_PATH}', f'chown -R polkadot:polkadot {Path(utils.HOME_PATH, "customSpecRaw.json")}')
         else:
             raise ValueError(f"{self.chain_name} is not a supported chain using Docker!")
 
