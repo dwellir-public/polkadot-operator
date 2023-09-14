@@ -69,7 +69,7 @@ class Docker():
         sp.run(['docker', 'cp', f'tmp:{docker_binary_path}', utils.BINARY_PATH], check=True)
         if docker_specs_path:
             sp.run(['docker', 'cp', f'tmp:{docker_specs_path}', utils.HOME_PATH], check=True)
-            sp.run(['chown', '-R', 'polkadot:polkadot', Path(utils.HOME_PATH, os.path.basename(docker_specs_path))], check=True)
+            sp.run(['chown', '-R', 'polkadot:polkadot', Path(utils.HOME_PATH, Path(docker_specs_path).name)], check=True)
         utils.start_polkadot()
         sp.run(['docker', 'rm', 'tmp'], check=True)
         sp.run(['docker', 'rmi', docker_image_and_tag], check=True)
