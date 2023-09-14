@@ -19,6 +19,7 @@ With [Juju's OLM](https://juju.is/docs/olm) bootstrapping your cloud of choice, 
 However, there are some configs which are required by the charm to correctly install and start running the Polkadot client:
 
 - `binary-url=...` or `docker-tag=...`
+    - Note: from Polkadot release 1.1.0, the binary is split into three separate parts which means three separate URL:s will need to be set to the `binary-url` config, in a space separated list.
 - `service-args="... ..."` with the tags `--chain=...` and `--rpc-port=...` set
 
 With those configs included, a standard deployment of the Polkadot node could look like:
