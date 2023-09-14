@@ -12,6 +12,9 @@ import logging
 import re
 from docker import Docker
 
+from ops.model import ConfigData
+
+
 logger = logging.getLogger(__name__)
 
 USER = 'polkadot'
@@ -32,12 +35,18 @@ def install_docker() -> None:
         sp.run(['usermod', '-aG', 'docker', USER], check=False)
 
 
-def install_binary(config, chain_name):
+def install_binary(config: ConfigData, chain_name: str) -> None:
     if config.get('binary-url') and config.get('docker-tag'):
         raise ValueError("Only one of 'binary-url' or 'docker-tag' can be set at the same time!")
     if config.get('binary-url'):
         if config.get('binary-url').endswith('.deb'):
             install_deb_from_url(config.get('binary-url'))
+        elif len(config.get('binary-url').split()) > 1:
+            logger.debug('Installing multiple binaries!')
+            binary_sha256_pairs = parse_install_urls(config.get('binary-url'), config.get('binary-sha256-url'))
+            for binary_url, sha256_url in binary_sha256_pairs:
+                install_binary_from_url(binary_url, sha256_url, restart_service=False, keep_binary_name=True)
+            start_polkadot()
         else:
             install_binary_from_url(config.get('binary-url'), config.get('binary-sha256-url'))
     elif config.get('docker-tag'):
@@ -49,7 +58,7 @@ def install_binary(config, chain_name):
 
 def find_binary_installed_by_deb(package_name: str, ) -> str:
     files = sp.check_output(['dpkg', '-L', package_name]).decode().split('\n')[:-1]
-    bin_files = [file for file in files if file.startswith('/bin/')]
+    bin_files = [file for file in files if file.startswith('/usr/bin/')]
     logger.debug('Found files in /bin/ %s', str(bin_files))
     if len(bin_files) > 1:
         raise Exception(f'Found more than one file installed in /bin/ by package {package_name}. Cannot be sure which one to use.')
@@ -74,7 +83,19 @@ def install_deb_from_url(url: str) -> None:
     os.remove(deb_path)
 
 
-def install_binary_from_url(url: str, sha256_url: str) -> None:
+def parse_install_urls(binary_urls: str, sha256_urls: str) -> list:
+    binary_url_list = binary_urls.split()
+    sha256_url_list = sha256_urls.split()
+    install_pairs = []
+    for i in range(max(len(binary_url_list), len(sha256_url_list))):
+        binary_url = binary_url_list[i] if i < len(binary_url_list) else ""
+        sha256_url = sha256_url_list[i] if i < len(sha256_url_list) else ""
+        install_pairs.append((binary_url, sha256_url))
+    return install_pairs
+
+
+def install_binary_from_url(url: str, sha256_url: str, restart_service: bool = True, keep_binary_name: bool = False) -> None:
+    logger.debug("Install binary from URL: %s", url)
     # Download polkadot binary to memory and compute sha256 hash
     binary_response = requests.get(url, allow_redirects=True, timeout=None)
     if binary_response.status_code != 200:
@@ -83,9 +104,13 @@ def install_binary_from_url(url: str, sha256_url: str) -> None:
         binary_hash = hashlib.sha256(binary_response.content).hexdigest()
         perform_sha256_checksum(binary_hash, sha256_url)
     stop_polkadot()
-    with open(BINARY_PATH, 'wb') as f:
+    install_path = BINARY_PATH
+    if keep_binary_name:
+        install_path = HOME_PATH / url.split('/')[-1]
+    with open(install_path, 'wb') as f:
         f.write(binary_response.content)
-    start_polkadot()
+    if restart_service:
+        start_polkadot()
 
 
 def perform_sha256_checksum(binary_hash: str, sha256_url: str) -> None:
