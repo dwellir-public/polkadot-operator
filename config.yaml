@@ -6,12 +6,26 @@ options:
     type: string
     default: ""
     description: |
-      Path to download binary or .deb file from. E.g. https://github.com/paritytech/polkadot/releases/download/v0.9.10/polkadot
-      Different installation methods will depending on if the file is a .deb or not.
-  binary-check:
-    type: boolean
-    default: true
-    description: "Downloads the sha256 of the binary and performs checksum check."
+      Path to download one or multiple binaries or a single .deb file.
+
+      Example 1: https://github.com/paritytech/polkadot-sdk/releases/download/polkadot-v1.1.0/polkadot-parachain
+
+      Example 2: "https://github.com/paritytech/polkadot-sdk/releases/download/polkadot-v1.1.0/polkadot https://github.com/paritytech/polkadot-sdk/releases/download/polkadot-v1.1.0/polkadot-execute-worker https://github.com/paritytech/polkadot-sdk/releases/download/polkadot-v1.1.0/polkadot-prepare-worker"
+
+      Example 3: https://github.com/ComposableFi/composable/releases/download/release-v9.10035.5/composable-node_8.10035.5-1_amd64.deb
+
+      Different installation methods will be used depending on if a .deb file is used or not.
+
+      Note: multiple binary install is currently only supported for Polkadot relay chains, parachain support is not confirmed.
+  binary-sha256-url:
+    type: string
+    default: ""
+    description: |
+      If the URL is provided, the charm downloads the sha256 and performs a checksum check against the binary.
+
+      Note 1: needs to point to the sha256 corresponding to the 'binary-url' ahead of downloading the binary to actually perform the check!
+
+      Note 2: if multiple binary URL:s are supplied, multiple sha256 URL:s should be supplied as well, in the same order.
   docker-tag:
     type: string
     default: ""
