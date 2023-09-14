@@ -39,7 +39,7 @@ def install_binary(config, chain_name):
         if config.get('binary-url').endswith('.deb'):
             install_deb_from_url(config.get('binary-url'))
         else:
-            install_binary_from_url(config.get('binary-url'), config.get('binary-check'))
+            install_binary_from_url(config.get('binary-url'), config.get('binary-sha256-url'))
     elif config.get('docker-tag'):
         install_docker()
         Docker(chain_name, config.get('docker-tag')).extract_resources_from_docker()
@@ -74,27 +74,28 @@ def install_deb_from_url(url: str) -> None:
     os.remove(deb_path)
 
 
-def install_binary_from_url(url, binary_check):
+def install_binary_from_url(url: str, sha256_url: str) -> None:
     # Download polkadot binary to memory and compute sha256 hash
     binary_response = requests.get(url, allow_redirects=True, timeout=None)
     if binary_response.status_code != 200:
         raise ValueError(f"Download binary failed with: {binary_response.text}. Check 'binary-url'!")
-    if binary_check:
+    if sha256_url:
         binary_hash = hashlib.sha256(binary_response.content).hexdigest()
-
-        # Download and extract target sha256
-        sha256_url = url + '.sha256'
-        sha256_response = requests.get(sha256_url, allow_redirects=True, timeout=None)
-        data = sha256_response.text
-        target_hash = data.split(' ')[0]
-
-        # Save polkadot binary iff hash is correct
-        if (binary_hash != target_hash):
-            raise ValueError("Binary downloaded has wrong hash!")
+        perform_sha256_checksum(binary_hash, sha256_url)
     stop_polkadot()
     with open(BINARY_PATH, 'wb') as f:
         f.write(binary_response.content)
     start_polkadot()
+
+
+def perform_sha256_checksum(binary_hash: str, sha256_url: str) -> None:
+    # Download and extract target sha256
+    sha256_response = requests.get(sha256_url, allow_redirects=True, timeout=None)
+    data = sha256_response.text
+    target_hash = data.split(' ')[0]
+    # Raise error if hash is incorrect
+    if (binary_hash != target_hash):
+        raise ValueError("Binary downloaded has wrong hash!")
 
 
 def download_chain_spec(url, filename):

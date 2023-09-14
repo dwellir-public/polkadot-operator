@@ -8,10 +8,13 @@ options:
     description: |
       Path to download binary or .deb file from. E.g. https://github.com/paritytech/polkadot/releases/download/v0.9.10/polkadot
       Different installation methods will depending on if the file is a .deb or not.
-  binary-check:
-    type: boolean
-    default: true
-    description: "Downloads the sha256 of the binary and performs checksum check."
+  binary-sha256-url:
+    type: string
+    default: ""
+    description: |
+      If the URL is provided, the charm downloads the sha256 and performs a checksum check against the binary.
+
+      Note: needs to point to the sha256 corresponding to the 'binary-url' ahead of downloading the binary!
   docker-tag:
     type: string
     default: ""
