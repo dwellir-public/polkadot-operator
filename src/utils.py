@@ -58,7 +58,7 @@ def install_binary(config: ConfigData, chain_name: str) -> None:
 
 def find_binary_installed_by_deb(package_name: str, ) -> str:
     files = sp.check_output(['dpkg', '-L', package_name]).decode().split('\n')[:-1]
-    bin_files = [file for file in files if file.startswith('/usr/bin/')]
+    bin_files = [file for file in files if file.startswith('/bin/')]
     logger.debug('Found files in /bin/ %s', str(bin_files))
     if len(bin_files) > 1:
         raise Exception(f'Found more than one file installed in /bin/ by package {package_name}. Cannot be sure which one to use.')
