@@ -113,6 +113,8 @@ class ServiceArgs():
             self.__tinkernet()
         elif self.chain_name == 'clover':
             self.__clover()
+        elif self.chain_name == 'polkadex':
+            self.__polkadex()
 
     def __peregrine(self):
         self.__replace_chain_name(Path(utils.HOME_PATH, 'dev-specs/kilt-parachain/peregrine-kilt.json'), 0)
@@ -205,3 +207,6 @@ class ServiceArgs():
 
     def __clover(self):
         self.__replace_chain_name(Path(utils.HOME_PATH, 'specs/clover-para-raw.json'), 0)
+
+    def __polkadex(self):
+        self.__replace_chain_name(Path(utils.HOME_PATH, 'polkadot-parachain-raw.json'), 0)

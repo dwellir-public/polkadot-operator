@@ -3,6 +3,7 @@
 import subprocess as sp
 from pathlib import Path
 import utils
+import os
 
 
 class Docker():
@@ -13,8 +14,7 @@ class Docker():
 
     def extract_resources_from_docker(self):
         if self.chain_name in ['spiritnet', 'peregrine', 'peregrine-stg-kilt']:
-            self.__extract_from_docker('kiltprotocol/kilt-node', '/usr/local/bin/node-executable',
-                                       f'docker cp tmp:/node/dev-specs {utils.HOME_PATH}', f'chown -R polkadot:polkadot {Path(utils.HOME_PATH, "dev-specs")}')
+            self.__extract_from_docker('kiltprotocol/kilt-node', '/usr/local/bin/node-executable', '/node/dev-specs')
         elif self.chain_name == 'centrifuge' or self.chain_name == 'altair':
             self.__extract_from_docker('centrifugeio/centrifuge-chain', '/usr/local/bin/centrifuge-chain')
         elif self.chain_name == 'nodle' or self.chain_name == 'arcadia' or self.chain_name == 'eden':
@@ -42,19 +42,19 @@ class Docker():
         elif self.chain_name == 'aleph-zero-mainnet' or self.chain_name == 'aleph-zero-testnet':
             self.__extract_from_docker('public.ecr.aws/p6e8q1z1/aleph-node', '/usr/local/bin/aleph-node')
         elif self.chain_name == 'equilibrium':
-            self.__extract_from_docker('equilab/eq-para', '/usr/local/bin/paranode',
-                                       f'docker cp tmp:/etc/chainspec.json {utils.HOME_PATH}', f'chown -R polkadot:polkadot {Path(utils.HOME_PATH, "chainspec.json")}')
+            self.__extract_from_docker('equilab/eq-para', '/usr/local/bin/paranode', '/etc/chainspec.json')
         elif self.chain_name in ['pendulum', 'amplitude']:
             self.__extract_from_docker('pendulumchain/pendulum-collator', '/usr/local/bin/pendulum-collator')
         elif self.chain_name == 'kapex':
             self.__extract_from_docker('totemlive/totem-parachain-collator', '/usr/local/bin/totem-parachain-collator')
         elif self.chain_name == 'clover':
-            self.__extract_from_docker('cloverio/clover-para', '/opt/clover/bin/clover',
-                                       f'docker cp tmp:/opt/specs {utils.HOME_PATH}', f'chown -R polkadot:polkadot {Path(utils.HOME_PATH, "specs")}')
+            self.__extract_from_docker('cloverio/clover-para', '/opt/clover/bin/clover', '/opt/specs')
+        elif self.chain_name == 'polkadex':
+            self.__extract_from_docker('polkadex/parachain', '/data/bin/parachain-polkadex-node', '/data/polkadot-parachain-raw.json')
         else:
             raise ValueError(f"{self.chain_name} is not a supported chain using Docker!")
 
-    def __extract_from_docker(self, docker_image: str, docker_binary_path: str, *args) -> None:
+    def __extract_from_docker(self, docker_image: str, docker_binary_path: str, docker_specs_path: str = None) -> None:
         docker_image_and_tag = f'{docker_image}:{self.docker_tag}'
 
         try:
@@ -65,8 +65,9 @@ class Docker():
         sp.run(['docker', 'create', '--name', 'tmp', docker_image_and_tag], check=False)
         utils.stop_polkadot()
         sp.run(['docker', 'cp', f'tmp:{docker_binary_path}', utils.BINARY_PATH], check=True)
-        for command in args:
-            sp.run(command.split(' '), check=True)
+        if docker_specs_path:
+            sp.run(['docker', 'cp', f'tmp:{docker_specs_path}', utils.HOME_PATH], check=True)
+            sp.run(['chown', '-R', 'polkadot:polkadot', Path(utils.HOME_PATH, os.path.basename(docker_specs_path))], check=True)
         utils.start_polkadot()
         sp.run(['docker', 'rm', 'tmp'], check=True)
         sp.run(['docker', 'rmi', docker_image_and_tag], check=True)
