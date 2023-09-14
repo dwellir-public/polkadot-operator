@@ -107,6 +107,7 @@ def install_binaries_from_urls(binary_urls: str, sha256_urls: str) -> None:
     stop_polkadot()
     for binary_url, response in responses:
         logger.debug("Unpack binary downloaded from: %s", binary_url)
+        # TODO: keeping the binary name won't work for the charm if it's not exactly 'polkadot', adjust this if more chains start using multiple binaries
         with open(HOME_PATH / binary_url.split('/')[-1], 'wb') as f:
             f.write(response.content)
     start_polkadot()
