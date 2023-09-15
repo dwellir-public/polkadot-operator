@@ -108,8 +108,11 @@ def install_binaries_from_urls(binary_urls: str, sha256_urls: str) -> None:
     for binary_url, response in responses:
         logger.debug("Unpack binary downloaded from: %s", binary_url)
         # TODO: keeping the binary name won't work for the charm if it's not exactly 'polkadot', adjust this if more chains start using multiple binaries
-        with open(HOME_PATH / binary_url.split('/')[-1], 'wb') as f:
+        binary_path = HOME_PATH / binary_url.split('/')[-1]
+        with open(binary_path, 'wb') as f:
             f.write(response.content)
+            sp.run(['chown', f'{USER}:{USER}', binary_path], check=False)
+            sp.run(['chmod', '+x', binary_path], check=False)
     start_polkadot()
 
 
@@ -125,6 +128,8 @@ def install_binary_from_url(url: str, sha256_url: str) -> None:
     stop_polkadot()
     with open(BINARY_PATH, 'wb') as f:
         f.write(binary_response.content)
+        sp.run(['chown', f'{USER}:{USER}', BINARY_PATH], check=False)
+        sp.run(['chmod', '+x', BINARY_PATH], check=False)
     start_polkadot()
 
 
@@ -218,6 +223,7 @@ def stop_polkadot():
 
 
 def start_polkadot():
+    # TODO: remove chown and chmod from here? Runs in the install hook already
     sp.run(['chown', f'{USER}:{USER}', BINARY_PATH], check=False)
     sp.run(['chmod', '+x', BINARY_PATH], check=False)
     sp.run(['systemctl', 'start', f'{USER}.service'], check=False)
