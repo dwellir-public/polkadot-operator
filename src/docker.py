@@ -51,7 +51,7 @@ class Docker():
             self.__extract_from_docker('cloverio/clover-para', '/opt/clover/bin/clover', '/opt/specs')
         elif self.chain_name == 'polkadex':
             self.__extract_from_docker('polkadex/parachain', '/data/bin/parachain-polkadex-node', '/data/polkadot-parachain-raw.json')
-        elif self.chain_name.startswith('crust-'):
+        elif self.chain_name in ['crust-mainnet', 'crust-maxwell', 'crust-rocky']:
             self.__extract_from_docker('crustio/crust', '/opt/crust/crust')
         else:
             raise ValueError(f"{self.chain_name} is not a supported chain using Docker!")

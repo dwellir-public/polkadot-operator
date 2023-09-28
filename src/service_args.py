@@ -117,7 +117,7 @@ class ServiceArgs():
             self.__polkadex()
         elif self.chain_name in ['unique', 'quartz']:
             self.__unique()
-        elif self.chain_name.startswith('crust-'):
+        elif self.chain_name in ['crust-mainnet', 'crust-maxwell', 'crust-rocky']:
             self.__crust()
 
     def __peregrine(self):
@@ -229,9 +229,9 @@ class ServiceArgs():
         self.__replace_chain_name(chain_json_path, 0)
 
     def __crust(self):
-        if self.chain_name.endswith('mainnet'):
+        if self.chain_name == 'crust-mainnet':
             self.__replace_chain_name('mainnet', 0)
-        elif self.chain_name.endswith('maxwell'):
+        elif self.chain_name == 'crust-maxwell':
             self.__replace_chain_name('maxwell', 0)
-        elif self.chain_name.endswith('rocky'):
+        elif self.chain_name == 'crust-rocky':
             self.__replace_chain_name('rocky', 0)
