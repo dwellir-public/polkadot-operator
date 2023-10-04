@@ -119,6 +119,8 @@ class ServiceArgs():
             self.__unique()
         elif self.chain_name in ['crust-mainnet', 'crust-maxwell', 'crust-rocky']:
             self.__crust()
+        elif self.chain_name in ['origintrail', 'origin-trail']:
+            self.__origintrail()
 
     def __peregrine(self):
         self.__replace_chain_name(Path(utils.HOME_PATH, 'dev-specs/kilt-parachain/peregrine-kilt.json'), 0)
@@ -235,3 +237,12 @@ class ServiceArgs():
             self.__replace_chain_name('maxwell', 0)
         elif self.chain_name == 'crust-rocky':
             self.__replace_chain_name('rocky', 0)
+
+    def __origintrail(self):
+        if exists(utils.BINARY_PATH):
+            chain_json_url = f'https://raw.githubusercontent.com/OriginTrail/origintrail-parachain/v{utils.get_binary_version()}/res/origintrail-parachain-2043-raw.json'
+        else:
+            chain_json_url = 'https://raw.githubusercontent.com/OriginTrail/origintrail-parachain/develop/res/origintrail-parachain-2043-raw.json'
+        utils.download_chain_spec(chain_json_url, f'{self.chain_name}-raw.json')
+        chain_json_path = f'{utils.CHAIN_SPEC_PATH}/{self.chain_name}-raw.json'
+        self.__replace_chain_name(chain_json_path, 0)
