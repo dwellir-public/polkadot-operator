@@ -51,6 +51,8 @@ class Docker():
             self.__extract_from_docker('cloverio/clover-para', '/opt/clover/bin/clover', '/opt/specs')
         elif self.chain_name == 'polkadex':
             self.__extract_from_docker('polkadex/parachain', '/data/bin/parachain-polkadex-node', '/data/polkadot-parachain-raw.json')
+        elif self.chain_name in ['crust-mainnet', 'crust-maxwell', 'crust-rocky']:
+            self.__extract_from_docker('crustio/crust', '/opt/crust/crust')
         else:
             raise ValueError(f"{self.chain_name} is not a supported chain using Docker!")
 
@@ -67,7 +69,7 @@ class Docker():
         sp.run(['docker', 'cp', f'tmp:{docker_binary_path}', utils.BINARY_PATH], check=True)
         if docker_specs_path:
             sp.run(['docker', 'cp', f'tmp:{docker_specs_path}', utils.HOME_PATH], check=True)
-            sp.run(['chown', '-R', 'polkadot:polkadot', Path(utils.HOME_PATH, os.path.basename(docker_specs_path))], check=True)
+            sp.run(['chown', '-R', 'polkadot:polkadot', Path(utils.HOME_PATH, Path(docker_specs_path).name)], check=True)
         utils.start_polkadot()
         sp.run(['docker', 'rm', 'tmp'], check=True)
         sp.run(['docker', 'rmi', docker_image_and_tag], check=True)
