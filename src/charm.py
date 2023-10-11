@@ -209,7 +209,7 @@ class PolkadotCharm(CharmBase):
         if proc_cmdline:
             event.set_results(results={'client-proc-cmdline': proc_cmdline})
         else:
-            event.set_results(results={'client-proc-cmdline': 'process not found'})
+            event.set_results(results={'client-proc-cmdline': 'Process not found'})
         # Node type
         if utils.is_relay_chain_node():
             event.set_results(results={'node-type': 'Relaychain node'})

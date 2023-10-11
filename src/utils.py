@@ -256,7 +256,7 @@ def get_disk_usage(path: Path) -> str:
         return size
     except AttributeError as e:
         logger.warning("Couldn't parse return from 'du' command: %s", {e})
-        return "error parsing disk usage"
+        return "Error parsing disk usage"
 
 
 def get_chain_disk_usage() -> str:
@@ -311,7 +311,7 @@ def is_parachain_node() -> bool:
 
 def get_relay_for_parachain() -> str:
     if not is_parachain_node():
-        return 'error, this is not a parachain'
+        return 'Error, this is not a parachain'
     try:
         chains_dir = Path(DB_RELAY_PATH, 'chains')
         chains_subdirs = [d for d in chains_dir.iterdir() if d.is_dir()]
@@ -325,10 +325,10 @@ def get_relay_for_parachain() -> str:
             if 'westend' in db_dir:
                 relay_chain = 'Westend'
             return relay_chain
-        return 'error finding Relay Chain DB directory'
+        return 'Error finding Relay Chain DB directory'
     except Exception as e:
         logger.warning(e)
-        return 'error finding Relay Chain'
+        return 'Error finding Relay Chain'
 
 
 def get_wasm_info() -> str:
