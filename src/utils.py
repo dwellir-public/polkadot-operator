@@ -213,8 +213,8 @@ def get_binary_last_changed() -> str:
         stat_output = sp.run(command, stdout=sp.PIPE, check=False).stdout.decode('utf-8').strip()
         stat_split = re.split('Change: ', stat_output)[1].split(' ')
         date = stat_split[0]
-        time = stat_split[1].split('.')[0]
-        return date + ' ' + time + ' UTC'  # TODO: makek this confirm that system time is in UTC?
+        timestamp = stat_split[1].split('.')[0]
+        return date + ' ' + timestamp  # TODO: make this check if system time is in UTC, and print that?
     return ""
 
 
