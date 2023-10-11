@@ -231,9 +231,6 @@ class PolkadotCharm(CharmBase):
         except (RequestsConnectionError, NewConnectionError, MaxRetryError) as e:
             logger.warning(e)
             event.set_results(results={'on-chain-info': 'Unable to establish HTTP connection to client'})
-        except Exception as e:
-            logger.warning(e)
-            event.fail('Error trying to get on-chain info')
 
 
 if __name__ == "__main__":
