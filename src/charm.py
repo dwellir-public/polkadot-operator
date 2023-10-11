@@ -113,16 +113,15 @@ class PolkadotCharm(CharmBase):
             utils.update_service_args(service_args_obj.service_args_string)
             self._stored.service_args = self.config.get('service-args')
 
-        self.update_status()
+        self.update_status(connection_attempts=2)
 
     def _on_update_status(self, event: UpdateStatusEvent) -> None:
         self.update_status()
 
-    def update_status(self) -> None:
+    def update_status(self, connection_attempts: int = 4) -> None:
         if utils.service_started():
             rpc_port = ServiceArgs(self._stored.service_args).rpc_port
-            attempts = 10
-            for i in range(attempts):
+            for i in range(connection_attempts):
                 time.sleep(5)
                 try:
                     self.unit.status = ActiveStatus("Syncing: {}, Validating: {}".format(
@@ -130,11 +129,11 @@ class PolkadotCharm(CharmBase):
                         str(PolkadotRpcWrapper(rpc_port).is_validating())))
                     self.unit.set_workload_version(PolkadotRpcWrapper(rpc_port).get_version())
                     break
-                except Exception as e:
+                except RequestsConnectionError as e:
                     logger.warning(e)
-                    self.unit.status = MaintenanceStatus("HTTP server not responding (attempt {}/{})".format(i, attempts))
+                    self.unit.status = MaintenanceStatus("Client not responding to HTTP (attempt {}/{})".format(i, connection_attempts))
             if type(self.unit.status) != ActiveStatus:
-                self.unit.status = BlockedStatus("Service running but HTTP server unavailable")
+                self.unit.status = BlockedStatus("Service running, client starting up")
         else:
             self.unit.status = WaitingStatus("Service not running")
 
