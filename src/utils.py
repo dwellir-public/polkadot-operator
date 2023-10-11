@@ -24,6 +24,7 @@ CHAIN_SPEC_PATH = Path(HOME_PATH, 'spec')
 NODE_KEY_PATH = Path(HOME_PATH, 'node-key')
 DB_CHAIN_PATH = Path(HOME_PATH, '.local/share/polkadot/chains')
 DB_RELAY_PATH = Path(HOME_PATH, '.local/share/polkadot/polkadot')
+WASM_PATH = Path(HOME_PATH, 'wasm')
 
 
 def install_docker() -> None:
@@ -328,3 +329,13 @@ def get_relay_for_parachain() -> str:
     except Exception as e:
         logger.warning(e)
         return 'error finding Relay Chain'
+
+
+def get_wasm_info() -> str:
+    if WASM_PATH.exists():
+        files = list(WASM_PATH.glob('*.wasm'))
+        if not files:
+            return "No wasm files found in ~/wasm directory"
+        files = [str(f.name) for f in files]
+        return ', '.join(files)
+    return "~/wasm directory not found"

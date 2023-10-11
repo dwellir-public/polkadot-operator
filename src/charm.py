@@ -204,6 +204,7 @@ class PolkadotCharm(CharmBase):
         event.set_results(results={'client-binary-version': utils.get_binary_version()})
         event.set_results(results={'client-binary-md5sum': utils.get_binary_md5sum()})
         event.set_results(results={'client-binary-last-changed': utils.get_binary_last_changed()})
+        event.set_results(results={'client-wasm-files': utils.get_wasm_info()})
         proc_cmdline = utils.get_polkadot_proc_cmdline()
         if proc_cmdline:
             event.set_results(results={'client-proc-cmdline': proc_cmdline})
