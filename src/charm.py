@@ -203,17 +203,19 @@ class PolkadotCharm(CharmBase):
         event.set_results(results={'client-binary-version': utils.get_binary_version()})
         event.set_results(results={'client-binary-md5sum': utils.get_binary_md5sum()})
         event.set_results(results={'client-binary-last-changed': utils.get_binary_last_changed()})
+        event.set_results(results={'client-wasm-files': utils.get_wasm_info()})
         proc_cmdline = utils.get_polkadot_proc_cmdline()
         if proc_cmdline:
             event.set_results(results={'client-proc-cmdline': proc_cmdline})
         else:
-            event.set_results(results={'client-proc-cmdline': 'process not found'})
-        # Chain info
+            event.set_results(results={'client-proc-cmdline': 'Process not found'})
+        # Node type
         if utils.is_relay_chain_node():
-            event.set_results(results={'chain-node-type': 'Relay Chain node'})
+            event.set_results(results={'node-type': 'Relaychain node'})
         elif utils.is_parachain_node():
-            event.set_results(results={'chain-node-type': 'parachain node'})
-            event.set_results(results={'chain-node-relay': utils.get_relay_for_parachain()})
+            event.set_results(results={'node-type': 'Parachain node'})
+            event.set_results(results={'node-relay': utils.get_relay_for_parachain()})
+        # On-chain info
         try:
             rpc_port = ServiceArgs(self._stored.service_args).rpc_port
             block_height = PolkadotRpcWrapper(rpc_port).get_block_height()
@@ -222,18 +224,13 @@ class PolkadotCharm(CharmBase):
             peer_list, success = PolkadotRpcWrapper(rpc_port).get_system_peers()
             if peer_list and success:
                 event.set_results(results={'chain-peer-count': len(peer_list)})
-            elif peer_list and not success:
-                # TODO: should this really fail the action, or should we just warn?
-                if 'RPC call is unsafe' in peer_list[0]:
-                    event.fail('Error trying to use an unsafe RPC method, check if the node has `--rpc-methods unsafe` enabled')
-                else:
-                    event.fail(f'Error trying to get peer count:\n{peer_list}')
+            elif peer_list and 'RPC call is unsafe' in peer_list[0]:
+                event.set_results(results={'chain-peer-count': 'RPC method error, check if the node has `--rpc-methods unsafe` enabled'})
+            else:
+                event.set_results(results={'chain-peer-count': 'Error trying to get peer count'})
         except (RequestsConnectionError, NewConnectionError, MaxRetryError) as e:
             logger.warning(e)
-            event.fail('Unable to establish connection')
-        except Exception as e:
-            logger.warning(e)
-            event.fail('Error trying to get chain info')
+            event.set_results(results={'on-chain-info': 'Unable to establish HTTP connection to client'})
 
 
 if __name__ == "__main__":
