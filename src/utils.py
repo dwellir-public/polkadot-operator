@@ -101,15 +101,15 @@ def install_binaries_from_urls(binary_urls: str, sha256_urls: str) -> None:
         response = requests.get(binary_url, allow_redirects=True, timeout=None)
         if response.status_code != 200:
             raise ValueError(f"Download binary failed with: {response.text}. Check 'binary-url'!")
-        if sha256_url:
-            binary_hash = hashlib.sha256(response.content).hexdigest()
-            perform_sha256_checksum(binary_hash, sha256_url)
-        responses += [(binary_url, response)]
-    stop_polkadot()
-    for binary_url, response in responses:
-        logger.debug("Unpack binary downloaded from: %s", binary_url)
+        binary_hash = hashlib.sha256(response.content).hexdigest()
         # TODO: keeping the binary name won't work for the charm if it's not exactly 'polkadot', adjust this if more chains start using multiple binaries
-        binary_path = HOME_PATH / binary_url.split('/')[-1]
+        binary_name = binary_url.split('/')[-1]
+        responses += [(binary_url, sha256_url, response, binary_name, binary_hash)]
+    perform_sha256_checksums(responses, sha256_urls)
+    stop_polkadot()
+    for binary_url, _, response, binary_name, _ in responses:
+        logger.debug("Unpack binary downloaded from: %s", binary_url)
+        binary_path = HOME_PATH / binary_name
         with open(binary_path, 'wb') as f:
             f.write(response.content)
             sp.run(['chown', f'{USER}:{USER}', binary_path], check=False)
@@ -132,6 +132,29 @@ def install_binary_from_url(url: str, sha256_url: str) -> None:
         sp.run(['chown', f'{USER}:{USER}', BINARY_PATH], check=False)
         sp.run(['chmod', '+x', BINARY_PATH], check=False)
     start_polkadot()
+
+
+def perform_sha256_checksums(responses: list, sha256_urls: str) -> None:
+    if len(sha256_urls.split()) == 1:
+        sha256_response = requests.get(sha256_urls, allow_redirects=True, timeout=None)
+        sha256_target_map = {}
+        for binary_hash_pair in sha256_response.text.split('\n'):
+            if binary_hash_pair:
+                binary_name = binary_hash_pair.split()[1]
+                sha256 = binary_hash_pair.split()[0]
+                sha256_target_map[binary_name] = sha256
+        for _, _, _, binary_name, binary_hash in responses:
+            try:
+                target_hash = sha256_target_map[binary_name]
+            except KeyError:
+                raise ValueError(f"Could not find target hash for {binary_name}. Was the correct sha256 url provided?")
+            # Raise error if hash is incorrect
+            if binary_hash != target_hash:
+                raise ValueError(f"Binary {binary_name} downloaded has wrong hash!")
+    else:
+        for _, sha256_url, _, _, binary_hash in responses:
+            if sha256_url:
+                perform_sha256_checksum(binary_hash, sha256_url)
 
 
 def perform_sha256_checksum(binary_hash: str, sha256_url: str) -> None:
