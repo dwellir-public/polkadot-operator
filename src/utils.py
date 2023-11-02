@@ -107,7 +107,7 @@ def install_binaries_from_urls(binary_urls: str, sha256_urls: str) -> None:
         responses += [(binary_url, sha256_url, response, binary_name, binary_hash)]
     perform_sha256_checksums(responses, sha256_urls)
     stop_polkadot()
-    for binary_url, sha256_url, response, binary_name, binary_hash in responses:
+    for binary_url, _, response, binary_name, _ in responses:
         logger.debug("Unpack binary downloaded from: %s", binary_url)
         binary_path = HOME_PATH / binary_name
         with open(binary_path, 'wb') as f:
@@ -143,12 +143,16 @@ def perform_sha256_checksums(responses: list, sha256_urls: str) -> None:
                 binary_name = binary_hash_pair.split()[1]
                 sha256 = binary_hash_pair.split()[0]
                 sha256_target_map[binary_name] = sha256
-        for binary_url, sha256_url, response, binary_name, binary_hash in responses:
+        for _, _, _, binary_name, binary_hash in responses:
+            try:
+                target_hash = sha256_target_map[binary_name]
+            except KeyError:
+                raise ValueError(f"Could not find target hash for {binary_name}. Was the correct sha256 url provided?")
             # Raise error if hash is incorrect
-            if binary_hash != sha256_target_map[binary_name]:
+            if binary_hash != target_hash:
                 raise ValueError(f"Binary {binary_name} downloaded has wrong hash!")
     else:
-        for binary_url, sha256_url, response, binary_name, binary_hash in responses:
+        for _, sha256_url, _, _, binary_hash in responses:
             if sha256_url:
                 perform_sha256_checksum(binary_hash, sha256_url)
 
