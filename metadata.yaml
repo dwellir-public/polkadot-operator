@@ -16,6 +16,7 @@ description: |
 website: https://dwellir.com
 source: https://github.com/dwellir-public/polkadot-operator
 issues: https://github.com/dwellir-public/polkadot-operator
+docs: https://discourse.charmhub.io/t/polkadot-docs-index/12391
 
 provides:
   node-prometheus:
