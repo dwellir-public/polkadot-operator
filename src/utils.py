@@ -136,7 +136,7 @@ def install_binary_from_url(url: str, sha256_url: str) -> None:
 
 def perform_sha256_checksums(responses: list, sha256_urls: str) -> None:
     if len(sha256_urls.split()) == 1:
-        sha256_response = requests.get(sha256_urls, allow_redirects=True, timeout=None)
+        sha256_response = get_sha256_response(sha256_urls)
         sha256_target_map = {}
         for binary_hash_pair in sha256_response.text.split('\n'):
             if binary_hash_pair:
@@ -158,13 +158,19 @@ def perform_sha256_checksums(responses: list, sha256_urls: str) -> None:
 
 
 def perform_sha256_checksum(binary_hash: str, sha256_url: str) -> None:
-    # Download and extract target sha256
-    sha256_response = requests.get(sha256_url, allow_redirects=True, timeout=None)
+    sha256_response = get_sha256_response(sha256_url)
     data = sha256_response.text
     target_hash = data.split(' ')[0]
     # Raise error if hash is incorrect
     if (binary_hash != target_hash):
         raise ValueError("Binary downloaded has wrong hash!")
+
+
+def get_sha256_response(sha256_url: str):
+    sha256_response = requests.get(sha256_url, allow_redirects=True, timeout=None)
+    if len(sha256_response.content) > 1024:  # 1 KB
+        raise ValueError("Sha256 file is larger than 1KB. Was the correct sha256 url provided?")
+    return sha256_response
 
 
 def download_chain_spec(url, filename):
