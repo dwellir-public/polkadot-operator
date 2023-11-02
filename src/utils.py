@@ -166,7 +166,7 @@ def perform_sha256_checksum(binary_hash: str, sha256_url: str) -> None:
         raise ValueError("Binary downloaded has wrong hash!")
 
 
-def get_sha256_response(sha256_url: str):
+def get_sha256_response(sha256_url: str) -> requests.Response:
     sha256_response = requests.get(sha256_url, allow_redirects=True, timeout=None)
     if len(sha256_response.content) > 1024:  # 1 KB
         raise ValueError("Sha256 file is larger than 1KB. Was the correct sha256 url provided?")
