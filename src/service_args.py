@@ -121,6 +121,8 @@ class ServiceArgs():
             self.__crust()
         elif self.chain_name in ['origintrail', 'origin-trail']:
             self.__origintrail()
+        elif self.chain_name == 'asset-hub-rococo':
+            self.__asset_hub_rococo()
 
     def __peregrine(self):
         self.__replace_chain_name(Path(utils.HOME_PATH, 'dev-specs/kilt-parachain/peregrine-kilt.json'), 0)
@@ -245,4 +247,10 @@ class ServiceArgs():
             chain_json_url = 'https://raw.githubusercontent.com/OriginTrail/origintrail-parachain/develop/res/origintrail-parachain-2043-raw.json'
         utils.download_chain_spec(chain_json_url, f'{self.chain_name}-raw.json')
         chain_json_path = f'{utils.CHAIN_SPEC_PATH}/{self.chain_name}-raw.json'
+        self.__replace_chain_name(chain_json_path, 0)
+
+    def __asset_hub_rococo(self):
+        chain_json_url = 'https://raw.githubusercontent.com/paritytech/polkadot-sdk/master/cumulus/parachains/chain-specs/asset-hub-rococo.json'
+        chain_json_path = f'{utils.CHAIN_SPEC_PATH}/{self.chain_name}.json'
+        utils.download_chain_spec(chain_json_url, f'{self.chain_name}.json')
         self.__replace_chain_name(chain_json_path, 0)
