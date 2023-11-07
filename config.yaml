@@ -26,6 +26,8 @@ options:
       Note 1: needs to point to the sha256 corresponding to the 'binary-url' ahead of downloading the binary to actually perform the check!
 
       Note 2: if multiple binary URL:s are supplied, multiple sha256 URL:s should be supplied as well, in the same order.
+
+      Note 3: it's also possible to provide one sha256 URL with multiple binary URL:s if the sha256 file contains one row per binary.
   docker-tag:
     type: string
     default: ""
