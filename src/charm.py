@@ -63,6 +63,7 @@ class PolkadotCharm(ops.CharmBase):
         self.framework.observe(self.on.stop_node_service_action, self._on_stop_node_service_action)
         self.framework.observe(self.on.set_node_key_action, self._on_set_node_key_action)
         self.framework.observe(self.on.get_node_info_action, self._on_get_node_info_action)
+        self.framework.observe(self.on.get_node_help_action, self._on_get_node_help_action)
 
         self._stored.set_default(binary_url=self.config.get('binary-url'),
                                  docker_tag=self.config.get('docker-tag'),
@@ -243,6 +244,9 @@ class PolkadotCharm(ops.CharmBase):
         except (RequestsConnectionError, NewConnectionError, MaxRetryError) as e:
             logger.warning(e)
             event.set_results(results={'on-chain-info': 'Unable to establish HTTP connection to client'})
+
+    def _on_get_node_help_action(self, event: ops.ActionEvent) -> None:
+        event.set_results(results={'help-output': utils.get_client_binary_help_output()})
 
 
 if __name__ == "__main__":

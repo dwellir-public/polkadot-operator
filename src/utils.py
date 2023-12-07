@@ -372,3 +372,13 @@ def get_wasm_info() -> str:
         files = [str(f.name) for f in files]
         return ', '.join(files)
     return "~/wasm directory not found"
+
+
+def get_client_binary_help_output() -> str:
+    if BINARY_PATH.exists():
+        command = f'.{BINARY_PATH} --help'
+        process = sp.run(command, stdout=sp.PIPE, cwd='/', shell=True, check=False)
+        if process.returncode == 0:
+            return process.stdout.decode('utf-8').strip()
+        return "Could not parse client binary '--help' command"
+    return "Client binary not found"

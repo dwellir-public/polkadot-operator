@@ -44,4 +44,10 @@ set-node-key:
   required: [ key ]
 
 get-node-info:
-  description: "Gets system information about the node for debugging purposes."
+  description: |
+    Gets system information about the node for debugging purposes.
+get-node-help:
+  description: |
+    Gets the help information from the client binary.
+    Note that to get a readable output it is recommended to use '--format json' and parse the output with the 'jq' command line etool.
+    Example: juju run-action --wait polkadot/0 get-node-help --format json | jq -r '.["unit-polkadot-0"].results["help-output"]'
