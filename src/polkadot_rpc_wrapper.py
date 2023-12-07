@@ -4,7 +4,7 @@ import requests
 import json
 import re
 from typing import Tuple
-
+import substrateinterface
 
 class PolkadotRpcWrapper():
 
@@ -107,3 +107,21 @@ class PolkadotRpcWrapper():
         """
         data = '{"id": 1,"jsonrpc":"2.0", "method": "author_insertKey", "params":["aura","' + mnemonic + '","' + address + '"]}'
         requests.post(url=self.__server_address, headers=self.__headers, data=data)
+
+    def find_validator(self):
+        """
+        Check if this node is currently producing block for a validator/collator.
+        It does so by checking if any session key currently on-chain is present on this node.
+        :return: the validator/collator address or False.
+        """
+        substrate = substrateinterface.SubstrateInterface(url=self.__server_address)
+        result = substrate.query("Session", "QueuedKeys").value_serialized
+        for validator in result:
+            keys = validator[1]
+            session_key = '0x'
+            for k in keys.values():
+                # Some chains uses multiple keys. Before checking if it exist on the node they need to be concatenated removing preceding '0x'.
+                session_key += k[2:]
+            if self.has_session_key(session_key):
+                return validator[0]
+        return False

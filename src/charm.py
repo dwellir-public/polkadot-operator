@@ -62,6 +62,7 @@ class PolkadotCharm(ops.CharmBase):
         self.framework.observe(self.on.start_node_service_action, self._on_start_node_service_action)
         self.framework.observe(self.on.stop_node_service_action, self._on_stop_node_service_action)
         self.framework.observe(self.on.set_node_key_action, self._on_set_node_key_action)
+        self.framework.observe(self.on.find_validator_action, self._on_find_validator_action)
         self.framework.observe(self.on.get_node_info_action, self._on_get_node_info_action)
         self.framework.observe(self.on.get_node_help_action, self._on_get_node_help_action)
 
@@ -198,6 +199,15 @@ class PolkadotCharm(ops.CharmBase):
         utils.stop_service()
         utils.write_node_key_file(key)
         utils.start_service()
+
+    def _on_find_validator_action(self, event: ActionEvent) -> None:
+        event.log("Checking sessions key through rpc...")
+        rpc_port = ServiceArgs(self._stored.service_args).rpc_port
+        validator = PolkadotRpcWrapper(rpc_port).find_validator()
+        if validator:
+            event.set_results(results={'validator': validator})
+        else:
+            event.fail("This node has no session key on-chain.")
 
     # TODO: this action is getting quite large and specialized, perhaps move all actions to an `actions.py` file?
     def _on_get_node_info_action(self, event: ops.ActionEvent) -> None:

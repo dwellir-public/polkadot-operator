@@ -43,6 +43,11 @@ set-node-key:
       type: string
   required: [ key ]
 
+find-validator:
+  description: |
+    Checks if node has a session key present on-chain, using a RPC call. If it does, it means it is currently producing blocks.
+    Returns the validator/collator address if a session key is found. Else False.
+
 get-node-info:
   description: |
     Gets system information about the node and its container.
