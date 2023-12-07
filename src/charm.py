@@ -133,9 +133,9 @@ class PolkadotCharm(ops.CharmBase):
                     logger.warning(e)
                     self.unit.status = ops.MaintenanceStatus("Client not responding to HTTP (attempt {}/{})".format(i, connection_attempts))
             if type(self.unit.status) != ops.ActiveStatus:
-                self.unit.status = ops.BlockedStatus("Service running, client starting up")
+                self.unit.status = ops.WaitingStatus("Service running, client starting up")
         else:
-            self.unit.status = ops.WaitingStatus("Service not running")
+            self.unit.status = ops.BlockedStatus("Service not running")
 
     def _on_start(self, event: ops.StartEvent) -> None:
         utils.start_polkadot()
