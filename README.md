@@ -10,7 +10,37 @@ This repository is maintained by Dwellir, https://dwellir.com - Infrastructure p
 
 The charm starts the Polkadot client as a service, which takes its arguments from `/etc/default/polkadot` which in turn are set by the Juju config *service-args*. The Polkadot client itself is downloaded and installed from the config *binary-url*.
 
+## Building
+
+Though this charm is published on Charmhub there is also the alternative to build it locally, and to deploy it from that local build. It is built with the package charmcraft. See [charmcraft.yaml](charmcraft.yaml) for build details.
+
+    sudo snap install charmcraft --classic
+    charmcraft pack  # Assumes pwd is the polkadot-operator root directory
+
+## System requirements
+
+*Disclaimer: the system requriements to run a node in the Polkadot ecosystem varies, both depending on which chain is being run and which type of node it is. The example below should therefore be vetted against updated and reliable resources depending on your deployment specifications.*
+
+This list of reference hardware is from [the official Polkadot docs](https://wiki.polkadot.network/docs/maintain-guides-how-to-validate-polkadot) and is an example of good practice for a validator node:
+
+- CPU
+  - x86-64 compatible;
+  - Intel Ice Lake, or newer (Xeon or Core series); AMD Zen3, or newer (EPYC or Ryzen);
+  - 4 physical cores @ 3.4GHz;
+  - Simultaneous multithreading disabled (Hyper-Threading on Intel, SMT on AMD);
+  - Prefer single-threaded performance over higher cores count.
+- Storage
+  - An NVMe SSD of 1 TB (As it should be reasonably sized to deal with blockchain growth). An estimation of current chain snapshot sizes can be found [here](https://paranodes.io/DBSize). In general, the latency is more important than the throughput.
+- Memory
+  - 32 GB DDR4 ECC.
+- System
+  - Linux Kernel 5.16 or newer.
+- Network
+  - The minimum symmetric networking speed is set to 500 Mbit/s (= 62.5 MB/s). This is required to support a large number of parachains and allow for proper congestion control in busy network situations.
+
 ## Usage
+
+### Deploying Polkadot
 
 With [Juju's OLM](https://juju.is/docs/olm) bootstrapping your cloud of choice, and a Juju model created within that cloud to host the operator, the charm can be deployed as:
 
@@ -30,7 +60,7 @@ There are many more arguments available for the Polkadot client, which may or ma
 
     ./polkadot --help
 
-### Deploying other node types
+#### Deploying other node types
 
 There are a number of different node types in the Polkadot ecosystem, all which use the same client software to run. That means that by changing the client's service arguments in the deployment of this charm, one can easily change which node type to deploy. Read more about the specific node types on the Polkadot docs pages; [validator](https://wiki.polkadot.network/docs/learn-validator), [collator](https://wiki.polkadot.network/docs/learn-collator), [bootnode](https://wiki.polkadot.network/docs/maintain-bootnode), [RPC](https://wiki.polkadot.network/docs/maintain-rpc).
 
@@ -97,30 +127,9 @@ The `cos_agent` interface is already supported by this Polkadot operator charm s
 
 Find more details on how to deploy and use COS [here](https://charmhub.io/topics/canonical-observability-stack/tutorials/instrumenting-machine-charms).
 
-## Building
+## Resources
 
-Though this charm is published on Charmhub there is also the alternative to build it locally, and to deploy it from that local build. It is built with the package charmcraft. See [charmcraft.yaml](charmcraft.yaml) for build details.
-    
-    sudo snap install charmcraft --classic
-    charmcraft pack  # Assumes pwd is the polkadot-operator root directory
-
-## System requirements
-
-*Disclaimer: the system requriements to run a node in the Polkadot ecosystem varies, both depending on which chain is being run and which type of node it is. The example below should therefore be vetted against updated and reliable resources depending on your deployment specifications.*
-
-This list of reference hardware is from [the official Polkadot docs](https://wiki.polkadot.network/docs/maintain-guides-how-to-validate-polkadot) and is an example of good practice for a validator node:
-
-- CPU
-  - x86-64 compatible;
-  - Intel Ice Lake, or newer (Xeon or Core series); AMD Zen3, or newer (EPYC or Ryzen);
-  - 4 physical cores @ 3.4GHz;
-  - Simultaneous multithreading disabled (Hyper-Threading on Intel, SMT on AMD);
-  - Prefer single-threaded performance over higher cores count.
-- Storage
-  - An NVMe SSD of 1 TB (As it should be reasonably sized to deal with blockchain growth). An estimation of current chain snapshot sizes can be found [here](https://paranodes.io/DBSize). In general, the latency is more important than the throughput.
-- Memory
-  - 32 GB DDR4 ECC.
-- System
-  - Linux Kernel 5.16 or newer.
-- Network
-  - The minimum symmetric networking speed is set to 500 Mbit/s (= 62.5 MB/s). This is required to support a large number of parachains and allow for proper congestion control in busy network situations.
+- [Polkadot](https://polkadot.network/)
+- [Polkadot node on Charmhub](https://charmhub.io/polkadot)
+- [polkadot-operator repo on GitHub](https://github.com/dwellir-public/polkadot-operator)
+- [Dwellir](https://dwellir.com/)
