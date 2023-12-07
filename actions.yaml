@@ -27,6 +27,10 @@ insert-key:
 
 restart-node-service:
   description: "This actions restarts the service running the blockchain node."
+start-node-service:
+  description: "This actions starts the service running the blockchain node."
+stop-node-service:
+  description: "This actions stops the service running the blockchain node."
 
 set-node-key:
   description: |

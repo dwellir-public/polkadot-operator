@@ -61,6 +61,8 @@ class PolkadotCharm(CharmBase):
         self.framework.observe(self.on.has_session_key_action, self._on_has_session_key_action)
         self.framework.observe(self.on.insert_key_action, self._on_insert_key_action)
         self.framework.observe(self.on.restart_node_service_action, self._on_restart_node_service_action)
+        self.framework.observe(self.on.start_node_service_action, self._on_start_node_service_action)
+        self.framework.observe(self.on.stop_node_service_action, self._on_stop_node_service_action)
         self.framework.observe(self.on.set_node_key_action, self._on_set_node_key_action)
         self.framework.observe(self.on.get_node_info_action, self._on_get_node_info_action)
 
@@ -175,10 +177,22 @@ class PolkadotCharm(CharmBase):
             PolkadotRpcWrapper(rpc_port).insert_key(mnemonic, address)
 
     def _on_restart_node_service_action(self, event: ActionEvent) -> None:
-        utils.stop_polkadot()
+        utils.restart_polkadot()
+        if not utils.service_started():
+            event.fail("Could not restart service")
+        self.unit.status = ActiveStatus("Node service restarted")
+
+    def _on_start_node_service_action(self, event: ActionEvent) -> None:
         utils.start_polkadot()
         if not utils.service_started():
             event.fail("Could not start service")
+        self.unit.status = ActiveStatus("Node service started")
+
+    def _on_stop_node_service_action(self, event: ActionEvent) -> None:
+        utils.stop_polkadot()
+        if utils.service_started(iterations=1):
+            event.fail("Could not stop service")
+        self.unit.status = BlockedStatus("Node service stopped")
 
     def _on_set_node_key_action(self, event: ActionEvent) -> None:
         key = event.params['key']

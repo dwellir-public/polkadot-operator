@@ -248,8 +248,8 @@ def get_binary_last_changed() -> str:
     return ""
 
 
-def stop_polkadot():
-    sp.run(['systemctl', 'stop', f'{USER}.service'], check=False)
+def restart_polkadot():
+    sp.run(['systemctl', 'restart', f'{USER}.service'], check=False)
 
 
 def start_polkadot():
@@ -259,12 +259,16 @@ def start_polkadot():
     sp.run(['systemctl', 'start', f'{USER}.service'], check=False)
 
 
+def stop_polkadot():
+    sp.run(['systemctl', 'stop', f'{USER}.service'], check=False)
+
+
 def service_started(iterations: int = 3) -> bool:
     for _ in range(iterations):
         service_status = os.system('service polkadot status')
         if service_status == 0:
             return True
-        time.sleep(5)
+        time.sleep(4)
     return False
 
 
