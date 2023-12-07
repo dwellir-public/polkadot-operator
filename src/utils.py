@@ -69,14 +69,14 @@ def install_deb_from_url(url: str) -> None:
         f.write(deb_response.content)
     package_name = sp.check_output(['dpkg-deb', '-f', deb_path, 'Package']).decode('utf-8').strip()
     logger.debug('Installing package %s from deb file %s', package_name, str(deb_path))
-    stop_polkadot()
+    stop_service()
     sp.check_call(['dpkg', '--purge', package_name])
     sp.check_call(['dpkg', '--install', deb_path])
     installed_binary = find_binary_installed_by_deb(package_name)
     if os.path.exists(BINARY_PATH):
         os.remove(BINARY_PATH)
     os.symlink(installed_binary, BINARY_PATH)
-    start_polkadot()
+    start_service()
     os.remove(deb_path)
 
 
@@ -106,7 +106,7 @@ def install_binaries_from_urls(binary_urls: str, sha256_urls: str) -> None:
         binary_name = binary_url.split('/')[-1]
         responses += [(binary_url, sha256_url, response, binary_name, binary_hash)]
     perform_sha256_checksums(responses, sha256_urls)
-    stop_polkadot()
+    stop_service()
     for binary_url, _, response, binary_name, _ in responses:
         logger.debug("Unpack binary downloaded from: %s", binary_url)
         binary_path = HOME_PATH / binary_name
@@ -114,7 +114,7 @@ def install_binaries_from_urls(binary_urls: str, sha256_urls: str) -> None:
             f.write(response.content)
             sp.run(['chown', f'{USER}:{USER}', binary_path], check=False)
             sp.run(['chmod', '+x', binary_path], check=False)
-    start_polkadot()
+    start_service()
 
 
 def install_binary_from_url(url: str, sha256_url: str) -> None:
@@ -126,12 +126,12 @@ def install_binary_from_url(url: str, sha256_url: str) -> None:
     if sha256_url:
         binary_hash = hashlib.sha256(binary_response.content).hexdigest()
         perform_sha256_checksum(binary_hash, sha256_url)
-    stop_polkadot()
+    stop_service()
     with open(BINARY_PATH, 'wb') as f:
         f.write(binary_response.content)
         sp.run(['chown', f'{USER}:{USER}', BINARY_PATH], check=False)
         sp.run(['chmod', '+x', BINARY_PATH], check=False)
-    start_polkadot()
+    start_service()
 
 
 def perform_sha256_checksums(responses: list, sha256_urls: str) -> None:
@@ -248,18 +248,18 @@ def get_binary_last_changed() -> str:
     return ""
 
 
-def restart_polkadot():
+def restart_service():
     sp.run(['systemctl', 'restart', f'{USER}.service'], check=False)
 
 
-def start_polkadot():
+def start_service():
     # TODO: remove chown and chmod from here? Runs in the install hook already
     sp.run(['chown', f'{USER}:{USER}', BINARY_PATH], check=False)
     sp.run(['chmod', '+x', BINARY_PATH], check=False)
     sp.run(['systemctl', 'start', f'{USER}.service'], check=False)
 
 
-def stop_polkadot():
+def stop_service():
     sp.run(['systemctl', 'stop', f'{USER}.service'], check=False)
 
 

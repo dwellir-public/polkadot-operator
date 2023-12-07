@@ -65,11 +65,11 @@ class Docker():
             raise ValueError(f"Could not pull {docker_image_and_tag} check 'docker-tag'!") from err
 
         sp.run(['docker', 'create', '--name', 'tmp', docker_image_and_tag], check=False)
-        utils.stop_polkadot()
+        utils.stop_service()
         sp.run(['docker', 'cp', f'tmp:{docker_binary_path}', utils.BINARY_PATH], check=True)
         if docker_specs_path:
             sp.run(['docker', 'cp', f'tmp:{docker_specs_path}', utils.HOME_PATH], check=True)
             sp.run(['chown', '-R', 'polkadot:polkadot', Path(utils.HOME_PATH, Path(docker_specs_path).name)], check=True)
-        utils.start_polkadot()
+        utils.start_service()
         sp.run(['docker', 'rm', 'tmp'], check=True)
         sp.run(['docker', 'rmi', docker_image_and_tag], check=True)

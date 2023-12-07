@@ -138,11 +138,11 @@ class PolkadotCharm(ops.CharmBase):
             self.unit.status = ops.BlockedStatus("Service not running")
 
     def _on_start(self, event: ops.StartEvent) -> None:
-        utils.start_polkadot()
+        utils.start_service()
         self.update_status()
 
     def _on_stop(self, event: ops.StopEvent) -> None:
-        utils.stop_polkadot()
+        utils.stop_service()
         self.unit.status = ops.ActiveStatus("Service stopped")
 
     def _on_get_session_key_action(self, event: ops.ActionEvent) -> None:
@@ -175,28 +175,28 @@ class PolkadotCharm(ops.CharmBase):
             PolkadotRpcWrapper(rpc_port).insert_key(mnemonic, address)
 
     def _on_restart_node_service_action(self, event: ops.ActionEvent) -> None:
-        utils.restart_polkadot()
+        utils.restart_service()
         if not utils.service_started():
             event.fail("Could not restart service")
         self.unit.status = ops.ActiveStatus("Node service restarted")
 
     def _on_start_node_service_action(self, event: ops.ActionEvent) -> None:
-        utils.start_polkadot()
+        utils.start_service()
         if not utils.service_started():
             event.fail("Could not start service")
         self.unit.status = ops.ActiveStatus("Node service started")
 
     def _on_stop_node_service_action(self, event: ops.ActionEvent) -> None:
-        utils.stop_polkadot()
+        utils.stop_service()
         if utils.service_started(iterations=1):
             event.fail("Could not stop service")
         self.unit.status = ops.BlockedStatus("Node service stopped")
 
     def _on_set_node_key_action(self, event: ops.ActionEvent) -> None:
         key = event.params['key']
-        utils.stop_polkadot()
+        utils.stop_service()
         utils.write_node_key_file(key)
-        utils.start_polkadot()
+        utils.start_service()
 
     # TODO: this action is getting quite large and specialized, perhaps move all actions to an `actions.py` file?
     def _on_get_node_info_action(self, event: ops.ActionEvent) -> None:
