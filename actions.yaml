@@ -27,6 +27,10 @@ insert-key:
 
 restart-node-service:
   description: "This actions restarts the service running the blockchain node."
+start-node-service:
+  description: "This actions starts the service running the blockchain node."
+stop-node-service:
+  description: "This actions stops the service running the blockchain node."
 
 set-node-key:
   description: |
@@ -40,4 +44,10 @@ set-node-key:
   required: [ key ]
 
 get-node-info:
-  description: "Gets system information about the node for debugging purposes."
+  description: |
+    Gets system information about the node and its container.
+get-node-help:
+  description: |
+    Gets the help information from the client binary.
+    Note that to get a readable output it is recommended to use '--format json' and parse the output with the 'jq' command line tool.
+    Example: juju run-action --wait polkadot/0 get-node-help --format json | jq -r '.["unit-polkadot-0"].results["help-output"]'

@@ -17,9 +17,7 @@ from urllib3.exceptions import NewConnectionError, MaxRetryError
 import time
 import re
 
-from ops import main, framework, ConfigChangedEvent, InstallEvent, StartEvent, StopEvent, UpdateStatusEvent
-from ops.charm import CharmBase, ActionEvent
-from ops.model import ActiveStatus, MaintenanceStatus, WaitingStatus, BlockedStatus
+import ops
 
 from interface_prometheus import PrometheusProvider
 from interface_rpc_url_provider import RpcUrlProvider
@@ -32,10 +30,10 @@ from charms.grafana_agent.v0.cos_agent import COSAgentProvider
 logger = logging.getLogger(__name__)
 
 
-class PolkadotCharm(CharmBase):
+class PolkadotCharm(ops.CharmBase):
     """Charm the service."""
 
-    _stored = framework.StoredState()
+    _stored = ops.framework.StoredState()
 
     def __init__(self, *args):
         super().__init__(*args)
@@ -61,47 +59,50 @@ class PolkadotCharm(CharmBase):
         self.framework.observe(self.on.has_session_key_action, self._on_has_session_key_action)
         self.framework.observe(self.on.insert_key_action, self._on_insert_key_action)
         self.framework.observe(self.on.restart_node_service_action, self._on_restart_node_service_action)
+        self.framework.observe(self.on.start_node_service_action, self._on_start_node_service_action)
+        self.framework.observe(self.on.stop_node_service_action, self._on_stop_node_service_action)
         self.framework.observe(self.on.set_node_key_action, self._on_set_node_key_action)
         self.framework.observe(self.on.get_node_info_action, self._on_get_node_info_action)
+        self.framework.observe(self.on.get_node_help_action, self._on_get_node_help_action)
 
         self._stored.set_default(binary_url=self.config.get('binary-url'),
                                  docker_tag=self.config.get('docker-tag'),
                                  service_args=self.config.get('service-args'))
 
-    def _on_install(self, event: InstallEvent) -> None:
-        self.unit.status = MaintenanceStatus("Begin installing charm")
+    def _on_install(self, event: ops.InstallEvent) -> None:
+        self.unit.status = ops.MaintenanceStatus("Begin installing charm")
         service_args_obj = ServiceArgs(self.config.get('service-args'))
         # Setup polkadot group and user, disable login
         utils.setup_group_and_user()
         # Create environment file for polkadot service arguments
         utils.create_env_file_for_service()
         # Download and prepare the binary
-        self.unit.status = MaintenanceStatus("Installing binary")
+        self.unit.status = ops.MaintenanceStatus("Installing binary")
         utils.install_binary(self.config, service_args_obj.chain_name)
         # Install polkadot.service file
-        self.unit.status = MaintenanceStatus("Installing service")
+        self.unit.status = ops.MaintenanceStatus("Installing service")
         source_path = Path(self.charm_dir / 'templates/etc/systemd/system/polkadot.service')
         utils.install_service_file(source_path)
         utils.update_service_args(service_args_obj.service_args_string)
-        self.unit.status = MaintenanceStatus("Installing node exporter")
+        self.unit.status = ops.MaintenanceStatus("Installing node exporter")
         utils.install_node_exporter()
-        self.unit.status = MaintenanceStatus("Charm install complete")
+        self.unit.status = ops.MaintenanceStatus("Charm install complete")
 
-    def _on_config_changed(self, event: ConfigChangedEvent) -> None:
+    def _on_config_changed(self, event: ops.ConfigChangedEvent) -> None:
         try:
             service_args_obj = ServiceArgs(self.config.get('service-args'))
         except ValueError as e:
-            self.unit.status = BlockedStatus(str(e))
+            self.unit.status = ops.BlockedStatus(str(e))
             event.defer()
             return
 
         # Update of polkadot binary requested
         if self._stored.binary_url != self.config.get('binary-url') or self._stored.docker_tag != self.config.get('docker-tag'):
-            self.unit.status = MaintenanceStatus("Installing binary")
+            self.unit.status = ops.MaintenanceStatus("Installing binary")
             try:
                 utils.install_binary(self.config, service_args_obj.chain_name)
             except ValueError as e:
-                self.unit.status = BlockedStatus(str(e))
+                self.unit.status = ops.BlockedStatus(str(e))
                 event.defer()
                 return
             self._stored.binary_url = self.config.get('binary-url')
@@ -109,13 +110,13 @@ class PolkadotCharm(CharmBase):
 
         # Update of polkadot service arguments requested
         if self._stored.service_args != self.config.get('service-args'):
-            self.unit.status = MaintenanceStatus("Updating service args")
+            self.unit.status = ops.MaintenanceStatus("Updating service args")
             utils.update_service_args(service_args_obj.service_args_string)
             self._stored.service_args = self.config.get('service-args')
 
         self.update_status(connection_attempts=2)
 
-    def _on_update_status(self, event: UpdateStatusEvent) -> None:
+    def _on_update_status(self, event: ops.UpdateStatusEvent) -> None:
         self.update_status()
 
     def update_status(self, connection_attempts: int = 4) -> None:
@@ -124,28 +125,28 @@ class PolkadotCharm(CharmBase):
             for i in range(connection_attempts):
                 time.sleep(5)
                 try:
-                    self.unit.status = ActiveStatus("Syncing: {}, Validating: {}".format(
+                    self.unit.status = ops.ActiveStatus("Syncing: {}, Validating: {}".format(
                         str(PolkadotRpcWrapper(rpc_port).is_syncing()),
                         str(PolkadotRpcWrapper(rpc_port).is_validating())))
                     self.unit.set_workload_version(PolkadotRpcWrapper(rpc_port).get_version())
                     break
                 except RequestsConnectionError as e:
                     logger.warning(e)
-                    self.unit.status = MaintenanceStatus("Client not responding to HTTP (attempt {}/{})".format(i, connection_attempts))
-            if type(self.unit.status) != ActiveStatus:
-                self.unit.status = BlockedStatus("Service running, client starting up")
+                    self.unit.status = ops.MaintenanceStatus("Client not responding to HTTP (attempt {}/{})".format(i, connection_attempts))
+            if type(self.unit.status) != ops.ActiveStatus:
+                self.unit.status = ops.WaitingStatus("Service running, client starting up")
         else:
-            self.unit.status = WaitingStatus("Service not running")
+            self.unit.status = ops.BlockedStatus("Service not running")
 
-    def _on_start(self, event: StartEvent) -> None:
-        utils.start_polkadot()
+    def _on_start(self, event: ops.StartEvent) -> None:
+        utils.start_service()
         self.update_status()
 
-    def _on_stop(self, event: StopEvent) -> None:
-        utils.stop_polkadot()
-        self.unit.status = ActiveStatus("Service stopped")
+    def _on_stop(self, event: ops.StopEvent) -> None:
+        utils.stop_service()
+        self.unit.status = ops.ActiveStatus("Service stopped")
 
-    def _on_get_session_key_action(self, event: ActionEvent) -> None:
+    def _on_get_session_key_action(self, event: ops.ActionEvent) -> None:
         event.log("Getting new session key through rpc...")
         rpc_port = ServiceArgs(self._stored.service_args).rpc_port
         key = PolkadotRpcWrapper(rpc_port).get_session_key()
@@ -154,7 +155,7 @@ class PolkadotCharm(CharmBase):
         else:
             event.fail("Unable to get new session key")
 
-    def _on_has_session_key_action(self, event: ActionEvent) -> None:
+    def _on_has_session_key_action(self, event: ops.ActionEvent) -> None:
         key = event.params['key']
         keypattern = re.compile(r'^0x')
         if not re.match(keypattern, key):
@@ -164,7 +165,7 @@ class PolkadotCharm(CharmBase):
             has_session_key = PolkadotRpcWrapper(rpc_port).has_session_key(key)
             event.set_results(results={'has-key': has_session_key})
 
-    def _on_insert_key_action(self, event: ActionEvent) -> None:
+    def _on_insert_key_action(self, event: ops.ActionEvent) -> None:
         mnemonic = event.params['mnemonic']
         address = event.params['address']
         keypattern = re.compile(r'^0x')
@@ -174,20 +175,32 @@ class PolkadotCharm(CharmBase):
             rpc_port = ServiceArgs(self._stored.service_args).rpc_port
             PolkadotRpcWrapper(rpc_port).insert_key(mnemonic, address)
 
-    def _on_restart_node_service_action(self, event: ActionEvent) -> None:
-        utils.stop_polkadot()
-        utils.start_polkadot()
+    def _on_restart_node_service_action(self, event: ops.ActionEvent) -> None:
+        utils.restart_service()
+        if not utils.service_started():
+            event.fail("Could not restart service")
+        self.unit.status = ops.ActiveStatus("Node service restarted")
+
+    def _on_start_node_service_action(self, event: ops.ActionEvent) -> None:
+        utils.start_service()
         if not utils.service_started():
             event.fail("Could not start service")
+        self.unit.status = ops.ActiveStatus("Node service started")
 
-    def _on_set_node_key_action(self, event: ActionEvent) -> None:
+    def _on_stop_node_service_action(self, event: ops.ActionEvent) -> None:
+        utils.stop_service()
+        if utils.service_started(iterations=1):
+            event.fail("Could not stop service")
+        self.unit.status = ops.BlockedStatus("Node service stopped")
+
+    def _on_set_node_key_action(self, event: ops.ActionEvent) -> None:
         key = event.params['key']
-        utils.stop_polkadot()
+        utils.stop_service()
         utils.write_node_key_file(key)
-        utils.start_polkadot()
+        utils.start_service()
 
     # TODO: this action is getting quite large and specialized, perhaps move all actions to an `actions.py` file?
-    def _on_get_node_info_action(self, event: ActionEvent) -> None:
+    def _on_get_node_info_action(self, event: ops.ActionEvent) -> None:
         # Disk usage
         relay_du = utils.get_relay_disk_usage()
         chain_du = utils.get_chain_disk_usage()
@@ -232,6 +245,9 @@ class PolkadotCharm(CharmBase):
             logger.warning(e)
             event.set_results(results={'on-chain-info': 'Unable to establish HTTP connection to client'})
 
+    def _on_get_node_help_action(self, event: ops.ActionEvent) -> None:
+        event.set_results(results={'help-output': utils.get_client_binary_help_output()})
+
 
 if __name__ == "__main__":
-    main.main(PolkadotCharm)
+    ops.main(PolkadotCharm)
