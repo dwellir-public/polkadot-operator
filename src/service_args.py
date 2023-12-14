@@ -139,19 +139,10 @@ class ServiceArgs():
 
     def __turing(self):
         chain_json_url = 'https://raw.githubusercontent.com/OAK-Foundation/OAK-blockchain/master/node/res/turing.json'
-        relay_json_url = 'https://raw.githubusercontent.com/paritytech/polkadot/master/node/service/chain-specs/kusama.json'
-
         chain_json_path = f"{utils.CHAIN_SPEC_PATH}/turing.json"
-        relay_json_path = f"{utils.CHAIN_SPEC_PATH}/kusama.json"
-
         if not exists(chain_json_path):
             utils.download_chain_spec(chain_json_url, 'turing.json')
-
-        if not exists(relay_json_path):
-            utils.download_chain_spec(relay_json_url, 'kusama.json')
-
         self.__replace_chain_name(chain_json_path, 0)
-        self.__replace_chain_name(relay_json_path, 1)
 
     def __bajun(self):
         # TODO: The spec file did not exist on master branch yet. This URL point to a development branch that will probably not exist in the near future.
