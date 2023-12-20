@@ -195,10 +195,7 @@ class ServiceArgs():
         self.__replace_chain_name(relay_json_path, 1)
 
     def __tinkernet(self):
-        if exists(utils.BINARY_PATH):
-            chain_json_url = f'https://github.com/InvArch/InvArch-Node/releases/download/v{utils.get_binary_version()}/tinker-raw.json'
-        else:
-            chain_json_url = 'https://github.com/InvArch/InvArch-Node/blob/main/res/tinker/tinker-raw.json'
+        chain_json_url = 'https://raw.githubusercontent.com/InvArch/InvArch-Node/main/res/tinker/tinker-raw.json'
         chain_json_path = f"{utils.CHAIN_SPEC_PATH}/tinker-raw.json"
 
         utils.download_chain_spec(chain_json_url, 'tinker-raw.json')
