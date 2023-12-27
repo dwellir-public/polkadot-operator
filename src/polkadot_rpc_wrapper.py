@@ -34,19 +34,6 @@ class PolkadotRpcWrapper():
         response_json = json.loads(response.text)
         return response_json['result']['isSyncing']
 
-    def is_validating(self) -> bool:
-        """
-        Checks if polkadot service is started as Authority (E.g. is_validating() -> True)
-        :return: boolean
-        """
-        data = '{"id":1, "jsonrpc":"2.0", "method": "system_nodeRoles", "params": []}'
-        response = requests.post(url=self.__server_address, headers=self.__headers, data=data)
-        response_json = json.loads(response.text)
-        if response_json['result'][0] == 'Authority':
-            return True
-        else:
-            return False
-
     def get_version(self) -> str:
         """
         Checks which version polkadot service is running (E.g. get_version() -> '0.9.3')
@@ -108,7 +95,7 @@ class PolkadotRpcWrapper():
         data = '{"id": 1,"jsonrpc":"2.0", "method": "author_insertKey", "params":["aura","' + mnemonic + '","' + address + '"]}'
         requests.post(url=self.__server_address, headers=self.__headers, data=data)
 
-    def find_validator(self):
+    def find_validator_address(self):
         """
         Check if this node is currently producing block for a validator/collator.
         It does so by checking if any session key currently on-chain is present on this node.
@@ -124,4 +111,41 @@ class PolkadotRpcWrapper():
                 session_key += k[2:]
             if self.has_session_key(session_key):
                 return validator[0]
+        return False
+
+    def is_validating_next_era(self, address):
+        """
+        Check if this node has the intetion to validate for validator/collator 'address' next era.
+        It checks on-chain which session key is set to be used for validating next era for 'address'.
+        And if that session key exist on this node.
+        :return: the session key if found on this node, else False.
+        """
+        substrate = substrateinterface.SubstrateInterface(url=self.__server_address)
+        result = substrate.query("Session", "NextKeys", [address]).value_serialized
+        if result:
+            session_key = '0x'
+            for k in result.values():
+                session_key += k[2:]
+            if self.has_session_key(session_key):
+                return session_key
+        return False
+
+    def is_validating_this_era(self, address):
+        """
+        Check if this node is currently producing block for a validator/collator 'address.
+        It checks on-chain which session key is set to be used for validating this era for 'address'.
+        And if that session key exist on this node.
+        :return: the session key if validating, else False.
+        """
+        substrate = substrateinterface.SubstrateInterface(url=self.__server_address)
+        result = substrate.query("Session", "QueuedKeys").value_serialized
+        for validator in result:
+            if validator[0] == address:
+                keys = validator[1]
+                session_key = '0x'
+                for k in keys.values():
+                    # Some chains uses multiple keys. Before checking if it exist on the node they need to be concatenated removing preceding '0x'.
+                    session_key += k[2:]
+                if self.has_session_key(session_key):
+                    return session_key
         return False
