@@ -45,21 +45,22 @@ set-node-key:
 
 find-validator-address:
   description: |
-    Checks if this node is currently validating for any address, using an RPC call.
-    Returns the validator/collator address if a session key is found. Else False.
+    Checks if this node is currently validating for any validator address found on-chain.
+    It does so by checking if any session key on-chain is present on this node.
+    Returns the validator address and the session key if this node is validating.
 
 is-validating-this-era:
   description: |
-    Checks if node has a session key present on-chain this era for the validator address set in config, using an RPC call.
-    If it does, it means it is currently producing blocks.
-    Returns the session key if found. Else False.
+    Checks if this node is currently validating for the validator address set in config.
+    It does so by checking if the session key used for that validator is present on this node.
+    Returns a message whether this node is validating or not. If it is validating, the session key is returned as well.
     REQUIRES validator-address config parameter to be set.
 
 is-validating-next-era:
   description: |
-    Checks if node has a session key present on-chain to validate next era, using an RPC call.
-    If it does, it means it will start producing blocks next era.
-    Returns the session key if found. Else False.
+    Checks if this node will be validating next era for the validator address set in config.
+    It does so by checking if the session key that will be used for that validator is present on this node.
+    Returns a message whether this node will be validating next era or not. If it will, the session key is returned as well.
     REQUIRES validator-address config parameter to be set.
 
 get-node-info:

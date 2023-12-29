@@ -110,7 +110,7 @@ class PolkadotRpcWrapper():
                 # Some chains uses multiple keys. Before checking if it exist on the node they need to be concatenated removing preceding '0x'.
                 session_key += k[2:]
             if self.has_session_key(session_key):
-                return validator[0]
+                return {"validator": validator[0], "session_key": session_key}
         return False
 
     def is_validating_next_era(self, address):
