@@ -5,7 +5,7 @@ get-session-key:
   description: "Runs author_rotateKeys and returns a new session-key."
 
 has-session-key:
-  description: "Checks if node has a session key, using a RPC call."
+  description: "Checks if node has a session key, using an RPC call."
   params:
     key:
       description: "Key to check if exist on node. E.g. key='0xhjd39djk309'"
@@ -45,19 +45,19 @@ set-node-key:
 
 find-validator-address:
   description: |
-    Checks if this node is currently validating for any address, using a RPC call.
+    Checks if this node is currently validating for any address, using an RPC call.
     Returns the validator/collator address if a session key is found. Else False.
 
 is-validating-this-era:
   description: |
-    Checks if node has a session key present on-chain this era for the validator address set in config, using a RPC call.
+    Checks if node has a session key present on-chain this era for the validator address set in config, using an RPC call.
     If it does, it means it is currently producing blocks.
     Returns the session key if found. Else False.
     REQUIRES validator-address config parameter to be set.
 
 is-validating-next-era:
   description: |
-    Checks if node has a session key present on-chain to validate next era, using a RPC call.
+    Checks if node has a session key present on-chain to validate next era, using an RPC call.
     If it does, it means it will start producing blocks next era.
     Returns the session key if found. Else False.
     REQUIRES validator-address config parameter to be set.
