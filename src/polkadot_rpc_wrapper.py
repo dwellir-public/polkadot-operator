@@ -4,7 +4,7 @@ import requests
 import json
 import re
 from typing import Tuple
-import substrateinterface
+from substrateinterface import SubstrateInterface
 
 class PolkadotRpcWrapper():
 
@@ -101,7 +101,7 @@ class PolkadotRpcWrapper():
         It does so by checking if any session key currently on-chain is present on this node.
         :return: the validator/collator address or False.
         """
-        substrate = substrateinterface.SubstrateInterface(url=self.__server_address)
+        substrate = SubstrateInterface(url=self.__server_address)
         result = substrate.query("Session", "QueuedKeys").value_serialized
         for validator in result:
             keys = validator[1]
@@ -120,7 +120,7 @@ class PolkadotRpcWrapper():
         And if that session key exist on this node.
         :return: the session key if found on this node, else False.
         """
-        substrate = substrateinterface.SubstrateInterface(url=self.__server_address)
+        substrate = SubstrateInterface(url=self.__server_address)
         result = substrate.query("Session", "NextKeys", [address]).value_serialized
         if result:
             session_key = '0x'
@@ -137,7 +137,7 @@ class PolkadotRpcWrapper():
         And if that session key exist on this node.
         :return: the session key if validating, else False.
         """
-        substrate = substrateinterface.SubstrateInterface(url=self.__server_address)
+        substrate = SubstrateInterface(url=self.__server_address)
         result = substrate.query("Session", "QueuedKeys").value_serialized
         for validator in result:
             if validator[0] == address:
