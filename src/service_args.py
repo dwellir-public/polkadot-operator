@@ -123,6 +123,8 @@ class ServiceArgs():
             self.__origintrail()
         elif self.chain_name == 'asset-hub-rococo':
             self.__asset_hub_rococo()
+        elif self.chain_name in ['bifrost-kusama', 'bifrost-polkadot']:
+            self.__bifrost()
 
     def __peregrine(self):
         self.__replace_chain_name(Path(utils.HOME_PATH, 'dev-specs/kilt-parachain/peregrine-kilt.json'), 0)
@@ -139,19 +141,10 @@ class ServiceArgs():
 
     def __turing(self):
         chain_json_url = 'https://raw.githubusercontent.com/OAK-Foundation/OAK-blockchain/master/node/res/turing.json'
-        relay_json_url = 'https://raw.githubusercontent.com/paritytech/polkadot/master/node/service/chain-specs/kusama.json'
-
         chain_json_path = f"{utils.CHAIN_SPEC_PATH}/turing.json"
-        relay_json_path = f"{utils.CHAIN_SPEC_PATH}/kusama.json"
-
         if not exists(chain_json_path):
             utils.download_chain_spec(chain_json_url, 'turing.json')
-
-        if not exists(relay_json_path):
-            utils.download_chain_spec(relay_json_url, 'kusama.json')
-
         self.__replace_chain_name(chain_json_path, 0)
-        self.__replace_chain_name(relay_json_path, 1)
 
     def __bajun(self):
         # TODO: The spec file did not exist on master branch yet. This URL point to a development branch that will probably not exist in the near future.
@@ -204,10 +197,7 @@ class ServiceArgs():
         self.__replace_chain_name(relay_json_path, 1)
 
     def __tinkernet(self):
-        if exists(utils.BINARY_PATH):
-            chain_json_url = f'https://github.com/InvArch/InvArch-Node/releases/download/v{utils.get_binary_version()}/tinker-raw.json'
-        else:
-            chain_json_url = 'https://github.com/InvArch/InvArch-Node/blob/main/res/tinker/tinker-raw.json'
+        chain_json_url = 'https://raw.githubusercontent.com/InvArch/InvArch-Node/main/res/tinker/tinker-raw.json'
         chain_json_path = f"{utils.CHAIN_SPEC_PATH}/tinker-raw.json"
 
         utils.download_chain_spec(chain_json_url, 'tinker-raw.json')
@@ -252,5 +242,18 @@ class ServiceArgs():
     def __asset_hub_rococo(self):
         chain_json_url = 'https://raw.githubusercontent.com/paritytech/polkadot-sdk/master/cumulus/parachains/chain-specs/asset-hub-rococo.json'
         chain_json_path = f'{utils.CHAIN_SPEC_PATH}/{self.chain_name}.json'
+        utils.download_chain_spec(chain_json_url, f'{self.chain_name}.json')
+        self.__replace_chain_name(chain_json_path, 0)
+
+    def __bifrost(self):
+        if self.chain_name == 'bifrost-kusama':
+            chain_json_url = 'https://raw.githubusercontent.com/bifrost-finance/bifrost/develop/node/service/res/bifrost-kusama.json'
+        elif self.chain_name == 'bifrost-polkadot':
+            chain_json_url = 'https://raw.githubusercontent.com/bifrost-finance/bifrost/develop/node/service/res/bifrost-polkadot.json'
+        else:
+            raise ValueError("Unsupported chain name.")
+
+        chain_json_path = f'{utils.CHAIN_SPEC_PATH}/{self.chain_name}.json'
+
         utils.download_chain_spec(chain_json_url, f'{self.chain_name}.json')
         self.__replace_chain_name(chain_json_path, 0)
