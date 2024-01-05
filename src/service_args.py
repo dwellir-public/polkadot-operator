@@ -123,7 +123,7 @@ class ServiceArgs():
             self.__origintrail()
         elif self.chain_name == 'asset-hub-rococo':
             self.__asset_hub_rococo()
-        elif self.chain_name in ['bifrost', 'bifrost-polkadot']:
+        elif self.chain_name in ['bifrost-kusama', 'bifrost-polkadot']:
             self.__bifrost()
 
     def __peregrine(self):
@@ -246,7 +246,7 @@ class ServiceArgs():
         self.__replace_chain_name(chain_json_path, 0)
 
     def __bifrost(self):
-        if self.chain_name == 'bifrost':
+        if self.chain_name == 'bifrost-kusama':
             chain_json_url = 'https://raw.githubusercontent.com/bifrost-finance/bifrost/develop/node/service/res/bifrost-kusama.json'
         elif self.chain_name == 'bifrost-polkadot':
             chain_json_url = 'https://raw.githubusercontent.com/bifrost-finance/bifrost/develop/node/service/res/bifrost-polkadot.json'
