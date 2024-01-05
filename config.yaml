@@ -39,3 +39,9 @@ options:
       Extra arguments that the service should run with.
 
       '--chain=... --rpc-port=...' are required to set for the charm to run.
+  validator-address:
+    type: string
+    default: ""
+    description: |
+      If this is set, update-status will check if this node is currently validating for this address.
+      HINT: if this config parameter is set, the actions is-validating-this-era and is-validating-next-era can be used.
