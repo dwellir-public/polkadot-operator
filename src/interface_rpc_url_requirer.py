@@ -15,7 +15,8 @@ class RpcUrlRequirer(Object):
         self._charm = charm
         self._relation_name = relation_name
         self.framework.observe(
-            charm.on[relation_name].relation_joined, self._on_relation_changed
+            charm.on[relation_name].relation_changed, self._on_relation_changed,
+            charm.on[relation_name].relation_departed, self._on_relation_departed
         )
 
     def _on_relation_changed(self, event: RelationChangedEvent) -> None:
@@ -25,5 +26,11 @@ class RpcUrlRequirer(Object):
             return
 
         rpc_url = event.relation.data[event.unit].get("url")
-        service_args_obj = ServiceArgs(self.config.get('service-args'))
+        self._charm._stored.relay_rpc_url = rpc_url
+        service_args_obj = ServiceArgs(self._charm.config.get('service-args'), self._charm._stored.relay_rpc_url)
+        utils.update_service_args(service_args_obj.service_args_string)
+
+    def _on_relation_departed(self, event: RelationChangedEvent) -> None:
+        self._charm._stored.relay_rpc_url = ""
+        service_args_obj = ServiceArgs(self._charm.config.get('service-args'), self._charm._stored.relay_rpc_url)
         utils.update_service_args(service_args_obj.service_args_string)
