@@ -123,8 +123,6 @@ class ServiceArgs():
             self.__origintrail()
         elif self.chain_name == 'asset-hub-rococo':
             self.__asset_hub_rococo()
-        elif self.chain_name in ['bifrost-kusama', 'bifrost-polkadot']:
-            self.__bifrost()
 
     def __peregrine(self):
         self.__replace_chain_name(Path(utils.HOME_PATH, 'dev-specs/kilt-parachain/peregrine-kilt.json'), 0)
@@ -245,15 +243,3 @@ class ServiceArgs():
         utils.download_chain_spec(chain_json_url, f'{self.chain_name}.json')
         self.__replace_chain_name(chain_json_path, 0)
 
-    def __bifrost(self):
-        if self.chain_name == 'bifrost-kusama':
-            chain_json_url = 'https://raw.githubusercontent.com/bifrost-finance/bifrost/develop/node/service/res/bifrost-kusama.json'
-        elif self.chain_name == 'bifrost-polkadot':
-            chain_json_url = 'https://raw.githubusercontent.com/bifrost-finance/bifrost/develop/node/service/res/bifrost-polkadot.json'
-        else:
-            raise ValueError("Unsupported chain name.")
-
-        chain_json_path = f'{utils.CHAIN_SPEC_PATH}/{self.chain_name}.json'
-
-        utils.download_chain_spec(chain_json_url, f'{self.chain_name}.json')
-        self.__replace_chain_name(chain_json_path, 0)
