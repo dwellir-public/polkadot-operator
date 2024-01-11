@@ -8,9 +8,9 @@ import re
 
 class ServiceArgs():
 
-    def __init__(self, service_args: str, relay_rpc_url: str):
+    def __init__(self, service_args: str, relay_rpc_urls: set):
         service_args = self.__encode_for_emoji(service_args)
-        self._relay_rpc_url = relay_rpc_url
+        self._relay_rpc_urls = relay_rpc_urls
         self.__check_service_args(service_args)
         self.service_args_list = self.__service_args_to_list(service_args)
         self.__check_service_args(self.service_args_list)
@@ -91,8 +91,8 @@ class ServiceArgs():
 
     def __customize_service_args(self):
         self.__add_firstchain_args(['--node-key-file', utils.NODE_KEY_PATH])
-        if self._relay_rpc_url:
-            self.__add_firstchain_args(['--relay-chain-rpc-url', self._relay_rpc_url])
+        if self._relay_rpc_urls:
+            self.__add_firstchain_args(['--relay-chain-rpc-urls'] + list(self._relay_rpc_urls))
 
         if self.chain_name == 'peregrine':
             self.__peregrine()

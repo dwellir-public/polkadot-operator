@@ -29,5 +29,5 @@ provides:
     interface: rpc-url
 
 requires:
-  rpc-url:
+  relay-rpc-url:
     interface: rpc-url
