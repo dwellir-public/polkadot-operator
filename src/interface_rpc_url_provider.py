@@ -4,7 +4,7 @@
 
 from service_args import ServiceArgs
 from ops.framework import Object
-from ops.charm import RelationChangedEvent
+from ops.charm import RelationJoinedEvent
 import utils
 
 class RpcUrlProvider(Object):
@@ -18,7 +18,7 @@ class RpcUrlProvider(Object):
             charm.on[relation_name].relation_joined, self._on_relation_joined
         )
 
-    def _on_relation_joined(self, event: RelationChangedEvent) -> None:
+    def _on_relation_joined(self, event: RelationJoinedEvent) -> None:
         """This event is used to send the ws or http rpc url to another client."""
 
         service_args_obj = ServiceArgs(self._charm.config.get('service-args'), "")

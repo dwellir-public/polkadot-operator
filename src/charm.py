@@ -73,7 +73,7 @@ class PolkadotCharm(ops.CharmBase):
         self._stored.set_default(binary_url=self.config.get('binary-url'),
                                  docker_tag=self.config.get('docker-tag'),
                                  service_args=self.config.get('service-args'),
-                                 relay_rpc_urls=set())
+                                 relay_rpc_urls=dict())
 
     def _on_install(self, event: ops.InstallEvent) -> None:
         self.unit.status = ops.MaintenanceStatus("Begin installing charm")
@@ -146,7 +146,7 @@ class PolkadotCharm(ops.CharmBase):
                     break
                 except RequestsConnectionError as e:
                     logger.warning(e)
-                    self.unit.status = ops.MaintenanceStatus("Client not responding to HTTP (attempt {}/{})".format(i, connection_attempts))
+                    self.unit.status = ops.MaintenanceStatus("Client not responding to HTTP (attempt {}/{})".format(i+1, connection_attempts))
             if type(self.unit.status) != ops.ActiveStatus:
                 self.unit.status = ops.WaitingStatus("Service running, client starting up")
         else:

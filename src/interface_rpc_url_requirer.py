@@ -4,7 +4,7 @@
 
 from service_args import ServiceArgs
 from ops.framework import Object
-from ops.charm import RelationChangedEvent
+from ops.charm import RelationChangedEvent, RelationDepartedEvent
 import utils
 
 class RpcUrlRequirer(Object):
@@ -25,19 +25,27 @@ class RpcUrlRequirer(Object):
         """This event is used to receive the http rpc url from another client."""
 
         if not event.unit in event.relation.data:
+            event.defer()
             return
 
         # The --relay-chain-rpc-urls option currently only supports ws, hence using ws_url and not rpc_url.
-        ws_url = event.relation.data[event.unit]["ws_url"]
-        self._charm._stored.relay_rpc_urls.add(ws_url)
+        try:
+            ws_url = event.relation.data[event.unit]["ws_url"]
+        except KeyError:
+            event.defer()
+            return
+        # Storing the unitname+relation_id is a workaround because the relation data is already removed before the departed hook is called.
+        # This is to know which url to remove.
+        # This "bug" (unclear if it's a bug or a removed feature) is reported to the Juju team.
+        dict_key = event.unit.name + ':' + str(event.relation.id)
+        self._charm._stored.relay_rpc_urls[dict_key] = ws_url
         service_args_obj = ServiceArgs(self._charm.config.get('service-args'), self._charm._stored.relay_rpc_urls)
         utils.update_service_args(service_args_obj.service_args_string)
         self._charm.update_status()
 
-    def _on_relation_departed(self, event: RelationChangedEvent) -> None:
-        self.framework.breakpoint("departed")
-        ws_url = event.relation.data[event.unit]["ws_url"]
-        self._charm._stored.relay_rpc_urls.remove(ws_url)
+    def _on_relation_departed(self, event: RelationDepartedEvent) -> None:
+        dict_key = event.unit.name + ':' + str(event.relation.id)
+        self._charm._stored.relay_rpc_urls.pop(dict_key)
         service_args_obj = ServiceArgs(self._charm.config.get('service-args'), self._charm._stored.relay_rpc_urls)
         utils.update_service_args(service_args_obj.service_args_string)
         self._charm.update_status()
