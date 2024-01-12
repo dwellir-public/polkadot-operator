@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-"""RPC url interface (providers side)."""
+"""RPC url interface (requirers side)."""
 
 from service_args import ServiceArgs
 from ops.framework import Object
