@@ -193,18 +193,21 @@ class PolkadotCharm(ops.CharmBase):
         utils.restart_service()
         if not utils.service_started():
             event.fail("Could not restart service")
+        event.set_results(results={'message': 'Node service restarted'})
         self.update_status()
 
     def _on_start_node_service_action(self, event: ops.ActionEvent) -> None:
         utils.start_service()
         if not utils.service_started():
             event.fail("Could not start service")
+        event.set_results(results={'message': 'Node service started'})
         self.update_status()
 
     def _on_stop_node_service_action(self, event: ops.ActionEvent) -> None:
         utils.stop_service()
         if utils.service_started(iterations=1):
             event.fail("Could not stop service")
+        event.set_results(results={'message': 'Node service stopped'})
         self.update_status()
 
     def _on_set_node_key_action(self, event: ops.ActionEvent) -> None:
