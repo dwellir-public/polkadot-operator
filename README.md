@@ -127,6 +127,14 @@ The `cos_agent` interface is already supported by this Polkadot operator charm s
 
 Find more details on how to deploy and use COS [here](https://charmhub.io/topics/canonical-observability-stack/tutorials/instrumenting-machine-charms).
 
+#### Using an external relaychain node
+
+A parachain node can use an external relaychain node instead of the internal one. It's useful for scaling where multiple parachain nodes can share a relaychain node. It's also useful to get faster in sync since the parachain node does not have to sync a relaychain node by itself. This can be set with the service argument `--relay-chain-rpc-urls` that takes one or more weboscket URLs to relaychain nodes to to use. Setting multiple URLs is for fallback where the parachain node will try accessing the URLs in a round-robin fashion. Instead of setting this manually, the interface `rpc-url` can be used:
+
+    juju relate polkadot-relay:rpc-url polkadot-para:relay-rpc-url
+
+Relating to multiple relaychain nodes for fallbacks is supported. It's possible to both use the `rpc-url` interface and set URLs manually in the service arguments at the same time. In the charm, the URLs from using the interface are added to the beginning of the service arguments. Adding URLs manually should thus be considered as a fallback. One can for example use an external providers relaychain node as a fallback where it would not be possible to use Juju primitives.
+
 ## Resources
 
 - [Polkadot](https://polkadot.network/)
