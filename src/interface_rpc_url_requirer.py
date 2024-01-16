@@ -35,7 +35,7 @@ class RpcUrlRequirer(Object):
             event.defer()
             return
         # Storing the unitname+relation_id is a workaround because the relation data is already removed before the departed hook is called.
-        # This is to know which url to remove. This bug is reported to the Juju team.
+        # This is to know which url to remove. Issue for the bug: https://github.com/canonical/operator/issues/1109
         dict_key = event.unit.name + ':' + str(event.relation.id)
         self._charm._stored.relay_rpc_urls[dict_key] = ws_url
         service_args_obj = ServiceArgs(self._charm.config.get('service-args'), self._charm._stored.relay_rpc_urls)
