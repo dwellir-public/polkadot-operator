@@ -129,7 +129,7 @@ Find more details on how to deploy and use COS [here](https://charmhub.io/topics
 
 #### Using an external relaychain node
 
-A parachain node can use an external relaychain node instead of the internal one. It's useful for scaling where multiple parachain nodes can share a relaychain node. It's also useful to get faster in sync since the parachain node does not have to sync a relaychain node by itself. This can be set with the service argument `--relay-chain-rpc-urls` that takes one or more weboscket URLs to relaychain nodes to to use. Setting multiple URLs is for fallback where the parachain node will try accessing the URLs in a round-robin fashion. Instead of setting this manually, the interface `rpc-url` can be used:
+A parachain node can use an external relaychain node instead of the internal one. It's useful for scaling where multiple parachain nodes can share a relaychain node. It's also useful to get faster in sync since the parachain node does not have to sync a relaychain node by itself. This can be set with the service argument `--relay-chain-rpc-urls`, which takes one or more weboscket URLs to relaychain nodes to use. Setting multiple URLs is for fallback where the parachain node will try accessing the URLs in a round-robin fashion. Instead of setting this manually, the interface `rpc-url` can be used:
 
     juju relate polkadot-relay:rpc-url polkadot-para:relay-rpc-url     # Juju 2.x
     juju integrate polkadot-relay:rpc-url polkadot-para:relay-rpc-url  # Juju 3.x
