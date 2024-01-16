@@ -134,7 +134,7 @@ A parachain node can use an external relaychain node instead of the internal one
     juju relate polkadot-relay:rpc-url polkadot-para:relay-rpc-url     # Juju 2.x
     juju integrate polkadot-relay:rpc-url polkadot-para:relay-rpc-url  # Juju 3.x
 
-Relating to multiple relaychain nodes, to have fallbacks, is supported by the interface. It's also possible to both use the `rpc-url` interface and set URLs manually in the service arguments at the same time. In the charm, the URLs from using the interface are added to the beginning of the service arguments. Adding URLs manually should thus be considered as a fallback since as it has been mentioned, the Polkadot client selects relay chain URL in a round-robin fashion. One can for example use an external providers relaychain node as a fallback in this way, a case where it is not possible to use Juju primitives.
+Relating to multiple relaychain nodes, to have fallbacks, is supported by the interface. It's also possible to both use the `rpc-url` interface and set URLs manually in the service arguments at the same time. In the charm, the URLs from using the interface are added to the beginning of the service arguments, in the same order as they are related. Adding URLs manually should thus be considered as a fallback since as it has been mentioned, the Polkadot client selects relay chain URL in a round-robin fashion. One can for example use an external providers relaychain node as a fallback in this way, a case where it is not possible to use Juju primitives.
 
 ## Resources
 

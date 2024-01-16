@@ -22,7 +22,7 @@ class RpcUrlRequirer(Object):
         )
 
     def _on_relation_changed(self, event: RelationChangedEvent) -> None:
-        """This event is used to receive the http rpc url from another client."""
+        """This event is used to receive the Websocket RPC url from another client."""
 
         if not event.unit in event.relation.data:
             event.defer()
