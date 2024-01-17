@@ -8,8 +8,9 @@ import re
 
 class ServiceArgs():
 
-    def __init__(self, service_args: str):
+    def __init__(self, service_args: str, relay_rpc_urls: dict):
         service_args = self.__encode_for_emoji(service_args)
+        self._relay_rpc_urls = relay_rpc_urls
         self.__check_service_args(service_args)
         self.service_args_list = self.__service_args_to_list(service_args)
         self.__check_service_args(self.service_args_list)
@@ -90,6 +91,8 @@ class ServiceArgs():
 
     def __customize_service_args(self):
         self.__add_firstchain_args(['--node-key-file', utils.NODE_KEY_PATH])
+        if self._relay_rpc_urls:
+            self.__add_firstchain_args(['--relay-chain-rpc-urls'] + list(self._relay_rpc_urls.values()))
 
         if self.chain_name == 'peregrine':
             self.__peregrine()
@@ -139,19 +142,10 @@ class ServiceArgs():
 
     def __turing(self):
         chain_json_url = 'https://raw.githubusercontent.com/OAK-Foundation/OAK-blockchain/master/node/res/turing.json'
-        relay_json_url = 'https://raw.githubusercontent.com/paritytech/polkadot/master/node/service/chain-specs/kusama.json'
-
         chain_json_path = f"{utils.CHAIN_SPEC_PATH}/turing.json"
-        relay_json_path = f"{utils.CHAIN_SPEC_PATH}/kusama.json"
-
         if not exists(chain_json_path):
             utils.download_chain_spec(chain_json_url, 'turing.json')
-
-        if not exists(relay_json_path):
-            utils.download_chain_spec(relay_json_url, 'kusama.json')
-
         self.__replace_chain_name(chain_json_path, 0)
-        self.__replace_chain_name(relay_json_path, 1)
 
     def __bajun(self):
         # TODO: The spec file did not exist on master branch yet. This URL point to a development branch that will probably not exist in the near future.
@@ -204,10 +198,7 @@ class ServiceArgs():
         self.__replace_chain_name(relay_json_path, 1)
 
     def __tinkernet(self):
-        if exists(utils.BINARY_PATH):
-            chain_json_url = f'https://github.com/InvArch/InvArch-Node/releases/download/v{utils.get_binary_version()}/tinker-raw.json'
-        else:
-            chain_json_url = 'https://github.com/InvArch/InvArch-Node/blob/main/res/tinker/tinker-raw.json'
+        chain_json_url = 'https://raw.githubusercontent.com/InvArch/InvArch-Node/main/res/tinker/tinker-raw.json'
         chain_json_path = f"{utils.CHAIN_SPEC_PATH}/tinker-raw.json"
 
         utils.download_chain_spec(chain_json_url, 'tinker-raw.json')
@@ -254,3 +245,4 @@ class ServiceArgs():
         chain_json_path = f'{utils.CHAIN_SPEC_PATH}/{self.chain_name}.json'
         utils.download_chain_spec(chain_json_url, f'{self.chain_name}.json')
         self.__replace_chain_name(chain_json_path, 0)
+

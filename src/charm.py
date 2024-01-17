@@ -21,6 +21,7 @@ import ops
 
 from interface_prometheus import PrometheusProvider
 from interface_rpc_url_provider import RpcUrlProvider
+from interface_rpc_url_requirer import RpcUrlRequirer
 from polkadot_rpc_wrapper import PolkadotRpcWrapper
 import utils
 from service_args import ServiceArgs
@@ -40,6 +41,7 @@ class PolkadotCharm(ops.CharmBase):
         self.prometheus_node_provider = PrometheusProvider(self, 'node-prometheus', 9100, '/metrics')
         self.prometheus_polkadot_provider = PrometheusProvider(self, 'polkadot-prometheus', 9615, '/metrics')
         self.rpc_url_provider = RpcUrlProvider(self, 'rpc_url'),
+        self.rpc_url_requirer = RpcUrlRequirer(self, 'relay_rpc_url'),
 
         self.cos_agent_provider = COSAgentProvider(
             self,
@@ -62,16 +64,20 @@ class PolkadotCharm(ops.CharmBase):
         self.framework.observe(self.on.start_node_service_action, self._on_start_node_service_action)
         self.framework.observe(self.on.stop_node_service_action, self._on_stop_node_service_action)
         self.framework.observe(self.on.set_node_key_action, self._on_set_node_key_action)
+        self.framework.observe(self.on.find_validator_address_action, self._on_find_validator_address_action)
+        self.framework.observe(self.on.is_validating_this_era_action, self._on_is_validating_this_era_action)
+        self.framework.observe(self.on.is_validating_next_era_action, self._on_is_validating_next_era_action)
         self.framework.observe(self.on.get_node_info_action, self._on_get_node_info_action)
         self.framework.observe(self.on.get_node_help_action, self._on_get_node_help_action)
 
         self._stored.set_default(binary_url=self.config.get('binary-url'),
                                  docker_tag=self.config.get('docker-tag'),
-                                 service_args=self.config.get('service-args'))
+                                 service_args=self.config.get('service-args'),
+                                 relay_rpc_urls=dict())
 
     def _on_install(self, event: ops.InstallEvent) -> None:
         self.unit.status = ops.MaintenanceStatus("Begin installing charm")
-        service_args_obj = ServiceArgs(self.config.get('service-args'))
+        service_args_obj = ServiceArgs(self.config.get('service-args'), self._stored.relay_rpc_urls)
         # Setup polkadot group and user, disable login
         utils.setup_group_and_user()
         # Create environment file for polkadot service arguments
@@ -90,7 +96,7 @@ class PolkadotCharm(ops.CharmBase):
 
     def _on_config_changed(self, event: ops.ConfigChangedEvent) -> None:
         try:
-            service_args_obj = ServiceArgs(self.config.get('service-args'))
+            service_args_obj = ServiceArgs(self.config.get('service-args'), self._stored.relay_rpc_urls)
         except ValueError as e:
             self.unit.status = ops.BlockedStatus(str(e))
             event.defer()
@@ -121,18 +127,26 @@ class PolkadotCharm(ops.CharmBase):
 
     def update_status(self, connection_attempts: int = 4) -> None:
         if utils.service_started():
-            rpc_port = ServiceArgs(self._stored.service_args).rpc_port
+            rpc_port = ServiceArgs(self._stored.service_args, self._stored.relay_rpc_urls).rpc_port
             for i in range(connection_attempts):
                 time.sleep(5)
                 try:
-                    self.unit.status = ops.ActiveStatus("Syncing: {}, Validating: {}".format(
-                        str(PolkadotRpcWrapper(rpc_port).is_syncing()),
-                        str(PolkadotRpcWrapper(rpc_port).is_validating())))
+                    is_syncing = str(PolkadotRpcWrapper(rpc_port).is_syncing())
+                    status_message = f'Syncing: {is_syncing}'
+                    address = self.config.get('validator-address')
+                    if address:
+                        if PolkadotRpcWrapper(rpc_port).is_validating_this_era(address):
+                            status_message += ", Validating: Yes"
+                        elif PolkadotRpcWrapper(rpc_port).is_validating_next_era(address):
+                            status_message += ", Validating: Next Era"
+                        else:
+                            status_message += ", Validating: No"
+                    self.unit.status = ops.ActiveStatus(status_message)
                     self.unit.set_workload_version(PolkadotRpcWrapper(rpc_port).get_version())
                     break
                 except RequestsConnectionError as e:
                     logger.warning(e)
-                    self.unit.status = ops.MaintenanceStatus("Client not responding to HTTP (attempt {}/{})".format(i, connection_attempts))
+                    self.unit.status = ops.MaintenanceStatus("Client not responding to HTTP (attempt {}/{})".format(i+1, connection_attempts))
             if type(self.unit.status) != ops.ActiveStatus:
                 self.unit.status = ops.WaitingStatus("Service running, client starting up")
         else:
@@ -144,11 +158,11 @@ class PolkadotCharm(ops.CharmBase):
 
     def _on_stop(self, event: ops.StopEvent) -> None:
         utils.stop_service()
-        self.unit.status = ops.ActiveStatus("Service stopped")
+        self.update_status()
 
     def _on_get_session_key_action(self, event: ops.ActionEvent) -> None:
         event.log("Getting new session key through rpc...")
-        rpc_port = ServiceArgs(self._stored.service_args).rpc_port
+        rpc_port = ServiceArgs(self._stored.service_args, self._stored.relay_rpc_urls).rpc_port
         key = PolkadotRpcWrapper(rpc_port).get_session_key()
         if key:
             event.set_results(results={'session-key': key})
@@ -161,7 +175,7 @@ class PolkadotCharm(ops.CharmBase):
         if not re.match(keypattern, key):
             event.fail("Illegal key pattern, did your key start with 0x ?")
         else:
-            rpc_port = ServiceArgs(self._stored.service_args).rpc_port
+            rpc_port = ServiceArgs(self._stored.service_args, self._stored.relay_rpc_urls).rpc_port
             has_session_key = PolkadotRpcWrapper(rpc_port).has_session_key(key)
             event.set_results(results={'has-key': has_session_key})
 
@@ -172,32 +186,74 @@ class PolkadotCharm(ops.CharmBase):
         if not re.match(keypattern, address):
             event.fail("Illegal key pattern, did your public key/address start with 0x ?")
         else:
-            rpc_port = ServiceArgs(self._stored.service_args).rpc_port
+            rpc_port = ServiceArgs(self._stored.service_args, self._stored.relay_rpc_urls).rpc_port
             PolkadotRpcWrapper(rpc_port).insert_key(mnemonic, address)
 
     def _on_restart_node_service_action(self, event: ops.ActionEvent) -> None:
         utils.restart_service()
         if not utils.service_started():
             event.fail("Could not restart service")
-        self.unit.status = ops.ActiveStatus("Node service restarted")
+        event.set_results(results={'message': 'Node service restarted'})
+        self.update_status()
 
     def _on_start_node_service_action(self, event: ops.ActionEvent) -> None:
         utils.start_service()
         if not utils.service_started():
             event.fail("Could not start service")
-        self.unit.status = ops.ActiveStatus("Node service started")
+        event.set_results(results={'message': 'Node service started'})
+        self.update_status()
 
     def _on_stop_node_service_action(self, event: ops.ActionEvent) -> None:
         utils.stop_service()
         if utils.service_started(iterations=1):
             event.fail("Could not stop service")
-        self.unit.status = ops.BlockedStatus("Node service stopped")
+        event.set_results(results={'message': 'Node service stopped'})
+        self.update_status()
 
     def _on_set_node_key_action(self, event: ops.ActionEvent) -> None:
         key = event.params['key']
         utils.stop_service()
         utils.write_node_key_file(key)
         utils.start_service()
+        self.update_status()
+
+    def _on_find_validator_address_action(self, event: ops.ActionEvent) -> None:
+        event.log("Checking sessions key through rpc...")
+        rpc_port = ServiceArgs(self._stored.service_args).rpc_port
+        result = PolkadotRpcWrapper(rpc_port).find_validator_address()
+        if result:
+            event.set_results(results={'validator': result["validator"]})
+            event.set_results(results={'session-key': result["session_key"]})
+        else:
+            event.set_results(results={'message': 'This node is not currently validating for any address.'})
+
+    def _on_is_validating_this_era_action(self, event: ops.ActionEvent) -> None:
+        validator_address = self.config.get("validator-address")
+        if not validator_address:
+            event.fail("Set validator-address config parameter to use this action!")
+            return
+        event.log("Checking sessions key through rpc...")
+        rpc_port = ServiceArgs(self._stored.service_args).rpc_port
+        session_key = PolkadotRpcWrapper(rpc_port).is_validating_this_era(validator_address)
+        if session_key:
+            event.set_results(results={'message': f'This node is currently validating for address {validator_address}.'})
+            event.set_results(results={'session_key': session_key})
+        else:
+            event.set_results(results={'message': f'This node is not currently validating for address {validator_address}.'})
+
+    def _on_is_validating_next_era_action(self, event: ops.ActionEvent) -> None:
+        validator_address = self.config.get("validator-address")
+        if not validator_address:
+            event.fail("Set validator-address config parameter to use this action!")
+            return
+        event.log("Checking sessions key through rpc...")
+        rpc_port = ServiceArgs(self._stored.service_args).rpc_port
+        session_key = PolkadotRpcWrapper(rpc_port).is_validating_next_era(validator_address)
+        if session_key:
+            event.set_results(results={'message': f'This node will be validating next era for address {validator_address}.'})
+            event.set_results(results={'session_key': session_key})
+        else:
+            event.set_results(results={'message': f'This node will not be validating next era for address {validator_address}.'})
 
     # TODO: this action is getting quite large and specialized, perhaps move all actions to an `actions.py` file?
     def _on_get_node_info_action(self, event: ops.ActionEvent) -> None:
@@ -230,7 +286,7 @@ class PolkadotCharm(ops.CharmBase):
             event.set_results(results={'node-relay': utils.get_relay_for_parachain()})
         # On-chain info
         try:
-            rpc_port = ServiceArgs(self._stored.service_args).rpc_port
+            rpc_port = ServiceArgs(self._stored.service_args, self._stored.relay_rpc_urls).rpc_port
             block_height = PolkadotRpcWrapper(rpc_port).get_block_height()
             if block_height:
                 event.set_results(results={'chain-block-height': block_height})
