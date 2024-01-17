@@ -27,3 +27,7 @@ provides:
     interface: cos_agent
   rpc-url:
     interface: rpc-url
+
+requires:
+  relay-rpc-url:
+    interface: rpc-url
