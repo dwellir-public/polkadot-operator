@@ -6,6 +6,10 @@ from service_args import ServiceArgs
 from ops.framework import Object
 from ops.charm import RelationChangedEvent, RelationDepartedEvent
 import utils
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 class RpcUrlRequirer(Object):
     """RPC url requirer interface."""
@@ -32,8 +36,10 @@ class RpcUrlRequirer(Object):
         try:
             ws_url = event.relation.data[event.unit]["ws_url"]
         except KeyError:
+            logger.warning(f'Did not receive websocket URL from {event.unit} to use as a RPC endpoint.')
             event.defer()
             return
+        logger.info(f'Received websocket URL {ws_url} from {event.unit} to use as a RPC endpoint.')
         # Storing the unitname+relation_id is a workaround because the relation data is already removed before the departed hook is called.
         # This is to know which url to remove. Issue for the bug: https://github.com/canonical/operator/issues/1109
         dict_key = event.unit.name + ':' + str(event.relation.id)
