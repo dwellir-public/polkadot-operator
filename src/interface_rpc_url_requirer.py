@@ -44,13 +44,13 @@ class RpcUrlRequirer(Object):
         # This is to know which url to remove. Issue for the bug: https://github.com/canonical/operator/issues/1109
         dict_key = event.unit.name + ':' + str(event.relation.id)
         self._charm._stored.relay_rpc_urls[dict_key] = ws_url
-        service_args_obj = ServiceArgs(self._charm.config.get('service-args'), self._charm._stored.relay_rpc_urls)
+        service_args_obj = ServiceArgs(self._charm.config.get('service-args'), self._charm._stored.relay_rpc_urls, self._charm.config.get('parachain-spec-url'))
         utils.update_service_args(service_args_obj.service_args_string)
         self._charm.update_status()
 
     def _on_relation_departed(self, event: RelationDepartedEvent) -> None:
         dict_key = event.unit.name + ':' + str(event.relation.id)
         self._charm._stored.relay_rpc_urls.pop(dict_key)
-        service_args_obj = ServiceArgs(self._charm.config.get('service-args'), self._charm._stored.relay_rpc_urls)
+        service_args_obj = ServiceArgs(self._charm.config.get('service-args'), self._charm._stored.relay_rpc_urls, self._charm.config.get('parachain-spec-url'))
         utils.update_service_args(service_args_obj.service_args_string)
         self._charm.update_status()

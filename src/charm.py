@@ -73,11 +73,12 @@ class PolkadotCharm(ops.CharmBase):
         self._stored.set_default(binary_url=self.config.get('binary-url'),
                                  docker_tag=self.config.get('docker-tag'),
                                  service_args=self.config.get('service-args'),
+                                 chain_spec_url=self.config.get('parachain-spec-url'),
                                  relay_rpc_urls=dict())
 
     def _on_install(self, event: ops.InstallEvent) -> None:
         self.unit.status = ops.MaintenanceStatus("Begin installing charm")
-        service_args_obj = ServiceArgs(self.config.get('service-args'), self._stored.relay_rpc_urls)
+        service_args_obj = ServiceArgs(self.config.get('service-args'), self._stored.relay_rpc_urls, self.config.get('parachain-spec-url'))
         # Setup polkadot group and user, disable login
         utils.setup_group_and_user()
         # Create environment file for polkadot service arguments
@@ -96,7 +97,7 @@ class PolkadotCharm(ops.CharmBase):
 
     def _on_config_changed(self, event: ops.ConfigChangedEvent) -> None:
         try:
-            service_args_obj = ServiceArgs(self.config.get('service-args'), self._stored.relay_rpc_urls)
+            service_args_obj = ServiceArgs(self.config.get('service-args'), self._stored.relay_rpc_urls, self.config.get('parachain-spec-url'))
         except ValueError as e:
             self.unit.status = ops.BlockedStatus(str(e))
             event.defer()
@@ -119,6 +120,11 @@ class PolkadotCharm(ops.CharmBase):
             self.unit.status = ops.MaintenanceStatus("Updating service args")
             utils.update_service_args(service_args_obj.service_args_string)
             self._stored.service_args = self.config.get('service-args')
+        
+        if self._stored.chain_spec_url != self.config.get('parachain-spec-url'):
+            self.unit.status = ops.MaintenanceStatus("Updating chain spec")
+            utils.update_service_args(service_args_obj.service_args_string)
+            self._stored.chain_spec_url = self.config.get('parachain-spec-url')
 
         self.update_status(connection_attempts=2)
 
@@ -127,7 +133,7 @@ class PolkadotCharm(ops.CharmBase):
 
     def update_status(self, connection_attempts: int = 4) -> None:
         if utils.service_started():
-            rpc_port = ServiceArgs(self._stored.service_args, self._stored.relay_rpc_urls).rpc_port
+            rpc_port = ServiceArgs(self._stored.service_args, self._stored.relay_rpc_urls, self.config.get('parachain-spec-url')).rpc_port
             for i in range(connection_attempts):
                 time.sleep(5)
                 try:
@@ -162,7 +168,7 @@ class PolkadotCharm(ops.CharmBase):
 
     def _on_get_session_key_action(self, event: ops.ActionEvent) -> None:
         event.log("Getting new session key through rpc...")
-        rpc_port = ServiceArgs(self._stored.service_args, self._stored.relay_rpc_urls).rpc_port
+        rpc_port = ServiceArgs(self._stored.service_args, self._stored.relay_rpc_urls, self.config.get('parachain-spec-url')).rpc_port
         key = PolkadotRpcWrapper(rpc_port).get_session_key()
         if key:
             event.set_results(results={'session-key': key})
@@ -175,7 +181,7 @@ class PolkadotCharm(ops.CharmBase):
         if not re.match(keypattern, key):
             event.fail("Illegal key pattern, did your key start with 0x ?")
         else:
-            rpc_port = ServiceArgs(self._stored.service_args, self._stored.relay_rpc_urls).rpc_port
+            rpc_port = ServiceArgs(self._stored.service_args, self._stored.relay_rpc_urls, self.config.get('parachain-spec-url')).rpc_port
             has_session_key = PolkadotRpcWrapper(rpc_port).has_session_key(key)
             event.set_results(results={'has-key': has_session_key})
 
@@ -186,7 +192,7 @@ class PolkadotCharm(ops.CharmBase):
         if not re.match(keypattern, address):
             event.fail("Illegal key pattern, did your public key/address start with 0x ?")
         else:
-            rpc_port = ServiceArgs(self._stored.service_args, self._stored.relay_rpc_urls).rpc_port
+            rpc_port = ServiceArgs(self._stored.service_args, self._stored.relay_rpc_urls, self.config.get('parachain-spec-url')).rpc_port
             PolkadotRpcWrapper(rpc_port).insert_key(mnemonic, address)
 
     def _on_restart_node_service_action(self, event: ops.ActionEvent) -> None:
@@ -286,7 +292,7 @@ class PolkadotCharm(ops.CharmBase):
             event.set_results(results={'node-relay': utils.get_relay_for_parachain()})
         # On-chain info
         try:
-            rpc_port = ServiceArgs(self._stored.service_args, self._stored.relay_rpc_urls).rpc_port
+            rpc_port = ServiceArgs(self._stored.service_args, self._stored.relay_rpc_urls, self.config.get('parachain-spec-url')).rpc_port
             block_height = PolkadotRpcWrapper(rpc_port).get_block_height()
             if block_height:
                 event.set_results(results={'chain-block-height': block_height})

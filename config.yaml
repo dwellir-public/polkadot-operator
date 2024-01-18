@@ -45,3 +45,8 @@ options:
     description: |
       If this is set, update-status will check if this node is currently validating for this address.
       HINT: if this config parameter is set, the actions is-validating-this-era and is-validating-next-era can be used.
+  parachain-spec-url:
+    type: string
+    default: ""
+    description: |
+      If this is set, the chain spec will be downloaded from this URL and used as the value for the --chain argument of the Polkadot binary.

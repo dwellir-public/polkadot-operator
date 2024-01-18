@@ -24,7 +24,7 @@ class RpcUrlProvider(Object):
     def _on_relation_joined(self, event: RelationJoinedEvent) -> None:
         """This event is used to send the ws or http rpc url to another client."""
 
-        service_args_obj = ServiceArgs(self._charm.config.get('service-args'), "")
+        service_args_obj = ServiceArgs(self._charm.config.get('service-args'), "", self._charm.config.get('parachain-spec-url'))
 
         ws_port = service_args_obj.ws_port
         rpc_port = service_args_obj.rpc_port
