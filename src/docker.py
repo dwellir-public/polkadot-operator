@@ -56,8 +56,7 @@ class Docker():
         elif self.chain_name == 'subsocial':
             self.__extract_from_docker('dappforce/subsocial-parachain', '/usr/local/bin/subsocial-collator')
         else:
-            self.__extract_from_docker('dappforce/subsocial-parachain', '/usr/local/bin/subsocial-collator')
-            # raise ValueError(f"{self.chain_name} is not a supported chain using Docker!") revert when done
+            raise ValueError(f"{self.chain_name} is not a supported chain using Docker!")
 
     def __extract_from_docker(self, docker_image: str, docker_binary_path: str, docker_specs_path: str = None) -> None:
         docker_image_and_tag = f'{docker_image}:{self.docker_tag}'
