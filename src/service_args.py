@@ -52,9 +52,9 @@ class ServiceArgs():
     def __check_service_args(self, service_args: str or list):
         msg = ""
         # Check for service arguments that must be set.
-        if "--chain" not in service_args:
-            msg = "'--chain' must be set in 'service-args'."
-        elif "--rpc-port" not in service_args:
+        # if "--chain" not in service_args:
+            # msg = "'--chain' must be set in 'service-args'."
+        if "--rpc-port" not in service_args: # change to elif when done testing
             msg = "'--rpc-port' must be set in 'service-args'."
 
         # Check for service arguments that must NOT be set.

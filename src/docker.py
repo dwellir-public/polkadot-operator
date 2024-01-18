@@ -53,8 +53,11 @@ class Docker():
             self.__extract_from_docker('polkadex/parachain', '/data/bin/parachain-polkadex-node', '/data/polkadot-parachain-raw.json')
         elif self.chain_name in ['crust-mainnet', 'crust-maxwell', 'crust-rocky']:
             self.__extract_from_docker('crustio/crust', '/opt/crust/crust')
+        elif self.chain_name == 'subsocial':
+            self.__extract_from_docker('dappforce/subsocial-parachain', '/usr/local/bin/subsocial-collator')
         else:
-            raise ValueError(f"{self.chain_name} is not a supported chain using Docker!")
+            self.__extract_from_docker('dappforce/subsocial-parachain', '/usr/local/bin/subsocial-collator')
+            # raise ValueError(f"{self.chain_name} is not a supported chain using Docker!") revert when done
 
     def __extract_from_docker(self, docker_image: str, docker_binary_path: str, docker_specs_path: str = None) -> None:
         docker_image_and_tag = f'{docker_image}:{self.docker_tag}'
