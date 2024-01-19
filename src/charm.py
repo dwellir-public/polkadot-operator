@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright 2021 dwellir
+# Copyright 2024 Dwellir AB
 # See LICENSE file for licensing details.
 
 """Charm the service.
