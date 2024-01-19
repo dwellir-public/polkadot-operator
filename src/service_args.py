@@ -235,10 +235,10 @@ class ServiceArgs():
         self.__set_chain_name(Path(utils.HOME_PATH, 'specs/clover-para-raw.json'), 0)
 
     def __polkadex(self):
-        self.__set_chain_name(Path(utils.HOME_PATH, 'polkadot-parachain-raw.json'), 0)
+        self.__replace_chain_name(Path(utils.HOME_PATH, 'polkadot-parachain-raw.json'), 0)
 
     def __polkadex_mainnet(self):
-        self.__set_chain_name(Path(utils.HOME_PATH, 'customSpecRaw.json'), 0)
+        self.__replace_chain_name(Path(utils.HOME_PATH, 'customSpecRaw.json'), 0)
 
     def __unique(self):
         if self.chain_name == 'unique':
@@ -275,7 +275,6 @@ class ServiceArgs():
         chain_json_path = f'{utils.CHAIN_SPEC_PATH}/{self.chain_name}.json'
         utils.download_chain_spec(chain_json_url, f'{self.chain_name}.json')
         self.__set_chain_name(chain_json_path, 0)
-
     def __liberland(self):
         chain_json_url = 'https://raw.githubusercontent.com/liberland/liberland_substrate/main/substrate/specs/mainnet.json'
         chain_json_path = f'{utils.CHAIN_SPEC_PATH}/{self.chain_name}.json'
