@@ -1,8 +1,7 @@
 import subprocess as sp
 from tarfile import open as open_tarfile
-from pathlib import Path
+
 import utils
-import os
 
 
 class Tarball:
@@ -13,7 +12,7 @@ class Tarball:
     def extract_resources_from_tarball(self):
         tarball = open_tarfile(self.tarball_path, mode='r')
 
-        if self.chain_name == 'goldberg': # Avail
+        if self.chain_name == 'goldberg':  # Avail
             if 'data-avail' in tarball.getnames():
                 member = tarball.getmember('data-avail')
                 if member.isfile():
@@ -22,9 +21,8 @@ class Tarball:
                     sp.run(['rm', self.tarball_path])
                     sp.run(['chown', f'{utils.USER}:{utils.USER}', utils.BINARY_PATH])
                 else:
-                    raise ValueError(f"Expected client binary 'data-avail' in tarball is not a file.")
+                    raise ValueError("Expected client binary 'data-avail' in tarball is not a file.")
             else:
-                raise ValueError(f"Expected client binary 'data-avail' not found in tarball!")
+                raise ValueError("Expected client binary 'data-avail' not found in tarball!")
         else:
             raise ValueError(f'Could not extract tarball since {self.chain_name} lacks a tarball handler!')
-        
