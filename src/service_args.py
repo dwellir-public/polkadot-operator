@@ -82,9 +82,12 @@ class ServiceArgs():
 
     def __set_chain_name(self, value: str, position: int):
         try:
+            # Try to change the value of '--chain' if it already exists in the service args.
+            # Position 0 would be the first occurrence, 1 the second.
             chain_key_index = [i for i, n in enumerate(self.service_args_list_customized) if n == '--chain'][position]
             self.service_args_list_customized[chain_key_index + 1] = value
         except IndexError:
+            # If '--chain' does not exist for the given position, add it.
             if position == 0:
                 self.__add_firstchain_args(['--chain', value])
             elif position == 1:
