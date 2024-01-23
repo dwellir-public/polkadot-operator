@@ -55,9 +55,9 @@ options:
     type: string
     default: ""
     description: |
-    If set the file found in the url will be used as value for the --chain argument RIGHT of the -- separator.
-    This means it will affect the local relaychain if running a parachain node.
-    Note that the config is ignored when:
-    * Running a relaychain
-    * Running a a livechain
-    * The --relay-chain-rpc-urls argument is set on a parachain node e.g. by the relay-rpc-url relation
+      If set the file found in the url will be used as value for the --chain argument RIGHT of the -- separator.
+      This means it will affect the local relaychain if running a parachain node.
+      Note that the config is ignored when:
+      * Running a relaychain
+      * Running a a livechain
+      * The --relay-chain-rpc-urls argument is set on a parachain node e.g. by the relay-rpc-url relation
