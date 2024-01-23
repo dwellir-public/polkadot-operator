@@ -122,6 +122,8 @@ class ServiceArgs():
             self.__clover()
         elif self.chain_name == 'polkadex':
             self.__polkadex()
+        elif self.chain_name == 'polkadex-mainnet':
+            self.__polkadex_mainnet()
         elif self.chain_name in ['unique', 'quartz']:
             self.__unique()
         elif self.chain_name in ['crust-mainnet', 'crust-maxwell', 'crust-rocky']:
@@ -214,6 +216,9 @@ class ServiceArgs():
     def __polkadex(self):
         self.__replace_chain_name(Path(utils.HOME_PATH, 'polkadot-parachain-raw.json'), 0)
 
+    def __polkadex_mainnet(self):
+        self.__replace_chain_name(Path(utils.HOME_PATH, 'customSpecRaw.json'), 0)
+
     def __unique(self):
         if self.chain_name == 'unique':
             chain_json_url = 'https://raw.githubusercontent.com/UniqueNetwork/unique-chain/master/chain-specs/unique.json'
@@ -249,4 +254,3 @@ class ServiceArgs():
         chain_json_path = f'{utils.CHAIN_SPEC_PATH}/{self.chain_name}.json'
         utils.download_chain_spec(chain_json_url, f'{self.chain_name}.json')
         self.__replace_chain_name(chain_json_path, 0)
-
