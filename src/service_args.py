@@ -4,14 +4,15 @@ import utils
 from pathlib import Path
 from os.path import exists
 import re
+from ops.model import ConfigData
 
 
 class ServiceArgs():
 
-    def __init__(self, service_args: str, relay_rpc_urls: dict, chain_spec_url: str = None):
-        service_args = self.__encode_for_emoji(service_args)
+    def __init__(self, config: ConfigData, relay_rpc_urls: dict):
+        service_args = self.__encode_for_emoji(config.get('service-args'))
         self._relay_rpc_urls = relay_rpc_urls
-        self._chain_spec_url = chain_spec_url
+        self._chain_spec_url = config.get('parachain-spec-url')
         self.__check_service_args(service_args)
         self.service_args_list = self.__service_args_to_list(service_args)
         self.__check_service_args(self.service_args_list)
