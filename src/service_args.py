@@ -12,7 +12,8 @@ class ServiceArgs():
     def __init__(self, config: ConfigData, relay_rpc_urls: dict):
         service_args = self.__encode_for_emoji(config.get('service-args'))
         self._relay_rpc_urls = relay_rpc_urls
-        self._chain_spec_url = config.get('parachain-spec-url')
+        self._chain_spec_url = config.get('chain-spec-url')
+        self._relaychain_spec_url = config.get('relaychain-spec-url')
         self.__check_service_args(service_args)
         self.service_args_list = self.__service_args_to_list(service_args)
         self.__check_service_args(self.service_args_list)
@@ -96,8 +97,11 @@ class ServiceArgs():
         if self._relay_rpc_urls:
             self.__add_firstchain_args(['--relay-chain-rpc-urls'] + list(self._relay_rpc_urls.values()))
         if self._chain_spec_url:
-            utils.download_chain_spec(self._chain_spec_url, f'{self.chain_name}.json')
-            self.__replace_chain_name(f'{utils.CHAIN_SPEC_PATH}/{self.chain_name}.json', 0)
+            utils.download_chain_spec(self._chain_spec_url, 'chain-spec.json')
+            self.__replace_chain_name(f'{utils.CHAIN_SPEC_PATH}/chain-spec.json.json', 0)
+        if self._relaychain_spec_url:
+            utils.download_chain_spec(self._relaychain_spec_url, 'relaychain-spec.json')
+            self.__replace_chain_name(f'{utils.CHAIN_SPEC_PATH}/relaychain-spec.json', 1)
 
         if self.chain_name == 'peregrine':
             self.__peregrine()

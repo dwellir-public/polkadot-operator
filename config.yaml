@@ -45,8 +45,19 @@ options:
     description: |
       If this is set, update-status will check if this node is currently validating for this address.
       HINT: if this config parameter is set, the actions is-validating-this-era and is-validating-next-era can be used.
-  parachain-spec-url:
+  chain-spec-url:
     type: string
     default: ""
     description: |
-      If this is set, the chain spec will be downloaded from this URL and used as the value for the --chain argument of the Polkadot binary.
+      If set the file found in the url will be used as value for the --chain argument LEFT of the -- separator.
+      This means it will affect the parachain if running a parachain node or the relaychain or livechain if running one of those.
+  relaychain-spec-url:
+    type: string
+    default: ""
+    description: |
+    If set the file found in the url will be used as value for the --chain argument RIGHT of the -- separator.
+    This means it will affect the local relaychain if running a parachain node.
+    Note that the config is ignored when:
+    * Running a relaychain
+    * Running a a livechain
+    * The --relay-chain-rpc-urls argument is set on a parachain node e.g. by the relay-rpc-url relation
