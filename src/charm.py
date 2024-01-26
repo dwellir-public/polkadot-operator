@@ -74,7 +74,7 @@ class PolkadotCharm(ops.CharmBase):
                                  docker_tag=self.config.get('docker-tag'),
                                  service_args=self.config.get('service-args'),
                                  chain_spec_url=self.config.get('chain-spec-url'),
-                                 relaychain_spec_url=self.config.get('relaychain-spec-url'),
+                                 local_relaychain_spec_url=self.config.get('local-relaychain-spec-url'),
                                  relay_rpc_urls=dict())
 
     def _on_install(self, event: ops.InstallEvent) -> None:
@@ -127,10 +127,10 @@ class PolkadotCharm(ops.CharmBase):
             utils.update_service_args(service_args_obj.service_args_string)
             self._stored.chain_spec_url = self.config.get('chain-spec-url')
         
-        if self._stored.relaychain_spec_url != self.config.get('relaychain-spec-url'):
+        if self._stored.local_relaychain_spec_url != self.config.get('local-relaychain-spec-url'):
             self.unit.status = ops.MaintenanceStatus("Updating relaychain spec")
             utils.update_service_args(service_args_obj.service_args_string)
-            self._stored.relaychain_spec_url = self.config.get('relaychain-spec-url')
+            self._stored.local_relaychain_spec_url = self.config.get('local-relaychain-spec-url')
 
         self.update_status(connection_attempts=2)
 
