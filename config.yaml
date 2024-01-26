@@ -1,4 +1,4 @@
-# Copyright 2021 dwellir
+# Copyright 2024 Dwellir AB
 # See LICENSE file for licensing details.
 #
 options:
@@ -6,7 +6,7 @@ options:
     type: string
     default: ""
     description: |
-      Path to download one or multiple binaries or a single .deb file.
+      Path to download one or multiple binaries or a single .deb or .tar.gz file.
 
       Example 1: https://github.com/paritytech/polkadot-sdk/releases/download/polkadot-v1.1.0/polkadot-parachain
 
@@ -14,7 +14,9 @@ options:
 
       Example 3: https://github.com/ComposableFi/composable/releases/download/release-v9.10035.5/composable-node_8.10035.5-1_amd64.deb
 
-      Different installation methods will be used depending on if a .deb file is used or not.
+      Example 4: https://github.com/availproject/avail/releases/download/v1.9.0.0/x86_64-ubuntu-2204-data-avail.tar.gz
+
+      Different installation methods will be used depending on if a .deb or .tar.gz file is used or not.
 
       Note: multiple binary install is currently only supported for Polkadot relay chains, parachain support is not confirmed.
   binary-sha256-url:
@@ -45,3 +47,16 @@ options:
     description: |
       If this is set, update-status will check if this node is currently validating for this address.
       HINT: if this config parameter is set, the actions is-validating-this-era and is-validating-next-era can be used.
+  chain-spec-url:
+    type: string
+    default: ""
+    description: |
+      If set the file found in the url will be used as value for the --chain argument LEFT of the -- separator.
+      This means it will affect the parachain if running a parachain node or the relaychain or livechain if running one of those.
+  local-relaychain-spec-url:
+    type: string
+    default: ""
+    description: |
+      If set the file found in the url will be used as value for the --chain argument RIGHT of the -- separator.
+      This means it will affect the local relaychain if running a parachain node.
+      NOTE: Do not use this when running a relaychain or livechain node.

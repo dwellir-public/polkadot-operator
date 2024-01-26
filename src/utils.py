@@ -14,6 +14,7 @@ from docker import Docker
 
 from ops.model import ConfigData
 
+from tarball import Tarball
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +43,8 @@ def install_binary(config: ConfigData, chain_name: str) -> None:
     if config.get('binary-url'):
         if config.get('binary-url').endswith('.deb'):
             install_deb_from_url(config.get('binary-url'))
+        elif config.get('binary-url').endswith('.tar.gz') or config.get('binary-url').endswith('.tgz'):
+            install_tarball_from_url(config.get('binary-url'), config.get('binary-sha256-url'), chain_name)
         elif len(config.get('binary-url').split()) > 1:
             install_binaries_from_urls(config.get('binary-url'), config.get('binary-sha256-url'))
         else:
@@ -79,6 +82,20 @@ def install_deb_from_url(url: str) -> None:
     start_service()
     os.remove(deb_path)
 
+def install_tarball_from_url(url, sha256_url, chain_name):
+    tarball_response = requests.get(url, allow_redirects=True, timeout=None)
+    tarball_path = Path(HOME_PATH, url.split('/')[-1])
+    if tarball_response.status_code != 200:
+        raise ValueError(f"Download binary failed with: {tarball_response.text}. Check 'binary-url'!")
+
+    # TODO: Add sha256 checksum verification here in case some future chain provides them    
+    with open(tarball_path, 'wb') as f:
+        f.write(tarball_response.content)
+
+    stop_service()
+    tarball = Tarball(tarball_path, chain_name)
+    tarball.extract_resources_from_tarball()
+    start_service()
 
 def parse_install_urls(binary_urls: str, sha256_urls: str) -> list:
     binary_url_list = binary_urls.split()
