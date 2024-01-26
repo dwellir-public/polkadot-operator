@@ -1,5 +1,5 @@
 #!/bin/sh -e
-# Copyright 2021 dwellir
+# Copyright 2024 Dwellir AB
 # See LICENSE file for licensing details.
 
 if [ -z "$VIRTUAL_ENV" -a -d venv/ ]; then

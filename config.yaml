@@ -1,4 +1,4 @@
-# Copyright 2021 dwellir
+# Copyright 2024 Dwellir AB
 # See LICENSE file for licensing details.
 #
 options:
@@ -6,7 +6,7 @@ options:
     type: string
     default: ""
     description: |
-      Path to download one or multiple binaries or a single .deb file.
+      Path to download one or multiple binaries or a single .deb or .tar.gz file.
 
       Example 1: https://github.com/paritytech/polkadot-sdk/releases/download/polkadot-v1.1.0/polkadot-parachain
 
@@ -14,7 +14,9 @@ options:
 
       Example 3: https://github.com/ComposableFi/composable/releases/download/release-v9.10035.5/composable-node_8.10035.5-1_amd64.deb
 
-      Different installation methods will be used depending on if a .deb file is used or not.
+      Example 4: https://github.com/availproject/avail/releases/download/v1.9.0.0/x86_64-ubuntu-2204-data-avail.tar.gz
+
+      Different installation methods will be used depending on if a .deb or .tar.gz file is used or not.
 
       Note: multiple binary install is currently only supported for Polkadot relay chains, parachain support is not confirmed.
   binary-sha256-url:
