@@ -4,13 +4,16 @@ import utils
 from pathlib import Path
 from os.path import exists
 import re
+from ops.model import ConfigData
 
 
 class ServiceArgs():
 
-    def __init__(self, service_args: str, relay_rpc_urls: dict):
-        service_args = self.__encode_for_emoji(service_args)
+    def __init__(self, config: ConfigData, relay_rpc_urls: dict):
+        service_args = self.__encode_for_emoji(config.get('service-args'))
         self._relay_rpc_urls = relay_rpc_urls
+        self._chain_spec_url = config.get('chain-spec-url')
+        self._local_relaychain_spec_url = config.get('local-relaychain-spec-url')
         self.__check_service_args(service_args)
         self.service_args_list = self.__service_args_to_list(service_args)
         self.__check_service_args(self.service_args_list)
@@ -77,9 +80,18 @@ class ServiceArgs():
         text = text.encode('latin_1').decode("raw_unicode_escape").encode('utf-16', 'surrogatepass').decode('utf-16')
         return text
 
-    def __replace_chain_name(self, value: str, position: int):
-        chain_key_index = [i for i, n in enumerate(self.service_args_list_customized) if n == '--chain'][position]
-        self.service_args_list_customized[chain_key_index + 1] = value
+    def __set_chain_name(self, value: str, position: int):
+        try:
+            # Try to change the value of '--chain' if it already exists in the service args.
+            # Position 0 would be the first occurrence, 1 the second.
+            chain_key_index = [i for i, n in enumerate(self.service_args_list_customized) if n == '--chain'][position]
+            self.service_args_list_customized[chain_key_index + 1] = value
+        except IndexError:
+            # If '--chain' does not exist for the given position, add it.
+            if position == 0:
+                self.__add_firstchain_args(['--chain', value])
+            elif position == 1:
+                self.__add_secondchain_args(['--chain', value])
 
     def __add_firstchain_args(self, args: list):
         """First part (to the left of --) in service args. Typically the parachain part for parachains."""
@@ -87,6 +99,8 @@ class ServiceArgs():
 
     def __add_secondchain_args(self, args: list):
         """Second part (to the right of --) in service args. Typically the relay chain for parachains."""
+        if '--' not in self.service_args_list_customized:
+            self.service_args_list_customized = self.service_args_list_customized + ['--']
         self.service_args_list_customized = self.service_args_list_customized + args
 
     def __customize_service_args(self):
@@ -94,6 +108,7 @@ class ServiceArgs():
         if self._relay_rpc_urls:
             self.__add_firstchain_args(['--relay-chain-rpc-urls'] + list(self._relay_rpc_urls.values()))
 
+        # All hardcoded --chain overrides in the functions below are deprecated and the values should be set in the new chain-spec configs instead.
         if self.chain_name == 'peregrine':
             self.__peregrine()
         elif self.chain_name == 'peregrine-stg-kilt':
@@ -128,26 +143,34 @@ class ServiceArgs():
             self.__origintrail()
         elif self.chain_name == 'asset-hub-rococo':
             self.__asset_hub_rococo()
+        
+        # The chain spec configs should be applied after hardcoded chain customizations above since this should override any hardcoded --chain overrides.
+        if self._chain_spec_url:
+            utils.download_chain_spec(self._chain_spec_url, 'chain-spec.json')
+            self.__set_chain_name(f'{utils.CHAIN_SPEC_PATH}/chain-spec.json', 0)
+        if self._local_relaychain_spec_url:
+            utils.download_chain_spec(self._local_relaychain_spec_url, 'relaychain-spec.json')
+            self.__set_chain_name(f'{utils.CHAIN_SPEC_PATH}/relaychain-spec.json', 1)
 
     def __peregrine(self):
-        self.__replace_chain_name(Path(utils.HOME_PATH, 'dev-specs/kilt-parachain/peregrine-kilt.json'), 0)
-        self.__replace_chain_name(Path(utils.HOME_PATH, 'dev-specs/kilt-parachain/peregrine-relay.json'), 1)
+        self.__set_chain_name(Path(utils.HOME_PATH, 'dev-specs/kilt-parachain/peregrine-kilt.json'), 0)
+        self.__set_chain_name(Path(utils.HOME_PATH, 'dev-specs/kilt-parachain/peregrine-relay.json'), 1)
 
     def __peregrine_stg_kilt(self):
-        self.__replace_chain_name(Path(utils.HOME_PATH, 'dev-specs/kilt-parachain/peregrine-stg-kilt.json'), 0)
-        self.__replace_chain_name(Path(utils.HOME_PATH, 'dev-specs/kilt-parachain/peregrine-stg-relay.json'), 1)
+        self.__set_chain_name(Path(utils.HOME_PATH, 'dev-specs/kilt-parachain/peregrine-stg-kilt.json'), 0)
+        self.__set_chain_name(Path(utils.HOME_PATH, 'dev-specs/kilt-parachain/peregrine-stg-relay.json'), 1)
 
     def __peregrine_stg_relay(self):
         utils.download_chain_spec(
             "https://raw.githubusercontent.com/KILTprotocol/kilt-node/1.7.5/dev-specs/kilt-parachain/peregrine-stg-relay.json", "peregrine-stg-relay.json")
-        self.__replace_chain_name(Path(utils.CHAIN_SPEC_PATH, 'peregrine-stg-relay.json'), 0)
+        self.__set_chain_name(Path(utils.CHAIN_SPEC_PATH, 'peregrine-stg-relay.json'), 0)
 
     def __turing(self):
         chain_json_url = 'https://raw.githubusercontent.com/OAK-Foundation/OAK-blockchain/master/node/res/turing.json'
         chain_json_path = f"{utils.CHAIN_SPEC_PATH}/turing.json"
         if not exists(chain_json_path):
             utils.download_chain_spec(chain_json_url, 'turing.json')
-        self.__replace_chain_name(chain_json_path, 0)
+        self.__set_chain_name(chain_json_path, 0)
 
     def __bajun(self):
         # TODO: The spec file did not exist on master branch yet. This URL point to a development branch that will probably not exist in the near future.
@@ -158,22 +181,22 @@ class ServiceArgs():
         if not exists(chain_json_path):
             utils.download_chain_spec(chain_json_url, 'bajun-raw.json')
 
-        self.__replace_chain_name(chain_json_path, 0)
+        self.__set_chain_name(chain_json_path, 0)
 
     def __joystream(self):
         chain_json_path = f"{utils.CHAIN_SPEC_PATH}/joystream.json"
         utils.download_chain_spec(
             'https://github.com/Joystream/joystream/releases/download/v11.3.0/joy-testnet-7-carthage.json', 'joystream.json')
-        self.__replace_chain_name(chain_json_path, 0)
+        self.__set_chain_name(chain_json_path, 0)
 
     def __equilibrium(self):
-        self.__replace_chain_name(Path(utils.HOME_PATH, 'chainspec.json'), 0)
+        self.__set_chain_name(Path(utils.HOME_PATH, 'chainspec.json'), 0)
 
     def __aleph_zero(self):
         if self.chain_name.endswith('testnet'):
-            self.__replace_chain_name('testnet', 0)
+            self.__set_chain_name('testnet', 0)
         elif self.chain_name.endswith('mainnet'):
-            self.__replace_chain_name('mainnet', 0)
+            self.__set_chain_name('mainnet', 0)
 
     def __pendulum(self):
         if self.chain_name == 'amplitude':
@@ -196,24 +219,24 @@ class ServiceArgs():
         if not exists(relay_json_path):
             utils.download_chain_spec(relay_json_url, relay_spec_file_name)
 
-        self.__replace_chain_name(chain_json_path, 0)
-        self.__replace_chain_name(relay_json_path, 1)
+        self.__set_chain_name(chain_json_path, 0)
+        self.__set_chain_name(relay_json_path, 1)
 
     def __tinkernet(self):
         chain_json_url = 'https://raw.githubusercontent.com/InvArch/InvArch-Node/main/res/tinker/tinker-raw.json'
         chain_json_path = f"{utils.CHAIN_SPEC_PATH}/tinker-raw.json"
 
         utils.download_chain_spec(chain_json_url, 'tinker-raw.json')
-        self.__replace_chain_name(chain_json_path, 0)
+        self.__set_chain_name(chain_json_path, 0)
 
     def __clover(self):
-        self.__replace_chain_name(Path(utils.HOME_PATH, 'specs/clover-para-raw.json'), 0)
+        self.__set_chain_name(Path(utils.HOME_PATH, 'specs/clover-para-raw.json'), 0)
 
     def __polkadex(self):
-        self.__replace_chain_name(Path(utils.HOME_PATH, 'polkadot-parachain-raw.json'), 0)
+        self.__set_chain_name(Path(utils.HOME_PATH, 'polkadot-parachain-raw.json'), 0)
 
     def __polkadex_mainnet(self):
-        self.__replace_chain_name(Path(utils.HOME_PATH, 'customSpecRaw.json'), 0)
+        self.__set_chain_name(Path(utils.HOME_PATH, 'customSpecRaw.json'), 0)
 
     def __unique(self):
         if self.chain_name == 'unique':
@@ -226,15 +249,15 @@ class ServiceArgs():
         chain_json_path = f'{utils.CHAIN_SPEC_PATH}/{self.chain_name}-raw.json'
 
         utils.download_chain_spec(chain_json_url, f'{self.chain_name}-raw.json')
-        self.__replace_chain_name(chain_json_path, 0)
+        self.__set_chain_name(chain_json_path, 0)
 
     def __crust(self):
         if self.chain_name == 'crust-mainnet':
-            self.__replace_chain_name('mainnet', 0)
+            self.__set_chain_name('mainnet', 0)
         elif self.chain_name == 'crust-maxwell':
-            self.__replace_chain_name('maxwell', 0)
+            self.__set_chain_name('maxwell', 0)
         elif self.chain_name == 'crust-rocky':
-            self.__replace_chain_name('rocky', 0)
+            self.__set_chain_name('rocky', 0)
 
     def __origintrail(self):
         if exists(utils.BINARY_PATH):
@@ -243,10 +266,10 @@ class ServiceArgs():
             chain_json_url = 'https://raw.githubusercontent.com/OriginTrail/origintrail-parachain/develop/res/origintrail-parachain-2043-raw.json'
         utils.download_chain_spec(chain_json_url, f'{self.chain_name}-raw.json')
         chain_json_path = f'{utils.CHAIN_SPEC_PATH}/{self.chain_name}-raw.json'
-        self.__replace_chain_name(chain_json_path, 0)
+        self.__set_chain_name(chain_json_path, 0)
 
     def __asset_hub_rococo(self):
         chain_json_url = 'https://raw.githubusercontent.com/paritytech/polkadot-sdk/master/cumulus/parachains/chain-specs/asset-hub-rococo.json'
         chain_json_path = f'{utils.CHAIN_SPEC_PATH}/{self.chain_name}.json'
         utils.download_chain_spec(chain_json_url, f'{self.chain_name}.json')
-        self.__replace_chain_name(chain_json_path, 0)
+        self.__set_chain_name(chain_json_path, 0)
