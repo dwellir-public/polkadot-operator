@@ -107,13 +107,8 @@ class ServiceArgs():
         self.__add_firstchain_args(['--node-key-file', utils.NODE_KEY_PATH])
         if self._relay_rpc_urls:
             self.__add_firstchain_args(['--relay-chain-rpc-urls'] + list(self._relay_rpc_urls.values()))
-        if self._chain_spec_url:
-            utils.download_chain_spec(self._chain_spec_url, 'chain-spec.json')
-            self.__set_chain_name(f'{utils.CHAIN_SPEC_PATH}/chain-spec.json', 0)
-        if self._local_relaychain_spec_url:
-            utils.download_chain_spec(self._local_relaychain_spec_url, 'relaychain-spec.json')
-            self.__set_chain_name(f'{utils.CHAIN_SPEC_PATH}/relaychain-spec.json', 1)
 
+        # All hardcoded --chain overrides in the functions below are deprecated and the values should be set in the new chain-spec configs instead.
         if self.chain_name == 'peregrine':
             self.__peregrine()
         elif self.chain_name == 'peregrine-stg-kilt':
@@ -148,6 +143,14 @@ class ServiceArgs():
             self.__origintrail()
         elif self.chain_name == 'asset-hub-rococo':
             self.__asset_hub_rococo()
+        
+        # The chain spec configs should be applied after hardcoded chain customizations above since this should override any hardcoded --chain overrides.
+        if self._chain_spec_url:
+            utils.download_chain_spec(self._chain_spec_url, 'chain-spec.json')
+            self.__set_chain_name(f'{utils.CHAIN_SPEC_PATH}/chain-spec.json', 0)
+        if self._local_relaychain_spec_url:
+            utils.download_chain_spec(self._local_relaychain_spec_url, 'relaychain-spec.json')
+            self.__set_chain_name(f'{utils.CHAIN_SPEC_PATH}/relaychain-spec.json', 1)
 
     def __peregrine(self):
         self.__set_chain_name(Path(utils.HOME_PATH, 'dev-specs/kilt-parachain/peregrine-kilt.json'), 0)
