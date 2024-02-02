@@ -147,9 +147,13 @@ class PolkadotCharm(ops.CharmBase):
                     status_message = f'Syncing: {is_syncing}'
                     address = self.config.get('validator-address')
                     if address:
-                        if PolkadotRpcWrapper(rpc_port).is_validating_this_era(address):
+                        session_key_this_era, error_this_era = PolkadotRpcWrapper(rpc_port).is_validating_this_era(address)
+                        session_key_next_era, _ = PolkadotRpcWrapper(rpc_port).is_validating_next_era(address)
+                        if error_this_era:
+                            status_message += f", Validating: Error: {error_this_era}"
+                        elif session_key_this_era:
                             status_message += ", Validating: Yes"
-                        elif PolkadotRpcWrapper(rpc_port).is_validating_next_era(address):
+                        elif session_key_next_era:
                             status_message += ", Validating: Next Era"
                         else:
                             status_message += ", Validating: No"
@@ -188,7 +192,10 @@ class PolkadotCharm(ops.CharmBase):
             event.fail("Illegal key pattern, did your key start with 0x ?")
         else:
             rpc_port = ServiceArgs(self.config, self._stored.relay_rpc_urls).rpc_port
-            has_session_key = PolkadotRpcWrapper(rpc_port).has_session_key(key)
+            has_session_key, error = PolkadotRpcWrapper(rpc_port).has_session_key(key)
+            if error:
+                event.fail(error)
+                return
             event.set_results(results={'has-key': has_session_key})
 
     def _on_insert_key_action(self, event: ops.ActionEvent) -> None:
@@ -232,7 +239,10 @@ class PolkadotCharm(ops.CharmBase):
     def _on_find_validator_address_action(self, event: ops.ActionEvent) -> None:
         event.log("Checking sessions key through rpc...")
         rpc_port = ServiceArgs(self.config, self._stored.relay_rpc_urls).rpc_port
-        result = PolkadotRpcWrapper(rpc_port).find_validator_address()
+        result, error = PolkadotRpcWrapper(rpc_port).find_validator_address()
+        if error:
+            event.fail(error)
+            return
         if result:
             event.set_results(results={'validator': result["validator"]})
             event.set_results(results={'session-key': result["session_key"]})
@@ -246,7 +256,10 @@ class PolkadotCharm(ops.CharmBase):
             return
         event.log("Checking sessions key through rpc...")
         rpc_port = ServiceArgs(self.config, self._stored.relay_rpc_urls).rpc_port
-        session_key = PolkadotRpcWrapper(rpc_port).is_validating_this_era(validator_address)
+        session_key, error = PolkadotRpcWrapper(rpc_port).is_validating_this_era(validator_address)
+        if error:
+            event.fail(error)
+            return
         if session_key:
             event.set_results(results={'message': f'This node is currently validating for address {validator_address}.'})
             event.set_results(results={'session_key': session_key})
@@ -260,7 +273,10 @@ class PolkadotCharm(ops.CharmBase):
             return
         event.log("Checking sessions key through rpc...")
         rpc_port = ServiceArgs(self.config, self._stored.relay_rpc_urls).rpc_port
-        session_key = PolkadotRpcWrapper(rpc_port).is_validating_next_era(validator_address)
+        session_key, error = PolkadotRpcWrapper(rpc_port).is_validating_next_era(validator_address)
+        if error:
+            event.fail(error)
+            return
         if session_key:
             event.set_results(results={'message': f'This node will be validating next era for address {validator_address}.'})
             event.set_results(results={'session_key': session_key})

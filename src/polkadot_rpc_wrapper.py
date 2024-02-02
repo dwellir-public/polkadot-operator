@@ -73,17 +73,19 @@ class PolkadotRpcWrapper():
         peer_list = response_json['result']
         return peer_list, True
 
-    def has_session_key(self, session_key):
+    def has_session_key(self, session_key) -> Tuple[bool, str]:
         """
         Checks if this node has the supplied session_key (E.g. 0xb75f94a5eec... )
         :param session_key: string
-        :return: boolean
+        :return: Tuple[bool, str]
         """
         data = '{"id": 1, "jsonrpc":"2.0", "method": "author_hasSessionKeys", "params":["' + session_key + '"]}'
         response = requests.post(url=self.__server_address, headers=self.__headers, data=data)
         response_json = json.loads(response.text)
+        if 'error' in response_json.keys():
+            return False, response_json['error']['message']
         result = response_json['result']
-        return result
+        return result, ""
 
     def insert_key(self, mnemonic, address):
         """
@@ -99,7 +101,7 @@ class PolkadotRpcWrapper():
         """
         Check if this node is currently producing block for a validator/collator.
         It does so by checking if any session key currently on-chain is present on this node.
-        :return: the validator/collator address or False.
+        :return: tuple with [validator/collator address or False, error string if rpc called failed]
         """
         substrate = SubstrateInterface(url=self.__server_address)
         result = substrate.query("Session", "QueuedKeys").value_serialized
@@ -109,16 +111,19 @@ class PolkadotRpcWrapper():
             for k in keys.values():
                 # Some chains uses multiple keys. Before checking if it exist on the node they need to be concatenated removing preceding '0x'.
                 session_key += k[2:]
-            if self.has_session_key(session_key):
-                return {"validator": validator[0], "session_key": session_key}
-        return False
+            has_session_key, error = self.has_session_key(session_key)
+            if error:
+                return False, error
+            if has_session_key:
+                return {"validator": validator[0], "session_key": session_key}, ""
+        return False, ""
 
     def is_validating_next_era(self, address):
         """
         Check if this node has the intetion to validate for validator/collator 'address' next era.
         It checks on-chain which session key is set to be used for validating next era for 'address'.
         And if that session key exist on this node.
-        :return: the session key if found on this node, else False.
+        :return: tuple with [the session key if found on this node, else False, error if rpc called failed]
         """
         substrate = SubstrateInterface(url=self.__server_address)
         result = substrate.query("Session", "NextKeys", [address]).value_serialized
@@ -126,16 +131,19 @@ class PolkadotRpcWrapper():
             session_key = '0x'
             for k in result.values():
                 session_key += k[2:]
-            if self.has_session_key(session_key):
-                return session_key
-        return False
+            has_session_key, error = self.has_session_key(session_key)
+            if error:
+                return False, error
+            if has_session_key:
+                return session_key, ""
+        return False, ""
 
     def is_validating_this_era(self, address):
         """
         Check if this node is currently producing block for a validator/collator 'address.
         It checks on-chain which session key is set to be used for validating this era for 'address'.
         And if that session key exist on this node.
-        :return: the session key if validating, else False.
+        :return: tuple with [the session key if validating, else False, error if rpc called failed]
         """
         substrate = SubstrateInterface(url=self.__server_address)
         result = substrate.query("Session", "QueuedKeys").value_serialized
@@ -146,6 +154,9 @@ class PolkadotRpcWrapper():
                 for k in keys.values():
                     # Some chains uses multiple keys. Before checking if it exist on the node they need to be concatenated removing preceding '0x'.
                     session_key += k[2:]
-                if self.has_session_key(session_key):
-                    return session_key
-        return False
+                has_session_key, error = self.has_session_key(session_key)
+                if error:
+                    return False, error
+                if has_session_key:
+                    return session_key, ""
+        return False, ""
