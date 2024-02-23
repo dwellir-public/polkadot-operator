@@ -36,6 +36,11 @@ class ServiceArgs():
             return ''
 
     @property
+    def is_validator(self) -> bool:
+        """Check if the node is running as a validator or collator."""
+        return '--validator' in self.service_args_list or '--collator' in self.service_args_list
+
+    @property
     def rpc_port(self) -> str:
         """Get the value of '--rpc-port' current set in the service-args config parameter."""
         try:

@@ -48,20 +48,20 @@ find-validator-address:
     Checks if this node is currently validating for any validator address found on-chain.
     It does so by checking if any session key on-chain is present on this node.
     Returns the validator address and the session key if this node is validating.
-
-is-validating-this-era:
-  description: |
-    Checks if this node is currently validating for the validator address set in config.
-    It does so by checking if the session key used for that validator is present on this node.
-    Returns a message whether this node is validating or not. If it is validating, the session key is returned as well.
-    REQUIRES validator-address config parameter to be set.
+    This action does the same as the `update-status` hook does for a validator/collator.
+    However, the `update-status` only shows if the node is validating or not, while this action also gives the validator address and the session key used.
 
 is-validating-next-era:
   description: |
-    Checks if this node will be validating next era for the validator address set in config.
+    Checks if this node will be validating next era for the validator address passed as parameter.
     It does so by checking if the session key that will be used for that validator is present on this node.
     Returns a message whether this node will be validating next era or not. If it will, the session key is returned as well.
-    REQUIRES validator-address config parameter to be set.
+  params:
+    address:
+      description: |
+        The public address to check. E.g. DuLr6CeLXezrfumF6EkqLeAx9paMcADYU6zHpSZVB8gvjht
+      type: string
+  required: [ address ]
 
 get-node-info:
   description: |
