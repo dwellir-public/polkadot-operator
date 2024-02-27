@@ -57,6 +57,8 @@ class Docker():
             self.__extract_from_docker('crustio/crust', '/opt/crust/crust')
         elif self.chain_name == 'subsocial':
             self.__extract_from_docker('dappforce/subsocial-parachain', '/usr/local/bin/subsocial-collator')
+        elif self.chain_name == 'robonomics':
+            self.__extract_from_docker('robonomics/robonomics', 'usr/local/bin/robonomics')
         else:
             raise ValueError(f"{self.chain_name} is not a supported chain using Docker!")
 
