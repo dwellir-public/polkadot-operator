@@ -182,13 +182,32 @@ def get_sha256_response(sha256_url: str) -> requests.Response:
 
 
 def download_chain_spec(url, filename):
-    # Download file
-    file_response = requests.get(url, timeout=None)
     if not c.CHAIN_SPEC_PATH.exists():
         c.CHAIN_SPEC_PATH.mkdir(parents=True)
-    with open(Path(c.CHAIN_SPEC_PATH, filename), 'wb') as f:
-        f.write(file_response.content)
-    sp.run(['chown', '-R', f'{c.USER}:{c.USER}', c.CHAIN_SPEC_PATH], check=False)
+    try:
+        download_file(url, Path(c.CHAIN_SPEC_PATH, filename))
+    except ValueError as e:
+        logger.error(f'Failed to download chain spec: {e}')
+        raise e
+
+
+def download_wasm_runtime(url):
+    if not c.WASM_PATH.exists():
+        c.WASM_PATH.mkdir(parents=True)
+    try:
+        download_file(url, Path(c.WASM_PATH, url.split('/')[-1]))
+    except ValueError as e:
+        logger.error(f'Failed to download wasm runtime: {e}')
+        raise e
+
+
+def download_file(url, filepath):
+    response = requests.get(url, timeout=None)
+    if response.status_code != 200:
+        raise ValueError(f"Download binary failed with: {response.text}")
+    with open(filepath, 'wb') as f:
+        f.write(response.content)
+    sp.run(['chown', '-R', f'{c.USER}:{c.USER}', c.WASM_PATH], check=False)
 
 
 def setup_group_and_user():

@@ -15,7 +15,7 @@ class ServiceArgs():
         self._relay_rpc_urls = relay_rpc_urls
         self._chain_spec_url = config.get('chain-spec-url')
         self._local_relaychain_spec_url = config.get('local-relaychain-spec-url')
-        self.__check_service_args(service_args)
+        self._runtime_wasm_override = True if config.get('wasm-runtime-url') else False
         self.service_args_list = self.__service_args_to_list(service_args)
         self.__check_service_args(self.service_args_list)
         # Service args that is modified to use for the service.
@@ -152,6 +152,8 @@ class ServiceArgs():
         if self._local_relaychain_spec_url:
             utils.download_chain_spec(self._local_relaychain_spec_url, 'relaychain-spec.json')
             self.__set_chain_name(f'{c.CHAIN_SPEC_PATH}/relaychain-spec.json', 1)
+        if self._runtime_wasm_override:
+            self.__add_firstchain_args(['--wasm-runtime-overrides', c.WASM_PATH])
 
     def __peregrine(self):
         self.__set_chain_name(Path(c.HOME_PATH, 'dev-specs/kilt-parachain/peregrine-kilt.json'), 0)
