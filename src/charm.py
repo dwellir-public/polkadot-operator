@@ -134,9 +134,16 @@ class PolkadotCharm(ops.CharmBase):
         self.update_status(connection_attempts=2)
 
     def _on_update_status(self, event: ops.UpdateStatusEvent) -> None:
-        self.update_status()
+        self.update_status(validator_check=True)
 
-    def update_status(self, connection_attempts: int = 4) -> None:
+    def update_status(self, connection_attempts: int = 4, validator_check: bool = False) -> None:
+        """ 
+        Update the status of the unit based on the state of the service.
+        param connection_attempts: Number of attempts to connect to the client
+        param validator_check: If the node is a validator, check if it's validating. 
+        The validating check can take a long time so this boolean can be used to skip it in some cases.
+        During a benchmark, it took 20 seconds on Kusama where there are 1000 validators.
+        """
         if utils.service_started():
             service_args = ServiceArgs(self.config, self._stored.relay_rpc_urls)
             rpc_port = service_args.rpc_port
@@ -145,7 +152,7 @@ class PolkadotCharm(ops.CharmBase):
                 try:
                     is_syncing = str(PolkadotRpcWrapper(rpc_port).is_syncing())
                     status_message = f'Syncing: {is_syncing}'
-                    if service_args.is_validator:
+                    if validator_check and service_args.is_validator:
                         if PolkadotRpcWrapper(rpc_port).is_validating_this_era():
                             status_message += ", Validating: Yes"
                         else:
