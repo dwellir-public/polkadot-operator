@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import glob
+import tempfile
 import requests
 import subprocess as sp
 import shutil
@@ -197,21 +198,30 @@ def download_wasm_runtime(url):
     if not url:
         logger.debug('No wasm runtime url provided, skipping download')
         return
-    filepath = Path(c.WASM_PATH, url.split('/')[-1])
+    filename = Path(url.split('/')[-1])
+    if not filename.name.endswith('.tar.gz') and not filename.suffix == '.wasm':
+        raise ValueError(f'Invalid file format provided for wasm-runtime-url: {filename.name}')
     if not c.WASM_PATH.exists():
         c.WASM_PATH.mkdir(parents=True)
-    try:
-        download_file(url, Path(c.WASM_PATH, filepath))
-    except ValueError as e:
-        logger.error(f'Failed to download wasm runtime: {e}')
-        raise e
-    tarball = open_tarfile(Path(c.WASM_PATH, filepath), mode='r')
-    files = glob.glob(f'{c.WASM_PATH}/*.wasm')
-    for f in files:
-        os.remove(f)
-    tarball.extractall(c.WASM_PATH)
-    tarball.close()
-    sp.run(['rm', filepath], check=False)
+    with tempfile.TemporaryDirectory() as temp_dir:
+        try:
+            download_file(url, Path(temp_dir, filename))
+        except ValueError as e:
+            logger.error(f'Failed to download wasm runtime: {e}')
+            raise e
+        if filename.name.endswith('.tar.gz'):
+            tarball = open_tarfile(Path(temp_dir, filename), mode='r')
+            tarball.extractall(temp_dir)
+            tarball.close()
+        stop_service()
+        files = glob.glob(f'{c.WASM_PATH}/*.wasm')
+        for f in files:
+            os.remove(f)
+        files_in_temp_dir = glob.glob(f'{temp_dir}/*')
+        logger.debug('Files in temp_dir: %s', str(files_in_temp_dir))
+        wasm_files = glob.glob(f'{temp_dir}/*.wasm')
+        for wasm_file in wasm_files:
+            shutil.move(wasm_file, c.WASM_PATH)
     sp.run(['chown', '-R', f'{c.USER}:{c.USER}', c.WASM_PATH], check=False)
 
 
