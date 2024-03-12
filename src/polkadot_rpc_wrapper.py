@@ -95,7 +95,7 @@ class PolkadotRpcWrapper():
         data = '{"id": 1,"jsonrpc":"2.0", "method": "author_insertKey", "params":["aura","' + mnemonic + '","' + address + '"]}'
         requests.post(url=self.__server_address, headers=self.__headers, data=data)
 
-    def find_validator_address(self):
+    def is_validating_this_era(self):
         """
         Check if this node is currently producing block for a validator/collator.
         It does so by checking if any session key currently on-chain is present on this node.
@@ -128,24 +128,4 @@ class PolkadotRpcWrapper():
                 session_key += k[2:]
             if self.has_session_key(session_key):
                 return session_key
-        return False
-
-    def is_validating_this_era(self, address):
-        """
-        Check if this node is currently producing block for a validator/collator 'address.
-        It checks on-chain which session key is set to be used for validating this era for 'address'.
-        And if that session key exist on this node.
-        :return: the session key if validating, else False.
-        """
-        substrate = SubstrateInterface(url=self.__server_address)
-        result = substrate.query("Session", "QueuedKeys").value_serialized
-        for validator in result:
-            if validator[0] == address:
-                keys = validator[1]
-                session_key = '0x'
-                for k in keys.values():
-                    # Some chains uses multiple keys. Before checking if it exist on the node they need to be concatenated removing preceding '0x'.
-                    session_key += k[2:]
-                if self.has_session_key(session_key):
-                    return session_key
         return False
