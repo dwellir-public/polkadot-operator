@@ -235,10 +235,10 @@ class ServiceArgs():
         self.__set_chain_name(Path(utils.HOME_PATH, 'specs/clover-para-raw.json'), 0)
 
     def __polkadex(self):
-        self.__replace_chain_name(Path(utils.HOME_PATH, 'polkadot-parachain-raw.json'), 0)
+        self.__set_chain_name(Path(utils.HOME_PATH, 'polkadot-parachain-raw.json'), 0)
 
     def __polkadex_mainnet(self):
-        self.__replace_chain_name(Path(utils.HOME_PATH, 'customSpecRaw.json'), 0)
+        self.__set_chain_name(Path(utils.HOME_PATH, 'customSpecRaw.json'), 0)
 
     def __unique(self):
         if self.chain_name == 'unique':
