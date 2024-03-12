@@ -148,6 +148,8 @@ class ServiceArgs():
             self.__origintrail()
         elif self.chain_name == 'asset-hub-rococo':
             self.__asset_hub_rococo()
+        elif self.chain_name == 'liberland':
+            self.__liberland()
         
         # The chain spec configs should be applied after hardcoded chain customizations above since this should override any hardcoded --chain overrides.
         if self._chain_spec_url:
@@ -278,3 +280,9 @@ class ServiceArgs():
         chain_json_path = f'{utils.CHAIN_SPEC_PATH}/{self.chain_name}.json'
         utils.download_chain_spec(chain_json_url, f'{self.chain_name}.json')
         self.__set_chain_name(chain_json_path, 0)
+    def __liberland(self):
+        chain_json_url = 'https://raw.githubusercontent.com/liberland/liberland_substrate/main/substrate/specs/mainnet.json'
+        chain_json_path = f'{utils.CHAIN_SPEC_PATH}/{self.chain_name}.json'
+        utils.download_chain_spec(chain_json_url, f'{self.chain_name}.json')
+        self.__set_chain_name(chain_json_path, 0)
+        
