@@ -16,6 +16,7 @@ class ServiceArgs():
         self._chain_spec_url = config.get('chain-spec-url')
         self._local_relaychain_spec_url = config.get('local-relaychain-spec-url')
         self._runtime_wasm_override = True if config.get('wasm-runtime-url') else False
+        self.__check_service_args(service_args)
         self.service_args_list = self.__service_args_to_list(service_args)
         self.__check_service_args(self.service_args_list)
         # Service args that is modified to use for the service.

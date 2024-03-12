@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import glob
 import requests
 import subprocess as sp
 import shutil
@@ -14,6 +15,7 @@ from pathlib import Path
 from ops.model import ConfigData
 from docker import Docker
 from tarball import Tarball
+from tarfile import open as open_tarfile
 
 
 logger = logging.getLogger(__name__)
@@ -192,16 +194,29 @@ def download_chain_spec(url, filename):
 
 
 def download_wasm_runtime(url):
+    if not url:
+        logger.debug('No wasm runtime url provided, skipping download')
+        return
+    filepath = Path(c.WASM_PATH, url.split('/')[-1])
     if not c.WASM_PATH.exists():
         c.WASM_PATH.mkdir(parents=True)
     try:
-        download_file(url, Path(c.WASM_PATH, url.split('/')[-1]))
+        download_file(url, Path(c.WASM_PATH, filepath))
     except ValueError as e:
         logger.error(f'Failed to download wasm runtime: {e}')
         raise e
+    tarball = open_tarfile(Path(c.WASM_PATH, filepath), mode='r')
+    files = glob.glob(f'{c.WASM_PATH}/*.wasm')
+    for f in files:
+        os.remove(f)
+    tarball.extractall(c.WASM_PATH)
+    tarball.close()
+    sp.run(['rm', filepath], check=False)
+    sp.run(['chown', '-R', f'{c.USER}:{c.USER}', c.WASM_PATH], check=False)
 
 
 def download_file(url, filepath):
+    logger.debug(f'Downloading file from {url} to {filepath}')
     response = requests.get(url, timeout=None)
     if response.status_code != 200:
         raise ValueError(f"Download binary failed with: {response.text}")

@@ -60,4 +60,5 @@ options:
     type: string
     default: ""
     description: |
-      If set, the file found in the URL will be used as value for the `--wasm-runtime-overrides` argument.
+      URL to a archive contaning one or more wasm runtimes.
+      If set, the files in the archive will be extracted to /home/polkadot/wasm and the service argument `--wasm-runtime-overrides=/home/polkadot/wasm` will be used.
