@@ -73,7 +73,7 @@ class PolkadotRpcWrapper():
         peer_list = response_json['result']
         return peer_list, True
 
-    def has_session_key(self, session_key):
+    def has_session_key(self, session_key) -> bool:
         """
         Checks if this node has the supplied session_key (E.g. 0xb75f94a5eec... )
         :param session_key: string
@@ -82,6 +82,8 @@ class PolkadotRpcWrapper():
         data = '{"id": 1, "jsonrpc":"2.0", "method": "author_hasSessionKeys", "params":["' + session_key + '"]}'
         response = requests.post(url=self.__server_address, headers=self.__headers, data=data)
         response_json = json.loads(response.text)
+        if 'error' in response_json.keys():
+            raise ValueError(response_json['error']['message'])
         result = response_json['result']
         return result
 
