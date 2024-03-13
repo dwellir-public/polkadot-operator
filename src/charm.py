@@ -74,6 +74,7 @@ class PolkadotCharm(ops.CharmBase):
                                  service_args=self.config.get('service-args'),
                                  chain_spec_url=self.config.get('chain-spec-url'),
                                  local_relaychain_spec_url=self.config.get('local-relaychain-spec-url'),
+                                 wasm_runtime_url=self.config.get('wasm-runtime-url'),
                                  relay_rpc_urls=dict())
 
     def _on_install(self, event: ops.InstallEvent) -> None:
@@ -86,6 +87,7 @@ class PolkadotCharm(ops.CharmBase):
         # Download and prepare the binary
         self.unit.status = ops.MaintenanceStatus("Installing binary")
         utils.install_binary(self.config, service_args_obj.chain_name)
+        utils.download_wasm_runtime(self.config.get('wasm-runtime-url'))
         # Install polkadot.service file
         self.unit.status = ops.MaintenanceStatus("Installing service")
         source_path = Path(self.charm_dir / 'templates/etc/systemd/system/polkadot.service')
@@ -130,6 +132,12 @@ class PolkadotCharm(ops.CharmBase):
             self.unit.status = ops.MaintenanceStatus("Updating relaychain spec")
             utils.update_service_args(service_args_obj.service_args_string)
             self._stored.local_relaychain_spec_url = self.config.get('local-relaychain-spec-url')
+        
+        if self._stored.wasm_runtime_url != self.config.get('wasm-runtime-url'):
+            self.unit.status = ops.MaintenanceStatus("Updating wasm runtime")
+            utils.download_wasm_runtime(self.config.get('wasm-runtime-url'))
+            utils.update_service_args(service_args_obj.service_args_string)
+            self._stored.wasm_runtime_url = self.config.get('wasm-runtime-url')
 
         self.update_status(connection_attempts=2)
 

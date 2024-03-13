@@ -50,3 +50,10 @@ options:
       This means it will affect the local relaychain if running a parachain node.
       NOTE 1: Do not use this when running a relaychain or livechain node.
       NOTE 2: The URL needs to be to the raw chainspec file, not the GitHub page. Confirm the URL by testing that `wget <URL>` gives you the correct file.
+  wasm-runtime-url:
+    type: string
+    default: ""
+    description: |
+      URL where one or more wasm runtime files can be found.
+      The file can either be a .wasm file or a tar.gz archive containing one or more wasm runtime files.
+      If set, the downloaded files(s) will be in /home/polkadot/wasm and the service argument `--wasm-runtime-overrides=/home/polkadot/wasm` will be used.
