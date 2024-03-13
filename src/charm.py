@@ -250,7 +250,7 @@ class PolkadotCharm(ops.CharmBase):
         session_key = PolkadotRpcWrapper(rpc_port).is_validating_next_era(validator_address)
         if session_key:
             event.set_results(results={'message': f'This node will be validating next era for address {validator_address}.'})
-            event.set_results(results={'session_key': session_key})
+            event.set_results(results={'session-key': session_key})
         else:
             event.set_results(results={'message': f'This node will not be validating next era for address {validator_address}.'})
 
