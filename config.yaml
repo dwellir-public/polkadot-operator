@@ -9,54 +9,51 @@ options:
       Path to download one or multiple binaries or a single .deb or .tar.gz file.
 
       Example 1: https://github.com/paritytech/polkadot-sdk/releases/download/polkadot-v1.1.0/polkadot-parachain
-
       Example 2: "https://github.com/paritytech/polkadot-sdk/releases/download/polkadot-v1.1.0/polkadot https://github.com/paritytech/polkadot-sdk/releases/download/polkadot-v1.1.0/polkadot-execute-worker https://github.com/paritytech/polkadot-sdk/releases/download/polkadot-v1.1.0/polkadot-prepare-worker"
-
       Example 3: https://github.com/ComposableFi/composable/releases/download/release-v9.10035.5/composable-node_8.10035.5-1_amd64.deb
-
       Example 4: https://github.com/availproject/avail/releases/download/v1.9.0.0/x86_64-ubuntu-2204-data-avail.tar.gz
 
-      Different installation methods will be used depending on if a .deb or .tar.gz file is used or not.
-
-      Note: multiple binary install is currently only supported for Polkadot relay chains, parachain support is not confirmed.
+      NOTE 1: Different installation methods will be used depending on the downloaded file type.
+      NOTE 2: Multiple binary install is currently only supported for the Polkadot relaychains, parachain support is not confirmed.
   binary-sha256-url:
     type: string
     default: ""
     description: |
       If the URL is provided, the charm downloads the sha256 and performs a checksum check against the binary.
 
-      Note 1: needs to point to the sha256 corresponding to the 'binary-url' ahead of downloading the binary to actually perform the check!
-
-      Note 2: if multiple binary URL:s are supplied, multiple sha256 URL:s should be supplied as well, in the same order.
-
-      Note 3: it's also possible to provide one sha256 URL with multiple binary URL:s if the sha256 file contains one row per binary.
+      NOTE 1: Needs to point to the sha256 corresponding to the 'binary-url' ahead of downloading the binary to actually perform the check!
+      NOTE 2: If multiple binary URL:s are supplied, multiple sha256 URL:s should be supplied as well, in the same order.
+      NOTE 3: It's also possible to provide one sha256 URL with multiple binary URL:s if the sha256 file contains one row per binary.
   docker-tag:
     type: string
     default: ""
-    description: "The tag of the docker image to extract binary from. E.g. v1.5.0"
+    description: |
+      The tag of the docker image to extract binary from. E.g. `v1.5.0`.
   service-args:
     type: string
     default: ""
     description: |
       Extra arguments that the service should run with.
-
       '--chain=... --rpc-port=...' are required to set for the charm to run.
-  validator-address:
-    type: string
-    default: ""
-    description: |
-      If this is set, update-status will check if this node is currently validating for this address.
-      HINT: if this config parameter is set, the actions is-validating-this-era and is-validating-next-era can be used.
   chain-spec-url:
     type: string
     default: ""
     description: |
-      If set the file found in the url will be used as value for the --chain argument LEFT of the -- separator.
+      If set, the file found in the URL will be used as value for the `--chain` argument LEFT of the -- separator.
       This means it will affect the parachain if running a parachain node or the relaychain or livechain if running one of those.
+      NOTE: The URL needs to be to the raw chainspec file, not the GitHub page. Confirm the URL by testing that `wget <URL>` gives you the correct file.
   local-relaychain-spec-url:
     type: string
     default: ""
     description: |
-      If set the file found in the url will be used as value for the --chain argument RIGHT of the -- separator.
+      If set, the file found in the URL will be used as value for the `--chain` argument RIGHT of the -- separator.
       This means it will affect the local relaychain if running a parachain node.
-      NOTE: Do not use this when running a relaychain or livechain node.
+      NOTE 1: Do not use this when running a relaychain or livechain node.
+      NOTE 2: The URL needs to be to the raw chainspec file, not the GitHub page. Confirm the URL by testing that `wget <URL>` gives you the correct file.
+  wasm-runtime-url:
+    type: string
+    default: ""
+    description: |
+      URL where one or more wasm runtime files can be found.
+      The file can either be a .wasm file or a tar.gz archive containing one or more wasm runtime files.
+      If set, the downloaded files(s) will be in /home/polkadot/wasm and the service argument `--wasm-runtime-overrides=/home/polkadot/wasm` will be used.
