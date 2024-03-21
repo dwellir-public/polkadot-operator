@@ -139,7 +139,7 @@ class PolkadotCharm(ops.CharmBase):
             utils.update_service_args(service_args_obj.service_args_string)
             self._stored.wasm_runtime_url = self.config.get('wasm-runtime-url')
 
-        self.update_status(connection_attempts=2)
+        self.update_status(connection_attempts=12)
 
     def _on_update_status(self, event: ops.UpdateStatusEvent) -> None:
         self.update_status(validator_check=True)
