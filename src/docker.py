@@ -59,6 +59,8 @@ class Docker():
             self.__extract_from_docker('dappforce/subsocial-parachain', '/usr/local/bin/subsocial-collator')
         elif self.chain_name == 'robonomics':
             self.__extract_from_docker('robonomics/robonomics', 'usr/local/bin/robonomics')
+        elif self.chain_name == 'bittensor':
+            self.__extract_from_docker('opentensor/subtensor', 'usr/local/bin/node-subtensor') 
         else:
             raise ValueError(f"{self.chain_name} is not a supported chain using Docker!")
 
