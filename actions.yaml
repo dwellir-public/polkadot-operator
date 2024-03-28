@@ -1,9 +1,31 @@
 # Copyright 2024 Dwellir AB
 # See LICENSE file for licensing details.
 
+# Actions to get information about the node, container and charm
+get-node-info:
+  description: |
+    Gets system information about the node and its container.
+get-node-help:
+  description: |
+    Gets the help information from the client binary.
+    Note that to get a readable output it is recommended to use '--format json' and parse the output with the 'jq' command line tool.
+    Example Juju 2.x: juju run-action --wait polkadot/0 get-node-help --format json | jq -r '.["unit-polkadot-0"].results["help-output"]'
+    Example Juju 3.x: juju run polkadot/0 get-node-help --format json | jq -r '.["polkadot/0"].results["help-output"]'
+print-readme:
+  description: |
+    Prints the README file for the charm.
+
+# Actions to manage the node service
+restart-node-service:
+  description: "This actions restarts the service running the blockchain node."
+start-node-service:
+  description: "This actions starts the service running the blockchain node."
+stop-node-service:
+  description: "This actions stops the service running the blockchain node."
+
+# Actions to manage keys
 get-session-key:
   description: "Runs author_rotateKeys and returns a new session-key."
-
 has-session-key:
   description: "Checks if node has a session key, using an RPC call."
   params:
@@ -11,7 +33,6 @@ has-session-key:
       description: "Key to check if exist on node. E.g. key='0xhjd39djk309'"
       type: string
   required: [ key ]
-
 insert-key:
   description: |
     Inserts a key in the keystore of the node using a local RPC call. WARNING: don't do double signing by inserting the same key for two nodes!
@@ -24,14 +45,6 @@ insert-key:
       description: "The public part of the key in hex format. E.g. address='0xf0014b9f4b10ac206a0f3ba9630e1df1f80214e7724e96ab00ccb35d08045777'"
       type: string
   required: [ mnemonic, address ]
-
-restart-node-service:
-  description: "This actions restarts the service running the blockchain node."
-start-node-service:
-  description: "This actions starts the service running the blockchain node."
-stop-node-service:
-  description: "This actions stops the service running the blockchain node."
-
 set-node-key:
   description: |
     Sets a new private key in '/home/polkadot/node-key' and restarts the node service.
@@ -43,6 +56,7 @@ set-node-key:
       type: string
   required: [ key ]
 
+# Actions to manage a validator node
 find-validator-address:
   description: |
     Checks if this node is currently validating for any validator address found on-chain.
@@ -50,7 +64,6 @@ find-validator-address:
     Returns the validator address and the session key if this node is validating.
     This action does the same as the `update-status` hook does for a validator/collator.
     However, the `update-status` only shows if the node is validating or not, while this action also gives the validator address and the session key used.
-
 is-validating-next-era:
   description: |
     Checks if this node will be validating next era for the validator address passed as parameter.
@@ -62,14 +75,3 @@ is-validating-next-era:
         The public address to check. E.g. DuLr6CeLXezrfumF6EkqLeAx9paMcADYU6zHpSZVB8gvjht
       type: string
   required: [ address ]
-
-get-node-info:
-  description: |
-    Gets system information about the node and its container.
-
-get-node-help:
-  description: |
-    Gets the help information from the client binary.
-    Note that to get a readable output it is recommended to use '--format json' and parse the output with the 'jq' command line tool.
-    Example Juju 2.x: juju run-action --wait polkadot/0 get-node-help --format json | jq -r '.["unit-polkadot-0"].results["help-output"]'
-    Example Juju 3.x: juju run polkadot/0 get-node-help --format json | jq -r '.["polkadot/0"].results["help-output"]'

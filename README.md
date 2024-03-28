@@ -56,9 +56,13 @@ With those configs included, a standard deployment of the Polkadot node could lo
 
     juju deploy polkadot --config binary-url=https://github.com/paritytech/polkadot/releases/download/v0.9.43/polkadot --config service-args="--chain=polkadot --rpc-port=9933"
 
-There are many more arguments available for the Polkadot client, which may or may not be relevant for your specific deployment. Read about them in detail in the [Polkadot node client](https://github.com/paritytech/polkadot) source code or by accessing the help menu from the client itself:
+There are many more arguments available for the client, regardless of if it is the Polkadot relaychain client or a parachain client, which may or may not be relevant for your specific deployment. Read about them in detail in their respective source code, e.g. here for the [Polkadot node client](https://github.com/paritytech/polkadot), or by accessing the help menu from the client itself with either of these methods:
 
+    # With local copy of the client available
     ./polkadot --help
+
+    # For an already deployed charm
+    juju run polkadot/0 get-node-help --format json | jq -r '.["polkadot/0"].results["help-output"]'
 
 #### Deploying other node types
 
@@ -94,7 +98,7 @@ For more information regarding parachains and node operations, please visit the 
 
 ### Juju relations/integrations
 
-A powerful feature of the Juju framework is the ability to relate (integrate in Juju 3+) charms to each other. By relating two charms, they exchange data based on the interface used. There are a number of existing interfaces for well-known applications and several are being employed in this charm.
+A powerful feature of the Juju framework is the ability to relate (integrate in Juju 3.x) charms to each other. By relating two charms, they exchange data based on the interface used. There are a number of existing interfaces for well-known applications and several are being employed in this charm.
 
 #### Prometheus relation
 
@@ -113,7 +117,8 @@ If you want to use a [Grafana instance deployed with Juju](https://charmhub.io/g
 
     juju deploy grafana
     juju relate prometheus:grafana-source grafana:grafana-source
-    juju run-action --wait grafana/0 get-admin-password
+    juju run-action --wait grafana/0 get-admin-password  # Juju 2.x
+    juju run grafana/0 get-admin-password                # Juju 3.x
 
 #### The COS stack
 

@@ -68,6 +68,7 @@ class PolkadotCharm(ops.CharmBase):
         self.framework.observe(self.on.is_validating_next_era_action, self._on_is_validating_next_era_action)
         self.framework.observe(self.on.get_node_info_action, self._on_get_node_info_action)
         self.framework.observe(self.on.get_node_help_action, self._on_get_node_help_action)
+        self.framework.observe(self.on.print_readme_action, self._on_print_readme_action)
 
         self._stored.set_default(binary_url=self.config.get('binary-url'),
                                  docker_tag=self.config.get('docker-tag'),
@@ -321,6 +322,10 @@ class PolkadotCharm(ops.CharmBase):
 
     def _on_get_node_help_action(self, event: ops.ActionEvent) -> None:
         event.set_results(results={'help-output': utils.get_client_binary_help_output()})
+
+    def _on_print_readme_action(self, event: ops.ActionEvent) -> None:
+        """ Handle print readme action. """
+        event.set_results(results={'readme': utils.get_readme()})
 
 
 if __name__ == "__main__":

@@ -437,3 +437,12 @@ def get_client_binary_help_output() -> str:
             return process.stdout.decode('utf-8').strip()
         return "Could not parse client binary '--help' command"
     return "Client binary not found"
+
+
+def get_readme() -> str:
+    path = Path('README.md')
+    if path.exists():
+        with open(path, 'r', encoding='utf-8') as f:
+            return f.read()
+    logger.warning("README file not found.")
+    return ""
