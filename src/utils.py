@@ -76,13 +76,14 @@ def install_deb_from_url(url: str) -> None:
     start_service()
     os.remove(deb_path)
 
+
 def install_tarball_from_url(url, sha256_url, chain_name):
     tarball_response = requests.get(url, allow_redirects=True, timeout=None)
     tarball_path = Path(c.HOME_PATH, url.split('/')[-1])
     if tarball_response.status_code != 200:
         raise ValueError(f"Download binary failed with: {tarball_response.text}. Check 'binary-url'!")
 
-    # TODO: Add sha256 checksum verification here in case some future chain provides them    
+    # TODO: Add sha256 checksum verification here in case some future chain provides them
     with open(tarball_path, 'wb') as f:
         f.write(tarball_response.content)
 
@@ -90,6 +91,7 @@ def install_tarball_from_url(url, sha256_url, chain_name):
     tarball = Tarball(tarball_path, chain_name)
     tarball.extract_resources_from_tarball()
     start_service()
+
 
 def parse_install_urls(binary_urls: str, sha256_urls: str) -> list:
     binary_url_list = binary_urls.split()
@@ -315,12 +317,13 @@ def stop_service():
     sp.run(['systemctl', 'stop', f'{c.USER}.service'], check=False)
 
 
-def service_started(iterations: int = 3) -> bool:
+def service_started(iterations: int = 6) -> bool:
+    """ Checks if the service is running by running the the 'service status' command. """
     for _ in range(iterations):
-        service_status = os.system('service polkadot status')
+        service_status = os.system(f'service {c.SERVICE_NAME} status')
         if service_status == 0:
             return True
-        time.sleep(4)
+        time.sleep(1)
     return False
 
 
