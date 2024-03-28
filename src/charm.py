@@ -122,24 +122,24 @@ class PolkadotCharm(ops.CharmBase):
             self.unit.status = ops.MaintenanceStatus("Updating service args")
             utils.update_service_args(service_args_obj.service_args_string)
             self._stored.service_args = self.config.get('service-args')
-        
+
         if self._stored.chain_spec_url != self.config.get('chain-spec-url'):
             self.unit.status = ops.MaintenanceStatus("Updating chain spec")
             utils.update_service_args(service_args_obj.service_args_string)
             self._stored.chain_spec_url = self.config.get('chain-spec-url')
-        
+
         if self._stored.local_relaychain_spec_url != self.config.get('local-relaychain-spec-url'):
             self.unit.status = ops.MaintenanceStatus("Updating relaychain spec")
             utils.update_service_args(service_args_obj.service_args_string)
             self._stored.local_relaychain_spec_url = self.config.get('local-relaychain-spec-url')
-        
+
         if self._stored.wasm_runtime_url != self.config.get('wasm-runtime-url'):
             self.unit.status = ops.MaintenanceStatus("Updating wasm runtime")
             utils.download_wasm_runtime(self.config.get('wasm-runtime-url'))
             utils.update_service_args(service_args_obj.service_args_string)
             self._stored.wasm_runtime_url = self.config.get('wasm-runtime-url')
 
-        self.update_status(connection_attempts=2)
+        self.update_status_simple()
 
     def _on_update_status(self, event: ops.UpdateStatusEvent) -> None:
         self.update_status(validator_check=True)
@@ -170,19 +170,30 @@ class PolkadotCharm(ops.CharmBase):
                     break
                 except RequestsConnectionError as e:
                     logger.warning(e)
-                    self.unit.status = ops.MaintenanceStatus("Client not responding to HTTP (attempt {}/{})".format(i+1, connection_attempts))
+                    self.unit.status = ops.MaintenanceStatus(
+                        "Client not responding to HTTP (attempt {}/{})".format(i + 1, connection_attempts))
             if type(self.unit.status) != ops.ActiveStatus:
-                self.unit.status = ops.WaitingStatus("Service running, client starting up")
+                self.unit.status = ops.WaitingStatus("Service running but not responding to HTTP")
+        else:
+            self.unit.status = ops.BlockedStatus("Service not running")
+
+    def update_status_simple(self, iterations=4) -> None:
+        """
+        Update the status of the unit based on the state of the service.
+        This is a simplified version of the update_status method, meant to give a quicker response.
+        """
+        if utils.service_started(iterations=iterations):
+            self.unit.status = ops.ActiveStatus("Service running")
         else:
             self.unit.status = ops.BlockedStatus("Service not running")
 
     def _on_start(self, event: ops.StartEvent) -> None:
         utils.start_service()
-        self.update_status()
+        self.update_status_simple()
 
     def _on_stop(self, event: ops.StopEvent) -> None:
         utils.stop_service()
-        self.update_status()
+        self.update_status_simple()
 
     def _on_get_session_key_action(self, event: ops.ActionEvent) -> None:
         event.log("Getting new session key through rpc...")
@@ -215,31 +226,31 @@ class PolkadotCharm(ops.CharmBase):
 
     def _on_restart_node_service_action(self, event: ops.ActionEvent) -> None:
         utils.restart_service()
-        if not utils.service_started():
+        if not utils.service_started(iterations=4):
             event.fail("Could not restart service")
         event.set_results(results={'message': 'Node service restarted'})
-        self.update_status()
+        self.update_status_simple()
 
     def _on_start_node_service_action(self, event: ops.ActionEvent) -> None:
         utils.start_service()
-        if not utils.service_started():
+        if not utils.service_started(iterations=4):
             event.fail("Could not start service")
         event.set_results(results={'message': 'Node service started'})
-        self.update_status()
+        self.update_status_simple()
 
     def _on_stop_node_service_action(self, event: ops.ActionEvent) -> None:
         utils.stop_service()
-        if utils.service_started(iterations=1):
+        if utils.service_started(iterations=2):
             event.fail("Could not stop service")
         event.set_results(results={'message': 'Node service stopped'})
-        self.update_status()
+        self.update_status_simple(iterations=2)
 
     def _on_set_node_key_action(self, event: ops.ActionEvent) -> None:
         key = event.params['key']
         utils.stop_service()
         utils.write_node_key_file(key)
         utils.start_service()
-        self.update_status()
+        self.update_status_simple()
 
     def _on_find_validator_address_action(self, event: ops.ActionEvent) -> None:
         event.log("Checking sessions key through rpc...")

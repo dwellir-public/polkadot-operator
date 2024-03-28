@@ -66,8 +66,10 @@ is-validating-next-era:
 get-node-info:
   description: |
     Gets system information about the node and its container.
+
 get-node-help:
   description: |
     Gets the help information from the client binary.
     Note that to get a readable output it is recommended to use '--format json' and parse the output with the 'jq' command line tool.
-    Example: juju run-action --wait polkadot/0 get-node-help --format json | jq -r '.["unit-polkadot-0"].results["help-output"]'
+    Example Juju 2.x: juju run-action --wait polkadot/0 get-node-help --format json | jq -r '.["unit-polkadot-0"].results["help-output"]'
+    Example Juju 3.x: juju run polkadot/0 get-node-help --format json | jq -r '.["polkadot/0"].results["help-output"]'
