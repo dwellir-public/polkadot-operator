@@ -187,6 +187,7 @@ class PolkadotCharm(ops.CharmBase):
             self.unit.status = ops.ActiveStatus("Service running")
         else:
             self.unit.status = ops.BlockedStatus("Service not running")
+        self.unit.set_workload_version(utils.get_binary_version())
 
     def _on_start(self, event: ops.StartEvent) -> None:
         utils.start_service()

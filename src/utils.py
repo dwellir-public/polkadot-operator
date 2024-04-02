@@ -277,11 +277,16 @@ def install_node_exporter():
 
 
 def get_binary_version() -> str:
+    """ Returns the version of the binary client by checking the '--version' flag. """
+    logger.debug("Getting binary version from client binary.")
     if c.BINARY_PATH.exists():
-        command = [c.BINARY_PATH, "--version"]
-        output = sp.run(command, stdout=sp.PIPE, check=False).stdout.decode('utf-8').strip()
-        version = re.search(r'([\d.]+)', output).group(1)
-        return version
+        try:
+            command = [c.BINARY_PATH, "--version"]
+            output = sp.run(command, stdout=sp.PIPE, check=False).stdout.decode('utf-8').strip()
+            version = re.search(r'([\d.]+)', output).group(1)
+            return version
+        except (sp.SubprocessError, IndexError, AttributeError) as e:
+            logger.error("Couldn't get binary version: %s", {e})
     return ""
 
 
