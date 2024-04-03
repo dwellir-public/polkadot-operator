@@ -166,7 +166,7 @@ class PolkadotCharm(ops.CharmBase):
                         else:
                             status_message += ", Validating: No"
                     self.unit.status = ops.ActiveStatus(status_message)
-                    self.unit.set_workload_version(PolkadotRpcWrapper(rpc_port).get_version())
+                    self.unit.set_workload_version(utils.get_binary_version())
                     break
                 except RequestsConnectionError as e:
                     logger.warning(e)
