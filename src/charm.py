@@ -167,7 +167,7 @@ class PolkadotCharm(ops.CharmBase):
                         else:
                             status_message += ", Validating: No"
                     self.unit.status = ops.ActiveStatus(status_message)
-                    self.unit.set_workload_version(PolkadotRpcWrapper(rpc_port).get_version())
+                    self.unit.set_workload_version(utils.get_binary_version())
                     break
                 except RequestsConnectionError as e:
                     logger.warning(e)
@@ -187,6 +187,7 @@ class PolkadotCharm(ops.CharmBase):
             self.unit.status = ops.ActiveStatus("Service running")
         else:
             self.unit.status = ops.BlockedStatus("Service not running")
+        self.unit.set_workload_version(utils.get_binary_version())
 
     def _on_start(self, event: ops.StartEvent) -> None:
         utils.start_service()
