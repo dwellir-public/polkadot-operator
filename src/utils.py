@@ -186,7 +186,8 @@ def get_sha256_response(sha256_url: str) -> requests.Response:
     return sha256_response
 
 
-def download_chain_spec(url, filename):
+def download_chain_spec(url: str, filename: Path) -> None:
+    """Download a chain spec file from a given URL to a given filepath."""
     if not c.CHAIN_SPEC_PATH.exists():
         c.CHAIN_SPEC_PATH.mkdir(parents=True)
     try:
@@ -227,14 +228,15 @@ def download_wasm_runtime(url):
     sp.run(['chown', '-R', f'{c.USER}:{c.USER}', c.WASM_PATH], check=False)
 
 
-def download_file(url, filepath):
+def download_file(url: str, filepath: Path) -> None:
+    """Download a file from a given URL to a given filepath."""
     logger.debug(f'Downloading file from {url} to {filepath}')
     response = requests.get(url, timeout=None)
     if response.status_code != 200:
-        raise ValueError(f"Download binary failed with: {response.text}")
+        raise ValueError(f"Download of file failed with: {response.text}")
     with open(filepath, 'wb') as f:
         f.write(response.content)
-    sp.run(['chown', '-R', f'{c.USER}:{c.USER}', c.WASM_PATH], check=False)
+    sp.run(['chown', '-R', f'{c.USER}:{c.USER}', filepath], check=False)
 
 
 def setup_group_and_user():
@@ -318,7 +320,7 @@ def stop_service():
 
 
 def service_started(iterations: int = 6) -> bool:
-    """ Checks if the service is running by running the the 'service status' command. """
+    """Checks if the service is running by running the the 'service status' command."""
     for _ in range(iterations):
         service_status = os.system(f'service {c.SERVICE_NAME} status')
         if service_status == 0:
