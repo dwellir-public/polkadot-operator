@@ -3,6 +3,7 @@
 from pathlib import Path
 
 USER = 'polkadot'
+SERVICE_NAME = USER
 HOME_PATH = Path('/home/polkadot')
 BINARY_PATH = Path(HOME_PATH, 'polkadot')
 CHAIN_SPEC_PATH = Path(HOME_PATH, 'spec')

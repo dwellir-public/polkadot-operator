@@ -5,6 +5,9 @@ from pathlib import Path
 import utils
 import constants as c
 import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class Docker():
@@ -45,7 +48,11 @@ class Docker():
         elif self.chain_name == 'equilibrium':
             self.__extract_from_docker('equilab/eq-para', '/usr/local/bin/paranode', '/etc/chainspec.json')
         elif self.chain_name in ['pendulum', 'amplitude']:
-            self.__extract_from_docker('pendulumchain/pendulum-collator', '/usr/local/bin/pendulum-collator')
+            try:
+                self.__extract_from_docker('pendulumchain/pendulum-collator', '/usr/local/bin/pendulum-collator')
+            except ValueError as e:
+                logger.warning("Could not find pendulum-collator, trying amplitude-collator. Error: %s", e)
+                self.__extract_from_docker('pendulumchain/pendulum-collator', '/usr/local/bin/amplitude-collator')
         elif self.chain_name == 'kapex':
             self.__extract_from_docker('totemlive/totem-parachain-collator', '/usr/local/bin/totem-parachain-collator')
         elif self.chain_name == 'clover':
@@ -60,6 +67,8 @@ class Docker():
             self.__extract_from_docker('dappforce/subsocial-parachain', '/usr/local/bin/subsocial-collator')
         elif self.chain_name == 'robonomics':
             self.__extract_from_docker('robonomics/robonomics', 'usr/local/bin/robonomics')
+        elif self.chain_name == 'bittensor':
+            self.__extract_from_docker('opentensor/subtensor', 'usr/local/bin/node-subtensor') 
         else:
             raise ValueError(f"{self.chain_name} is not a supported chain using Docker!")
 

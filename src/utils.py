@@ -76,13 +76,14 @@ def install_deb_from_url(url: str) -> None:
     start_service()
     os.remove(deb_path)
 
+
 def install_tarball_from_url(url, sha256_url, chain_name):
     tarball_response = requests.get(url, allow_redirects=True, timeout=None)
     tarball_path = Path(c.HOME_PATH, url.split('/')[-1])
     if tarball_response.status_code != 200:
         raise ValueError(f"Download binary failed with: {tarball_response.text}. Check 'binary-url'!")
 
-    # TODO: Add sha256 checksum verification here in case some future chain provides them    
+    # TODO: Add sha256 checksum verification here in case some future chain provides them
     with open(tarball_path, 'wb') as f:
         f.write(tarball_response.content)
 
@@ -90,6 +91,7 @@ def install_tarball_from_url(url, sha256_url, chain_name):
     tarball = Tarball(tarball_path, chain_name)
     tarball.extract_resources_from_tarball()
     start_service()
+
 
 def parse_install_urls(binary_urls: str, sha256_urls: str) -> list:
     binary_url_list = binary_urls.split()
@@ -184,7 +186,8 @@ def get_sha256_response(sha256_url: str) -> requests.Response:
     return sha256_response
 
 
-def download_chain_spec(url, filename):
+def download_chain_spec(url: str, filename: Path) -> None:
+    """Download a chain spec file from a given URL to a given filepath."""
     if not c.CHAIN_SPEC_PATH.exists():
         c.CHAIN_SPEC_PATH.mkdir(parents=True)
     try:
@@ -225,14 +228,15 @@ def download_wasm_runtime(url):
     sp.run(['chown', '-R', f'{c.USER}:{c.USER}', c.WASM_PATH], check=False)
 
 
-def download_file(url, filepath):
+def download_file(url: str, filepath: Path) -> None:
+    """Download a file from a given URL to a given filepath."""
     logger.debug(f'Downloading file from {url} to {filepath}')
     response = requests.get(url, timeout=None)
     if response.status_code != 200:
-        raise ValueError(f"Download binary failed with: {response.text}")
+        raise ValueError(f"Download of file failed with: {response.text}")
     with open(filepath, 'wb') as f:
         f.write(response.content)
-    sp.run(['chown', '-R', f'{c.USER}:{c.USER}', c.WASM_PATH], check=False)
+    sp.run(['chown', '-R', f'{c.USER}:{c.USER}', filepath], check=False)
 
 
 def setup_group_and_user():
@@ -273,11 +277,16 @@ def install_node_exporter():
 
 
 def get_binary_version() -> str:
+    """ Returns the version of the binary client by checking the '--version' flag. """
+    logger.debug("Getting binary version from client binary.")
     if c.BINARY_PATH.exists():
-        command = [c.BINARY_PATH, "--version"]
-        output = sp.run(command, stdout=sp.PIPE, check=False).stdout.decode('utf-8').strip()
-        version = re.search(r'([\d.]+)', output).group(1)
-        return version
+        try:
+            command = [c.BINARY_PATH, "--version"]
+            output = sp.run(command, stdout=sp.PIPE, check=False).stdout.decode('utf-8').strip()
+            version = re.search(r'([\d.]+)', output).group(1)
+            return version
+        except (sp.SubprocessError, IndexError, AttributeError) as e:
+            logger.error("Couldn't get binary version: %s", {e})
     return ""
 
 
@@ -315,12 +324,13 @@ def stop_service():
     sp.run(['systemctl', 'stop', f'{c.USER}.service'], check=False)
 
 
-def service_started(iterations: int = 3) -> bool:
+def service_started(iterations: int = 6) -> bool:
+    """Checks if the service is running by running the the 'service status' command."""
     for _ in range(iterations):
-        service_status = os.system('service polkadot status')
+        service_status = os.system(f'service {c.SERVICE_NAME} status')
         if service_status == 0:
             return True
-        time.sleep(4)
+        time.sleep(1)
     return False
 
 
@@ -434,3 +444,12 @@ def get_client_binary_help_output() -> str:
             return process.stdout.decode('utf-8').strip()
         return "Could not parse client binary '--help' command"
     return "Client binary not found"
+
+
+def get_readme() -> str:
+    path = Path('README.md')
+    if path.exists():
+        with open(path, 'r', encoding='utf-8') as f:
+            return f.read()
+    logger.warning("README file not found.")
+    return ""
