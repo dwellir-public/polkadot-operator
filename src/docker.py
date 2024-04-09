@@ -68,7 +68,9 @@ class Docker():
         elif self.chain_name == 'robonomics':
             self.__extract_from_docker('robonomics/robonomics', 'usr/local/bin/robonomics')
         elif self.chain_name == 'bittensor':
-            self.__extract_from_docker('opentensor/subtensor', 'usr/local/bin/node-subtensor') 
+            self.__extract_from_docker('opentensor/subtensor', 'usr/local/bin/node-subtensor')
+        elif self.chain_name == 'klaos':
+            self.__extract_from_docker('freeverseio/laos-node', '/usr/bin/laos')
         else:
             raise ValueError(f"{self.chain_name} is not a supported chain using Docker!")
 
