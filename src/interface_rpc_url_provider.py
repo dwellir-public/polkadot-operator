@@ -14,8 +14,8 @@ class RpcUrlProvider(Object):
     """
     RPC url provider interface.
 
-    This interface is used by relay chain clients broadcast their rpc urls to the parachain clients
-    that might want to use them for relay-over-rpc.
+    This interface is used by relay chain clients broadcast their rpc urls to parachain clients
+    that use them for relay-over-rpc.
     """
 
     def __init__(self, charm, relation_name):

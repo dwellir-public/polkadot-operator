@@ -15,7 +15,7 @@ class RpcUrlRequirer(Object):
     """
     RPC url requirer interface.
 
-    This interface is used by parachain clients that receive relay rpc urls from the relay chain nodes.
+    This interface is used by parachain clients that receive relay rpc urls from relay chain nodes.
     """
 
     def __init__(self, charm, relation_name):
