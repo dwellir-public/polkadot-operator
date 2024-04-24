@@ -113,7 +113,7 @@ class ServiceArgs():
     def __customize_service_args(self):
         self.__add_firstchain_args(['--node-key-file', c.NODE_KEY_PATH])
         if self._relay_rpc_urls:
-            self.__add_firstchain_args(['--relay-chain-rpc-urls'] + list(self._relay_rpc_urls.values()))
+            self.__add_firstchain_args(['--relay-chain-rpc-urls', *self._relay_rpc_urls])
 
         # All hardcoded --chain overrides in the functions below are deprecated and the values should be set in the new chain-spec configs instead.
         if self.chain_name == 'peregrine':
