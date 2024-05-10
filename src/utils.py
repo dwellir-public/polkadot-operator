@@ -61,7 +61,7 @@ def find_binary_installed_by_deb(package_name: str, ) -> str:
 
 def install_deb_from_url(url: str) -> None:
     deb_response = requests.get(url, allow_redirects=True, timeout=None)
-    deb_path = Path(c.HOME_PATH_DIR, url.split('/')[-1])
+    deb_path = Path(c.HOME_DIR, url.split('/')[-1])
     with open(deb_path, 'wb') as f:
         f.write(deb_response.content)
     package_name = sp.check_output(['dpkg-deb', '-f', deb_path, 'Package']).decode('utf-8').strip()
@@ -79,7 +79,7 @@ def install_deb_from_url(url: str) -> None:
 
 def install_tarball_from_url(url, sha256_url, chain_name):
     tarball_response = requests.get(url, allow_redirects=True, timeout=None)
-    tarball_path = Path(c.HOME_PATH_DIR, url.split('/')[-1])
+    tarball_path = Path(c.HOME_DIR, url.split('/')[-1])
     if tarball_response.status_code != 200:
         raise ValueError(f"Download binary failed with: {tarball_response.text}. Check 'binary-url'!")
 
@@ -122,7 +122,7 @@ def install_binaries_from_urls(binary_urls: str, sha256_urls: str) -> None:
     stop_service()
     for binary_url, _, response, binary_name, _ in responses:
         logger.debug("Unpack binary downloaded from: %s", binary_url)
-        binary_path = c.HOME_PATH_DIR / binary_name
+        binary_path = c.HOME_DIR / binary_name
         with open(binary_path, 'wb') as f:
             f.write(response.content)
             sp.run(['chown', f'{c.USER_DIR}:{c.USER_DIR}', binary_path], check=False)
@@ -241,9 +241,9 @@ def download_file(url: str, filepath: Path) -> None:
 
 def setup_group_and_user():
     sp.run(['addgroup', '--system', c.USER_DIR], check=False)
-    sp.run(['adduser', '--system', '--home', c.HOME_PATH_DIR, '--disabled-password', '--ingroup', c.USER_DIR, c.USER_DIR], check=False)
-    sp.run(['chown', f'{c.USER_DIR}:{c.USER_DIR}', c.HOME_PATH_DIR], check=False)
-    sp.run(['chmod', '700', c.HOME_PATH_DIR], check=False)
+    sp.run(['adduser', '--system', '--home', c.HOME_DIR, '--disabled-password', '--ingroup', c.USER_DIR, c.USER_DIR], check=False)
+    sp.run(['chown', f'{c.USER_DIR}:{c.USER_DIR}', c.HOME_DIR], check=False)
+    sp.run(['chmod', '700', c.HOME_DIR], check=False)
 
 
 def create_env_file_for_service():

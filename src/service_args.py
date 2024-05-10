@@ -164,12 +164,12 @@ class ServiceArgs():
             self.__add_firstchain_args(['--wasm-runtime-overrides', c.WASM_PATH])
 
     def __peregrine(self):
-        self.__set_chain_name(Path(c.HOME_PATH_DIR, 'dev-specs/kilt-parachain/peregrine-kilt.json'), 0)
-        self.__set_chain_name(Path(c.HOME_PATH_DIR, 'dev-specs/kilt-parachain/peregrine-relay.json'), 1)
+        self.__set_chain_name(Path(c.HOME_DIR, 'dev-specs/kilt-parachain/peregrine-kilt.json'), 0)
+        self.__set_chain_name(Path(c.HOME_DIR, 'dev-specs/kilt-parachain/peregrine-relay.json'), 1)
 
     def __peregrine_stg_kilt(self):
-        self.__set_chain_name(Path(c.HOME_PATH_DIR, 'dev-specs/kilt-parachain/peregrine-stg-kilt.json'), 0)
-        self.__set_chain_name(Path(c.HOME_PATH_DIR, 'dev-specs/kilt-parachain/peregrine-stg-relay.json'), 1)
+        self.__set_chain_name(Path(c.HOME_DIR, 'dev-specs/kilt-parachain/peregrine-stg-kilt.json'), 0)
+        self.__set_chain_name(Path(c.HOME_DIR, 'dev-specs/kilt-parachain/peregrine-stg-relay.json'), 1)
 
     def __peregrine_stg_relay(self):
         utils.download_chain_spec(
@@ -201,7 +201,7 @@ class ServiceArgs():
         self.__set_chain_name(chain_json_path, 0)
 
     def __equilibrium(self):
-        self.__set_chain_name(Path(c.HOME_PATH_DIR, 'chainspec.json'), 0)
+        self.__set_chain_name(Path(c.HOME_DIR, 'chainspec.json'), 0)
 
     def __aleph_zero(self):
         if self.chain_name.endswith('testnet'):
@@ -241,13 +241,13 @@ class ServiceArgs():
         self.__set_chain_name(chain_json_path, 0)
 
     def __clover(self):
-        self.__set_chain_name(Path(c.HOME_PATH_DIR, 'specs/clover-para-raw.json'), 0)
+        self.__set_chain_name(Path(c.HOME_DIR, 'specs/clover-para-raw.json'), 0)
 
     def __polkadex(self):
-        self.__set_chain_name(Path(c.HOME_PATH_DIR, 'polkadot-parachain-raw.json'), 0)
+        self.__set_chain_name(Path(c.HOME_DIR, 'polkadot-parachain-raw.json'), 0)
 
     def __polkadex_mainnet(self):
-        self.__set_chain_name(Path(c.HOME_PATH_DIR, 'customSpecRaw.json'), 0)
+        self.__set_chain_name(Path(c.HOME_DIR, 'customSpecRaw.json'), 0)
 
     def __unique(self):
         if self.chain_name == 'unique':
