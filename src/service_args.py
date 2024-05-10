@@ -72,7 +72,7 @@ class ServiceArgs():
         elif "--prometheus-port" in service_args:
             msg = "'--prometheus-port' may not be set! Charm assumes default port 9615."
         elif "--node-key-file" in service_args:
-            msg = f'\'--node-key-file\' may not be set! Path is hardcoded to {c.NODE_KEY_PATH}'
+            msg = f'\'--node-key-file\' may not be set! Path is hardcoded to {c.NODE_KEY_PATH_FILE}'
 
         if msg:
             raise ValueError(msg)
@@ -111,7 +111,7 @@ class ServiceArgs():
         self.service_args_list_customized = self.service_args_list_customized + args
 
     def __customize_service_args(self):
-        self.__add_firstchain_args(['--node-key-file', c.NODE_KEY_PATH])
+        self.__add_firstchain_args(['--node-key-file', c.NODE_KEY_PATH_FILE])
         if self._relay_rpc_urls:
             self.__add_firstchain_args(['--relay-chain-rpc-urls'] + list(self._relay_rpc_urls.values()))
 
@@ -156,29 +156,29 @@ class ServiceArgs():
         # The chain spec configs should be applied after hardcoded chain customizations above since this should override any hardcoded --chain overrides.
         if self._chain_spec_url:
             utils.download_chain_spec(self._chain_spec_url, 'chain-spec.json')
-            self.__set_chain_name(f'{c.CHAIN_SPEC_PATH}/chain-spec.json', 0)
+            self.__set_chain_name(f'{c.CHAIN_SPEC_PATH_DIR}/chain-spec.json', 0)
         if self._local_relaychain_spec_url:
             utils.download_chain_spec(self._local_relaychain_spec_url, 'relaychain-spec.json')
-            self.__set_chain_name(f'{c.CHAIN_SPEC_PATH}/relaychain-spec.json', 1)
+            self.__set_chain_name(f'{c.CHAIN_SPEC_PATH_DIR}/relaychain-spec.json', 1)
         if self._runtime_wasm_override:
             self.__add_firstchain_args(['--wasm-runtime-overrides', c.WASM_PATH])
 
     def __peregrine(self):
-        self.__set_chain_name(Path(c.HOME_PATH, 'dev-specs/kilt-parachain/peregrine-kilt.json'), 0)
-        self.__set_chain_name(Path(c.HOME_PATH, 'dev-specs/kilt-parachain/peregrine-relay.json'), 1)
+        self.__set_chain_name(Path(c.HOME_PATH_DIR, 'dev-specs/kilt-parachain/peregrine-kilt.json'), 0)
+        self.__set_chain_name(Path(c.HOME_PATH_DIR, 'dev-specs/kilt-parachain/peregrine-relay.json'), 1)
 
     def __peregrine_stg_kilt(self):
-        self.__set_chain_name(Path(c.HOME_PATH, 'dev-specs/kilt-parachain/peregrine-stg-kilt.json'), 0)
-        self.__set_chain_name(Path(c.HOME_PATH, 'dev-specs/kilt-parachain/peregrine-stg-relay.json'), 1)
+        self.__set_chain_name(Path(c.HOME_PATH_DIR, 'dev-specs/kilt-parachain/peregrine-stg-kilt.json'), 0)
+        self.__set_chain_name(Path(c.HOME_PATH_DIR, 'dev-specs/kilt-parachain/peregrine-stg-relay.json'), 1)
 
     def __peregrine_stg_relay(self):
         utils.download_chain_spec(
             "https://raw.githubusercontent.com/KILTprotocol/kilt-node/1.7.5/dev-specs/kilt-parachain/peregrine-stg-relay.json", "peregrine-stg-relay.json")
-        self.__set_chain_name(Path(c.CHAIN_SPEC_PATH, 'peregrine-stg-relay.json'), 0)
+        self.__set_chain_name(Path(c.CHAIN_SPEC_PATH_DIR, 'peregrine-stg-relay.json'), 0)
 
     def __turing(self):
         chain_json_url = 'https://raw.githubusercontent.com/OAK-Foundation/OAK-blockchain/master/node/res/turing.json'
-        chain_json_path = f"{c.CHAIN_SPEC_PATH}/turing.json"
+        chain_json_path = f"{c.CHAIN_SPEC_PATH_DIR}/turing.json"
         if not exists(chain_json_path):
             utils.download_chain_spec(chain_json_url, 'turing.json')
         self.__set_chain_name(chain_json_path, 0)
@@ -187,7 +187,7 @@ class ServiceArgs():
         # TODO: The spec file did not exist on master branch yet. This URL point to a development branch that will probably not exist in the near future.
         # Update the URL to the master branch when the spec file is merged.
         chain_json_url = 'https://raw.githubusercontent.com/ajuna-network/Ajuna/el/tidy-chain-specs/resources/bajun/bajun-raw.json'
-        chain_json_path = f"{c.CHAIN_SPEC_PATH}/bajun-raw.json"
+        chain_json_path = f"{c.CHAIN_SPEC_PATH_DIR}/bajun-raw.json"
 
         if not exists(chain_json_path):
             utils.download_chain_spec(chain_json_url, 'bajun-raw.json')
@@ -195,13 +195,13 @@ class ServiceArgs():
         self.__set_chain_name(chain_json_path, 0)
 
     def __joystream(self):
-        chain_json_path = f"{c.CHAIN_SPEC_PATH}/joystream.json"
+        chain_json_path = f"{c.CHAIN_SPEC_PATH_DIR}/joystream.json"
         utils.download_chain_spec(
             'https://github.com/Joystream/joystream/releases/download/v11.3.0/joy-testnet-7-carthage.json', 'joystream.json')
         self.__set_chain_name(chain_json_path, 0)
 
     def __equilibrium(self):
-        self.__set_chain_name(Path(c.HOME_PATH, 'chainspec.json'), 0)
+        self.__set_chain_name(Path(c.HOME_PATH_DIR, 'chainspec.json'), 0)
 
     def __aleph_zero(self):
         if self.chain_name.endswith('testnet'):
@@ -221,8 +221,8 @@ class ServiceArgs():
             chain_spec_file_name = 'pendulum.json'
             relay_spec_file_name = 'polkadot.json'
 
-        chain_json_path = f"{c.CHAIN_SPEC_PATH}/{chain_spec_file_name}"
-        relay_json_path = f"{c.CHAIN_SPEC_PATH}/{relay_spec_file_name}"
+        chain_json_path = f"{c.CHAIN_SPEC_PATH_DIR}/{chain_spec_file_name}"
+        relay_json_path = f"{c.CHAIN_SPEC_PATH_DIR}/{relay_spec_file_name}"
 
         if not exists(chain_json_path):
             utils.download_chain_spec(chain_json_url, chain_spec_file_name)
@@ -235,19 +235,19 @@ class ServiceArgs():
 
     def __tinkernet(self):
         chain_json_url = 'https://raw.githubusercontent.com/InvArch/InvArch-Node/main/res/tinker/tinker-raw.json'
-        chain_json_path = f"{c.CHAIN_SPEC_PATH}/tinker-raw.json"
+        chain_json_path = f"{c.CHAIN_SPEC_PATH_DIR}/tinker-raw.json"
 
         utils.download_chain_spec(chain_json_url, 'tinker-raw.json')
         self.__set_chain_name(chain_json_path, 0)
 
     def __clover(self):
-        self.__set_chain_name(Path(c.HOME_PATH, 'specs/clover-para-raw.json'), 0)
+        self.__set_chain_name(Path(c.HOME_PATH_DIR, 'specs/clover-para-raw.json'), 0)
 
     def __polkadex(self):
-        self.__set_chain_name(Path(c.HOME_PATH, 'polkadot-parachain-raw.json'), 0)
+        self.__set_chain_name(Path(c.HOME_PATH_DIR, 'polkadot-parachain-raw.json'), 0)
 
     def __polkadex_mainnet(self):
-        self.__set_chain_name(Path(c.HOME_PATH, 'customSpecRaw.json'), 0)
+        self.__set_chain_name(Path(c.HOME_PATH_DIR, 'customSpecRaw.json'), 0)
 
     def __unique(self):
         if self.chain_name == 'unique':
@@ -257,7 +257,7 @@ class ServiceArgs():
         else:
             raise ValueError("Unsupported chain name.")
 
-        chain_json_path = f'{c.CHAIN_SPEC_PATH}/{self.chain_name}-raw.json'
+        chain_json_path = f'{c.CHAIN_SPEC_PATH_DIR}/{self.chain_name}-raw.json'
 
         utils.download_chain_spec(chain_json_url, f'{self.chain_name}-raw.json')
         self.__set_chain_name(chain_json_path, 0)
@@ -271,22 +271,22 @@ class ServiceArgs():
             self.__set_chain_name('rocky', 0)
 
     def __origintrail(self):
-        if exists(c.BINARY_PATH):
+        if exists(c.BINARY_PATH_FILE):
             chain_json_url = f'https://raw.githubusercontent.com/OriginTrail/origintrail-parachain/v{utils.get_binary_version()}/res/origintrail-parachain-2043-raw.json'
         else:
             chain_json_url = 'https://raw.githubusercontent.com/OriginTrail/origintrail-parachain/develop/res/origintrail-parachain-2043-raw.json'
         utils.download_chain_spec(chain_json_url, f'{self.chain_name}-raw.json')
-        chain_json_path = f'{c.CHAIN_SPEC_PATH}/{self.chain_name}-raw.json'
+        chain_json_path = f'{c.CHAIN_SPEC_PATH_DIR}/{self.chain_name}-raw.json'
         self.__set_chain_name(chain_json_path, 0)
 
     def __asset_hub_rococo(self):
         chain_json_url = 'https://raw.githubusercontent.com/paritytech/polkadot-sdk/master/cumulus/parachains/chain-specs/asset-hub-rococo.json'
-        chain_json_path = f'{c.CHAIN_SPEC_PATH}/{self.chain_name}.json'
+        chain_json_path = f'{c.CHAIN_SPEC_PATH_DIR}/{self.chain_name}.json'
         utils.download_chain_spec(chain_json_url, f'{self.chain_name}.json')
         self.__set_chain_name(chain_json_path, 0)
 
     def __liberland(self):
         chain_json_url = 'https://raw.githubusercontent.com/liberland/liberland_substrate/main/substrate/specs/mainnet.json'
-        chain_json_path = f'{c.CHAIN_SPEC_PATH}/{self.chain_name}.json'
+        chain_json_path = f'{c.CHAIN_SPEC_PATH_DIR}/{self.chain_name}.json'
         utils.download_chain_spec(chain_json_url, f'{self.chain_name}.json')
         self.__set_chain_name(chain_json_path, 0)
