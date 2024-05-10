@@ -28,7 +28,7 @@ def install_docker() -> None:
     except FileNotFoundError:
         sp.run(['curl', '-fsSL', 'https://get.docker.com', '-o', 'get-docker.sh'], check=False)
         sp.run(['sh', 'get-docker.sh'], check=False)
-        sp.run(['usermod', '-aG', 'docker', c.USER_DIR], check=False)
+        sp.run(['usermod', '-aG', 'docker', c.USER], check=False)
 
 
 def install_binary(config: ConfigData, chain_name: str) -> None:
@@ -125,7 +125,7 @@ def install_binaries_from_urls(binary_urls: str, sha256_urls: str) -> None:
         binary_path = c.HOME_DIR / binary_name
         with open(binary_path, 'wb') as f:
             f.write(response.content)
-            sp.run(['chown', f'{c.USER_DIR}:{c.USER_DIR}', binary_path], check=False)
+            sp.run(['chown', f'{c.USER}:{c.USER}', binary_path], check=False)
             sp.run(['chmod', '+x', binary_path], check=False)
     start_service()
 
@@ -142,7 +142,7 @@ def install_binary_from_url(url: str, sha256_url: str) -> None:
     stop_service()
     with open(c.BINARY_PATH_FILE, 'wb') as f:
         f.write(binary_response.content)
-        sp.run(['chown', f'{c.USER_DIR}:{c.USER_DIR}', c.BINARY_PATH_FILE], check=False)
+        sp.run(['chown', f'{c.USER}:{c.USER}', c.BINARY_PATH_FILE], check=False)
         sp.run(['chmod', '+x', c.BINARY_PATH_FILE], check=False)
     start_service()
 
@@ -225,7 +225,7 @@ def download_wasm_runtime(url):
         wasm_files = glob.glob(f'{temp_dir}/*.wasm')
         for wasm_file in wasm_files:
             shutil.move(wasm_file, c.WASM_PATH)
-    sp.run(['chown', '-R', f'{c.USER_DIR}:{c.USER_DIR}', c.WASM_PATH], check=False)
+    sp.run(['chown', '-R', f'{c.USER}:{c.USER}', c.WASM_PATH], check=False)
 
 
 def download_file(url: str, filepath: Path) -> None:
@@ -236,33 +236,33 @@ def download_file(url: str, filepath: Path) -> None:
         raise ValueError(f"Download of file failed with: {response.text}")
     with open(filepath, 'wb') as f:
         f.write(response.content)
-    sp.run(['chown', '-R', f'{c.USER_DIR}:{c.USER_DIR}', filepath], check=False)
+    sp.run(['chown', '-R', f'{c.USER}:{c.USER}', filepath], check=False)
 
 
 def setup_group_and_user():
-    sp.run(['addgroup', '--system', c.USER_DIR], check=False)
-    sp.run(['adduser', '--system', '--home', c.HOME_DIR, '--disabled-password', '--ingroup', c.USER_DIR, c.USER_DIR], check=False)
-    sp.run(['chown', f'{c.USER_DIR}:{c.USER_DIR}', c.HOME_DIR], check=False)
+    sp.run(['addgroup', '--system', c.USER], check=False)
+    sp.run(['adduser', '--system', '--home', c.HOME_DIR, '--disabled-password', '--ingroup', c.USER, c.USER], check=False)
+    sp.run(['chown', f'{c.USER}:{c.USER}', c.HOME_DIR], check=False)
     sp.run(['chmod', '700', c.HOME_DIR], check=False)
 
 
 def create_env_file_for_service():
-    with open(f'/etc/default/{c.USER_DIR}', 'w', encoding='utf-8') as f:
-        f.write(f'{c.USER_DIR.upper()}_CLI_ARGS=\'\'')
+    with open(f'/etc/default/{c.USER}', 'w', encoding='utf-8') as f:
+        f.write(f'{c.USER.upper()}_CLI_ARGS=\'\'')
 
 
 def install_service_file(source_path):
-    target_path = Path(f'/etc/systemd/system/{c.USER_DIR}.service')
+    target_path = Path(f'/etc/systemd/system/{c.USER}.service')
     shutil.copyfile(source_path, target_path)
     sp.run(['systemctl', 'daemon-reload'], check=False)
 
 
 def update_service_args(service_args):
-    args = f"{c.USER_DIR.upper()}_CLI_ARGS='{service_args}'"
+    args = f"{c.USER.upper()}_CLI_ARGS='{service_args}'"
 
-    with open(f'/etc/default/{c.USER_DIR}', 'w', encoding='utf-8') as f:
+    with open(f'/etc/default/{c.USER}', 'w', encoding='utf-8') as f:
         f.write(args + '\n')
-    sp.run(['systemctl', 'restart', f'{c.USER_DIR}.service'], check=False)
+    sp.run(['systemctl', 'restart', f'{c.USER}.service'], check=False)
 
 
 def install_node_exporter():
@@ -310,18 +310,18 @@ def get_binary_last_changed() -> str:
 
 
 def restart_service():
-    sp.run(['systemctl', 'restart', f'{c.USER_DIR}.service'], check=False)
+    sp.run(['systemctl', 'restart', f'{c.USER}.service'], check=False)
 
 
 def start_service():
     # TODO: remove chown and chmod from here? Runs in the install hook already
-    sp.run(['chown', f'{c.USER_DIR}:{c.USER_DIR}', c.BINARY_PATH_FILE], check=False)
+    sp.run(['chown', f'{c.USER}:{c.USER}', c.BINARY_PATH_FILE], check=False)
     sp.run(['chmod', '+x', c.BINARY_PATH_FILE], check=False)
-    sp.run(['systemctl', 'start', f'{c.USER_DIR}.service'], check=False)
+    sp.run(['systemctl', 'start', f'{c.USER}.service'], check=False)
 
 
 def stop_service():
-    sp.run(['systemctl', 'stop', f'{c.USER_DIR}.service'], check=False)
+    sp.run(['systemctl', 'stop', f'{c.USER}.service'], check=False)
 
 
 def service_started(iterations: int = 6) -> bool:
@@ -337,7 +337,7 @@ def service_started(iterations: int = 6) -> bool:
 def write_node_key_file(key):
     with open(c.NODE_KEY_PATH_FILE, "w", encoding='utf-8') as f:
         f.write(key)
-    sp.run(['chown', f'{c.USER_DIR}:{c.USER_DIR}', c.NODE_KEY_PATH_FILE], check=False)
+    sp.run(['chown', f'{c.USER}:{c.USER}', c.NODE_KEY_PATH_FILE], check=False)
     sp.run(['chmod', '0600', c.NODE_KEY_PATH_FILE], check=False)
 
 
@@ -367,13 +367,13 @@ def get_relay_disk_usage() -> str:
 
 
 def get_service_args() -> str:
-    command = ['cat', f'/etc/default/{c.USER_DIR}']
+    command = ['cat', f'/etc/default/{c.USER}']
     cat_output = sp.run(command, stdout=sp.PIPE, check=False).stdout.decode('utf-8').strip()
     return cat_output.split('=')[1]  # cat:ed file includes the env variable name, which we skip including
 
 
 def get_polkadot_process_id() -> str:
-    command = ['pgrep', f'{c.USER_DIR}']
+    command = ['pgrep', f'{c.USER}']
     pgrep_output = sp.run(command, stdout=sp.PIPE, check=False).stdout.decode('utf-8').strip()
     return pgrep_output
 

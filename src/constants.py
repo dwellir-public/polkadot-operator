@@ -2,8 +2,8 @@
 
 from pathlib import Path
 
-USER_DIR = 'polkadot'
-SERVICE_NAME = USER_DIR
+USER = 'polkadot'
+SERVICE_NAME = USER
 HOME_DIR = Path('/home/polkadot')
 BINARY_PATH_FILE = Path(HOME_DIR, 'polkadot')
 CHAIN_SPEC_PATH_DIR = Path(HOME_DIR, 'spec')
