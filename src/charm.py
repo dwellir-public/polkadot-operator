@@ -145,6 +145,10 @@ class PolkadotCharm(ops.CharmBase):
 
         if restart_needed:
             utils.update_service_args(service_args_obj.service_args_string)
+            if not utils.service_started():
+                self.unit.status = ops.BlockedStatus("Service failed to start after configuration change")
+                event.defer()
+                return
 
         self.update_status_simple()
 
