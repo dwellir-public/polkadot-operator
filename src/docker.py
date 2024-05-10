@@ -82,7 +82,7 @@ class Docker():
 
         sp.run(['docker', 'create', '--name', 'tmp', docker_image_and_tag], check=False)
         utils.stop_service()
-        sp.run(['docker', 'cp', f'tmp:{docker_binary_path}', c.BINARY_PATH_FILE], check=True)
+        sp.run(['docker', 'cp', f'tmp:{docker_binary_path}', c.BINARY_FILE], check=True)
         if docker_specs_path:
             sp.run(['docker', 'cp', f'tmp:{docker_specs_path}', c.HOME_DIR], check=True)
             sp.run(['chown', '-R', 'polkadot:polkadot', Path(c.HOME_DIR, Path(docker_specs_path).name)], check=True)

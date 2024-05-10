@@ -17,9 +17,9 @@ class Tarball:
                 member = tarball.getmember('data-avail')
                 if member.isfile():
                     tarball.extract(member, path=c.HOME_DIR)
-                    sp.run(['mv', c.HOME_DIR/'data-avail', c.BINARY_PATH_FILE, '--force'])
+                    sp.run(['mv', c.HOME_DIR/'data-avail', c.BINARY_FILE, '--force'])
                     sp.run(['rm', self.tarball_path])
-                    sp.run(['chown', f'{c.USER}:{c.USER}', c.BINARY_PATH_FILE])
+                    sp.run(['chown', f'{c.USER}:{c.USER}', c.BINARY_FILE])
                 else:
                     raise ValueError("Expected client binary 'data-avail' in tarball is not a file.")
             else:
