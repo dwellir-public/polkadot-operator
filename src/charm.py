@@ -106,7 +106,7 @@ class PolkadotCharm(ops.CharmBase):
             event.defer()
             return
 
-        restart_needed = False
+        update_service_args = False
 
         # Update of polkadot binary requested
         if self._stored.binary_url != self.config.get('binary-url') or self._stored.docker_tag != self.config.get('docker-tag'):
@@ -119,37 +119,35 @@ class PolkadotCharm(ops.CharmBase):
                 return
             self._stored.binary_url = self.config.get('binary-url')
             self._stored.docker_tag = self.config.get('docker-tag')
-            restart_needed = True
+            update_service_args = True
 
         # Update of polkadot service arguments requested
         if self._stored.service_args != self.config.get('service-args'):
             self.unit.status = ops.MaintenanceStatus("Updating service args")
             self._stored.service_args = self.config.get('service-args')
-            restart_needed = True
+            update_service_args = True
 
         if self._stored.chain_spec_url != self.config.get('chain-spec-url'):
             self.unit.status = ops.MaintenanceStatus("Updating chain spec")
             self._stored.chain_spec_url = self.config.get('chain-spec-url')
-            restart_needed = True
+            update_service_args = True
 
         if self._stored.local_relaychain_spec_url != self.config.get('local-relaychain-spec-url'):
             self.unit.status = ops.MaintenanceStatus("Updating relaychain spec")
             self._stored.local_relaychain_spec_url = self.config.get('local-relaychain-spec-url')
-            restart_needed = True
+            update_service_args = True
 
         if self._stored.wasm_runtime_url != self.config.get('wasm-runtime-url'):
             self.unit.status = ops.MaintenanceStatus("Updating wasm runtime")
             utils.download_wasm_runtime(self.config.get('wasm-runtime-url'))
             self._stored.wasm_runtime_url = self.config.get('wasm-runtime-url')
-            restart_needed = True
+            update_service_args = True
 
-        if restart_needed:
-            if utils.service_started():
-                utils.update_service_args(service_args_obj.service_args_string)
-                utils.restart_service()
+        if update_service_args:
+            if not utils.service_started(): 
+                utils.update_service_args(service_args_obj.service_args_string)            
             else:
-                self.unit.status = ops.BlockedStatus("Service failed to start after configuration change")
-                event.defer()
+                self.unit.status = ops.MaintenanceStatus("Service running")
                 return
 
         self.update_status_simple()
