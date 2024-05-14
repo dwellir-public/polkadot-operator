@@ -73,7 +73,6 @@ def install_deb_from_url(url: str) -> None:
     if os.path.exists(c.BINARY_PATH):
         os.remove(c.BINARY_PATH)
     os.symlink(installed_binary, c.BINARY_PATH)
-    start_service()
     os.remove(deb_path)
 
 
@@ -90,7 +89,6 @@ def install_tarball_from_url(url, sha256_url, chain_name):
     stop_service()
     tarball = Tarball(tarball_path, chain_name)
     tarball.extract_resources_from_tarball()
-    start_service()
 
 
 def parse_install_urls(binary_urls: str, sha256_urls: str) -> list:
@@ -127,7 +125,6 @@ def install_binaries_from_urls(binary_urls: str, sha256_urls: str) -> None:
             f.write(response.content)
             sp.run(['chown', f'{c.USER}:{c.USER}', binary_path], check=False)
             sp.run(['chmod', '+x', binary_path], check=False)
-    start_service()
 
 
 def install_binary_from_url(url: str, sha256_url: str) -> None:
@@ -144,7 +141,6 @@ def install_binary_from_url(url: str, sha256_url: str) -> None:
         f.write(binary_response.content)
         sp.run(['chown', f'{c.USER}:{c.USER}', c.BINARY_PATH], check=False)
         sp.run(['chmod', '+x', c.BINARY_PATH], check=False)
-    start_service()
 
 
 def perform_sha256_checksums(responses: list, sha256_urls: str) -> None:
