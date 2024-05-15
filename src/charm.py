@@ -105,8 +105,13 @@ class PolkadotCharm(ops.CharmBase):
             self.unit.status = ops.BlockedStatus(str(e))
             event.defer()
             return
-
-        update_service_args = False
+        restart_services = False
+        restart_services = utils.config_change_requires_restart(self.config)
+        if restart_services:
+            logger.info("Begin configuration change: %s", restart_services)
+            utils.stop_service()
+        else:
+            logger.info("No restart required for config change.")
 
         # Update of polkadot binary requested
         if self._stored.binary_url != self.config.get('binary-url') or self._stored.docker_tag != self.config.get('docker-tag'):
@@ -119,36 +124,31 @@ class PolkadotCharm(ops.CharmBase):
                 return
             self._stored.binary_url = self.config.get('binary-url')
             self._stored.docker_tag = self.config.get('docker-tag')
-            update_service_args = True
 
         # Update of polkadot service arguments requested
         if self._stored.service_args != self.config.get('service-args'):
             self.unit.status = ops.MaintenanceStatus("Updating service args")
             self._stored.service_args = self.config.get('service-args')
-            update_service_args = True
 
         if self._stored.chain_spec_url != self.config.get('chain-spec-url'):
             self.unit.status = ops.MaintenanceStatus("Updating chain spec")
             self._stored.chain_spec_url = self.config.get('chain-spec-url')
-            update_service_args = True
 
         if self._stored.local_relaychain_spec_url != self.config.get('local-relaychain-spec-url'):
             self.unit.status = ops.MaintenanceStatus("Updating relaychain spec")
             self._stored.local_relaychain_spec_url = self.config.get('local-relaychain-spec-url')
-            update_service_args = True
 
         if self._stored.wasm_runtime_url != self.config.get('wasm-runtime-url'):
             self.unit.status = ops.MaintenanceStatus("Updating wasm runtime")
             utils.download_wasm_runtime(self.config.get('wasm-runtime-url'))
             self._stored.wasm_runtime_url = self.config.get('wasm-runtime-url')
-            update_service_args = True
 
-        if update_service_args:
-            if not utils.service_started(): 
-                utils.update_service_args(service_args_obj.service_args_string)            
-            else:
-                self.unit.status = ops.MaintenanceStatus("Service running")
-                return
+        if restart_services:
+            if not utils.service_started():
+                logger.info("Begin configuration change, restarting service(s).")
+                utils.update_service_args(service_args_obj.service_args_string)
+        else:
+            logger.info("Skipping service restart.")  
 
         self.update_status_simple()
 

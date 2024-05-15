@@ -21,6 +21,14 @@ from tarfile import open as open_tarfile
 
 logger = logging.getLogger(__name__)
 
+def config_change_requires_restart(config: ConfigData) -> bool:
+    """ Checks if a config change requires a restart of the blockchain client services. """
+    logger.info("Checking if config change requires restart.")
+    if config.get('binary-url'):
+        return True
+    if config.get('wasm-runtime-url'):
+        return True
+    return False
 
 def install_docker() -> None:
     try:
@@ -66,7 +74,6 @@ def install_deb_from_url(url: str) -> None:
         f.write(deb_response.content)
     package_name = sp.check_output(['dpkg-deb', '-f', deb_path, 'Package']).decode('utf-8').strip()
     logger.debug('Installing package %s from deb file %s', package_name, str(deb_path))
-    stop_service()
     sp.check_call(['dpkg', '--purge', package_name])
     sp.check_call(['dpkg', '--install', deb_path])
     installed_binary = find_binary_installed_by_deb(package_name)
@@ -86,7 +93,6 @@ def install_tarball_from_url(url, sha256_url, chain_name):
     with open(tarball_path, 'wb') as f:
         f.write(tarball_response.content)
 
-    stop_service()
     tarball = Tarball(tarball_path, chain_name)
     tarball.extract_resources_from_tarball()
 
@@ -117,7 +123,6 @@ def install_binaries_from_urls(binary_urls: str, sha256_urls: str) -> None:
         binary_name = binary_url.split('/')[-1]
         responses += [(binary_url, sha256_url, response, binary_name, binary_hash)]
     perform_sha256_checksums(responses, sha256_urls)
-    stop_service()
     for binary_url, _, response, binary_name, _ in responses:
         logger.debug("Unpack binary downloaded from: %s", binary_url)
         binary_path = c.HOME_PATH / binary_name
@@ -136,7 +141,6 @@ def install_binary_from_url(url: str, sha256_url: str) -> None:
     if sha256_url:
         binary_hash = hashlib.sha256(binary_response.content).hexdigest()
         perform_sha256_checksum(binary_hash, sha256_url)
-    stop_service()
     with open(c.BINARY_PATH, 'wb') as f:
         f.write(binary_response.content)
         sp.run(['chown', f'{c.USER}:{c.USER}', c.BINARY_PATH], check=False)
@@ -212,7 +216,6 @@ def download_wasm_runtime(url):
             tarball = open_tarfile(Path(temp_dir, filename), mode='r')
             tarball.extractall(temp_dir)
             tarball.close()
-        stop_service()
         files = glob.glob(f'{c.WASM_PATH}/*.wasm')
         for f in files:
             os.remove(f)
@@ -258,7 +261,9 @@ def update_service_args(service_args):
 
     with open(f'/etc/default/{c.USER}', 'w', encoding='utf-8') as f:
         f.write(args + '\n')
+
     sp.run(['systemctl', 'restart', f'{c.USER}.service'], check=False)
+
 
 
 def install_node_exporter():
