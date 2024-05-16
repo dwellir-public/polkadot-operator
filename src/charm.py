@@ -109,7 +109,6 @@ class PolkadotCharm(ops.CharmBase):
         restart_services = utils.config_change_requires_restart(self.config)
         if restart_services:
             logger.info("Begin configuration change: %s", restart_services)
-            utils.stop_service()
         else:
             logger.info("No restart required for config change.")
 
@@ -144,8 +143,9 @@ class PolkadotCharm(ops.CharmBase):
             self._stored.wasm_runtime_url = self.config.get('wasm-runtime-url')
 
         if restart_services:
-            if not utils.service_started():
+            if utils.service_started():
                 logger.info("Begin configuration change, restarting service(s).")
+                utils.stop_service()
                 utils.update_service_args(service_args_obj.service_args_string)
         else:
             logger.info("Skipping service restart.")  
