@@ -114,6 +114,10 @@ class ServiceArgs():
         self.__add_firstchain_args(['--node-key-file', c.NODE_KEY_PATH])
         if self._relay_rpc_urls:
             self.__add_firstchain_args(['--relay-chain-rpc-urls'] + list(self._relay_rpc_urls.values()))
+        elif self.chain_name.startswith('aleph-zero'):
+            self.__aleph_zero()
+        elif self.chain_name in ['crust-mainnet', 'crust-maxwell', 'crust-rocky']:
+            self.__crust()
 
         # The chain spec configs should be applied after hardcoded chain customizations above since this should override any hardcoded --chain overrides.
         if self._chain_spec_url:
@@ -124,4 +128,17 @@ class ServiceArgs():
             self.__set_chain_name(f'{c.CHAIN_SPEC_PATH}/relaychain-spec.json', 1)
         if self._runtime_wasm_override:
             self.__add_firstchain_args(['--wasm-runtime-overrides', c.WASM_PATH])
-            
+    
+    def __aleph_zero(self):
+        if self.chain_name.endswith('testnet'):
+            self.__set_chain_name('testnet', 0)
+        elif self.chain_name.endswith('mainnet'):
+            self.__set_chain_name('mainnet', 0)
+    
+    def __crust(self):
+        if self.chain_name == 'crust-mainnet':
+            self.__set_chain_name('mainnet', 0)
+        elif self.chain_name == 'crust-maxwell':
+            self.__set_chain_name('maxwell', 0)
+        elif self.chain_name == 'crust-rocky':
+            self.__set_chain_name('rocky', 0)
