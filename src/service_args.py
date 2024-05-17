@@ -73,7 +73,6 @@ class ServiceArgs():
             msg = "'--prometheus-port' may not be set! Charm assumes default port 9615."
         elif "--node-key-file" in service_args:
             msg = f'\'--node-key-file\' may not be set! Path is hardcoded to {c.NODE_KEY_PATH}'
-
         if msg:
             raise ValueError(msg)
 
@@ -81,7 +80,7 @@ class ServiceArgs():
         # Split on any number of spaces and '='. Hence, this will support both '--key value' and '--key=value' in the config.
         service_args = re.split(' +|=', service_args)
         return service_args
-
+    
     def __encode_for_emoji(self, text):
         # encoding to support emoji codes, typically used in '--name'.
         text = text.encode('latin_1').decode("raw_unicode_escape").encode('utf-16', 'surrogatepass').decode('utf-16')
@@ -114,6 +113,11 @@ class ServiceArgs():
         self.__add_firstchain_args(['--node-key-file', c.NODE_KEY_PATH])
         if self._relay_rpc_urls:
             self.__add_firstchain_args(['--relay-chain-rpc-urls'] + list(self._relay_rpc_urls.values()))
+        # All hardcoded --chain overrides in the functions below are deprecated and the values should be set in the new chain-spec configs instead.
+        elif self.chain_name == 'bajun':
+            self.__bajun()
+        elif self.chain_name == 'joystream':
+            self.__joystream()
         elif self.chain_name.startswith('aleph-zero'):
             self.__aleph_zero()
         elif self.chain_name in ['crust-mainnet', 'crust-maxwell', 'crust-rocky']:
@@ -128,6 +132,21 @@ class ServiceArgs():
             self.__set_chain_name(f'{c.CHAIN_SPEC_PATH}/relaychain-spec.json', 1)
         if self._runtime_wasm_override:
             self.__add_firstchain_args(['--wasm-runtime-overrides', c.WASM_PATH])
+    
+    def __bajun(self):
+        # TODO: The spec file did not exist on master branch yet. This URL point to a development branch that will probably not exist in the near future.
+        # Update the URL to the master branch when the spec file is merged.
+        chain_json_url = 'https://raw.githubusercontent.com/ajuna-network/Ajuna/el/tidy-chain-specs/resources/bajun/bajun-raw.json'
+        chain_json_path = f"{c.CHAIN_SPEC_PATH}/bajun-raw.json"
+        if not exists(chain_json_path):
+            utils.download_chain_spec(chain_json_url, 'bajun-raw.json')
+        self.__set_chain_name(chain_json_path, 0)
+    
+    def __joystream(self):
+        chain_json_path = f"{c.CHAIN_SPEC_PATH}/joystream.json"
+        utils.download_chain_spec(
+            'https://github.com/Joystream/joystream/releases/download/v11.3.0/joy-testnet-7-carthage.json', 'joystream.json')
+        self.__set_chain_name(chain_json_path, 0)
     
     def __aleph_zero(self):
         if self.chain_name.endswith('testnet'):
