@@ -136,7 +136,7 @@ class ServiceArgs():
             self.__set_chain_name('testnet', 0)
         elif self.chain_name.endswith('mainnet'):
             self.__set_chain_name('mainnet', 0)
-    
+
     def __crust(self):
         if self.chain_name == 'crust-mainnet':
             self.__set_chain_name('mainnet', 0)
@@ -144,3 +144,4 @@ class ServiceArgs():
             self.__set_chain_name('maxwell', 0)
         elif self.chain_name == 'crust-rocky':
             self.__set_chain_name('rocky', 0)
+
