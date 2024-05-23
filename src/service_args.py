@@ -114,8 +114,9 @@ class ServiceArgs():
         self.__add_firstchain_args(['--node-key-file', c.NODE_KEY_PATH])
         if self._relay_rpc_urls:
             self.__add_firstchain_args(['--relay-chain-rpc-urls'] + list(self._relay_rpc_urls.values()))
+
         # All hardcoded --chain overrides in the functions below are deprecated and the values should be set in the new chain-spec configs instead.
-        elif self.chain_name.startswith('aleph-zero'):
+        if self.chain_name.startswith('aleph-zero'):
             self.__aleph_zero()
         elif self.chain_name in ['crust-mainnet', 'crust-maxwell', 'crust-rocky']:
             self.__crust()
