@@ -114,10 +114,6 @@ class ServiceArgs():
         if self._relay_rpc_urls:
             self.__add_firstchain_args(['--relay-chain-rpc-urls'] + list(self._relay_rpc_urls.values()))
         # All hardcoded --chain overrides in the functions below are deprecated and the values should be set in the new chain-spec configs instead.
-        elif self.chain_name == 'bajun':
-            self.__bajun()
-        elif self.chain_name == 'joystream':
-            self.__joystream()
         elif self.chain_name.startswith('aleph-zero'):
             self.__aleph_zero()
         elif self.chain_name in ['crust-mainnet', 'crust-maxwell', 'crust-rocky']:
@@ -132,21 +128,6 @@ class ServiceArgs():
             self.__set_chain_name(f'{c.CHAIN_SPEC_PATH}/relaychain-spec.json', 1)
         if self._runtime_wasm_override:
             self.__add_firstchain_args(['--wasm-runtime-overrides', c.WASM_PATH])
-    
-    def __bajun(self):
-        # TODO: The spec file did not exist on master branch yet. This URL point to a development branch that will probably not exist in the near future.
-        # Update the URL to the master branch when the spec file is merged.
-        chain_json_url = 'https://raw.githubusercontent.com/ajuna-network/Ajuna/el/tidy-chain-specs/resources/bajun/bajun-raw.json'
-        chain_json_path = f"{c.CHAIN_SPEC_PATH}/bajun-raw.json"
-        if not exists(chain_json_path):
-            utils.download_chain_spec(chain_json_url, 'bajun-raw.json')
-        self.__set_chain_name(chain_json_path, 0)
-    
-    def __joystream(self):
-        chain_json_path = f"{c.CHAIN_SPEC_PATH}/joystream.json"
-        utils.download_chain_spec(
-            'https://github.com/Joystream/joystream/releases/download/v11.3.0/joy-testnet-7-carthage.json', 'joystream.json')
-        self.__set_chain_name(chain_json_path, 0)
     
     def __aleph_zero(self):
         if self.chain_name.endswith('testnet'):
