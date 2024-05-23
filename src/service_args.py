@@ -80,7 +80,7 @@ class ServiceArgs():
         # Split on any number of spaces and '='. Hence, this will support both '--key value' and '--key=value' in the config.
         service_args = re.split(' +|=', service_args)
         return service_args
-    
+
     def __encode_for_emoji(self, text):
         # encoding to support emoji codes, typically used in '--name'.
         text = text.encode('latin_1').decode("raw_unicode_escape").encode('utf-16', 'surrogatepass').decode('utf-16')
