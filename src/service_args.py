@@ -73,6 +73,7 @@ class ServiceArgs():
             msg = "'--prometheus-port' may not be set! Charm assumes default port 9615."
         elif "--node-key-file" in service_args:
             msg = f'\'--node-key-file\' may not be set! Path is hardcoded to {c.NODE_KEY_PATH}'
+
         if msg:
             raise ValueError(msg)
 
