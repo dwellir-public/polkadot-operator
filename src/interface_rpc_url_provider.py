@@ -12,9 +12,8 @@ logger = logging.getLogger(__name__)
 
 class RpcUrlProvider(Object):
     """
-    RPC url provider interface.
-
-    This interface is used by relay chain clients broadcast their rpc urls to parachain clients
+    RPC URL provider interface.
+    This interface is used by relay chain clients broadcast their RPC URLs to parachain clients
     that use them for relay-over-rpc.
     """
 
