@@ -130,7 +130,7 @@ class ServiceArgs():
             self.__set_chain_name(f'{c.CHAIN_SPEC_PATH}/relaychain-spec.json', 1)
         if self._runtime_wasm_override:
             self.__add_firstchain_args(['--wasm-runtime-overrides', c.WASM_PATH])
-    
+
     def __aleph_zero(self):
         if self.chain_name.endswith('testnet'):
             self.__set_chain_name('testnet', 0)
@@ -144,4 +144,3 @@ class ServiceArgs():
             self.__set_chain_name('maxwell', 0)
         elif self.chain_name == 'crust-rocky':
             self.__set_chain_name('rocky', 0)
-
