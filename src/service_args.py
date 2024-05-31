@@ -72,7 +72,7 @@ class ServiceArgs():
         elif "--prometheus-port" in service_args:
             msg = "'--prometheus-port' may not be set! Charm assumes default port 9615."
         elif "--node-key-file" in service_args:
-            msg = f'\'--node-key-file\' may not be set! Path is hardcoded to {c.NODE_KEY_PATH}'
+            msg = f'\'--node-key-file\' may not be set! Path is hardcoded to {c.NODE_KEY_FILE}'
 
         if msg:
             raise ValueError(msg)
@@ -111,7 +111,7 @@ class ServiceArgs():
         self.service_args_list_customized = self.service_args_list_customized + args
 
     def __customize_service_args(self):
-        self.__add_firstchain_args(['--node-key-file', c.NODE_KEY_PATH])
+        self.__add_firstchain_args(['--node-key-file', c.NODE_KEY_FILE])
         if self._relay_rpc_urls:
             self.__add_firstchain_args(['--relay-chain-rpc-urls'] + list(self._relay_rpc_urls.values()))
 
@@ -124,10 +124,10 @@ class ServiceArgs():
         # The chain spec configs should be applied after hardcoded chain customizations above since this should override any hardcoded --chain overrides.
         if self._chain_spec_url:
             utils.download_chain_spec(self._chain_spec_url, 'chain-spec.json')
-            self.__set_chain_name(f'{c.CHAIN_SPEC_PATH}/chain-spec.json', 0)
+            self.__set_chain_name(f'{c.CHAIN_SPEC_DIR}/chain-spec.json', 0)
         if self._local_relaychain_spec_url:
             utils.download_chain_spec(self._local_relaychain_spec_url, 'relaychain-spec.json')
-            self.__set_chain_name(f'{c.CHAIN_SPEC_PATH}/relaychain-spec.json', 1)
+            self.__set_chain_name(f'{c.CHAIN_SPEC_DIR}/relaychain-spec.json', 1)
         if self._runtime_wasm_override:
             self.__add_firstchain_args(['--wasm-runtime-overrides', c.WASM_PATH])
 
