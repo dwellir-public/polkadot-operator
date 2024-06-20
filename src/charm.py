@@ -76,11 +76,19 @@ class PolkadotCharm(ops.CharmBase):
                                  chain_spec_url=self.config.get('chain-spec-url'),
                                  local_relaychain_spec_url=self.config.get('local-relaychain-spec-url'),
                                  wasm_runtime_url=self.config.get('wasm-runtime-url'),
-                                 relay_rpc_urls=dict())
+                                 )
+
+    def rpc_urls(self):
+        """
+        Return the rpc urls that are currently available in in all relay-rpc-url relations.
+        The magic comprehension below is the unfortunate actual best method to perform this
+        list flattening operation in Python.
+        """
+        return [subdata["ws_url"] for relation in self.model.relations["relay-rpc-url"] for subdata in relation.data.values() if "ws_url" in subdata]
 
     def _on_install(self, event: ops.InstallEvent) -> None:
         self.unit.status = ops.MaintenanceStatus("Begin installing charm")
-        service_args_obj = ServiceArgs(self.config, self._stored.relay_rpc_urls)
+        service_args_obj = ServiceArgs(self.config, self.rpc_urls())
         # Setup polkadot group and user, disable login
         utils.setup_group_and_user()
         # Create environment file for polkadot service arguments
@@ -100,7 +108,7 @@ class PolkadotCharm(ops.CharmBase):
 
     def _on_config_changed(self, event: ops.ConfigChangedEvent) -> None:
         try:
-            service_args_obj = ServiceArgs(self.config, self._stored.relay_rpc_urls)
+            service_args_obj = ServiceArgs(self.config, self.rpc_urls())
         except ValueError as e:
             self.unit.status = ops.BlockedStatus(str(e))
             event.defer()
@@ -154,7 +162,7 @@ class PolkadotCharm(ops.CharmBase):
         During a benchmark, it took 20 seconds on Kusama where there are 1000 validators.
         """
         if utils.service_started():
-            service_args = ServiceArgs(self.config, self._stored.relay_rpc_urls)
+            service_args = ServiceArgs(self.config, self.rpc_urls())
             rpc_port = service_args.rpc_port
             for i in range(connection_attempts):
                 time.sleep(5)
@@ -199,7 +207,7 @@ class PolkadotCharm(ops.CharmBase):
 
     def _on_get_session_key_action(self, event: ops.ActionEvent) -> None:
         event.log("Getting new session key through rpc...")
-        rpc_port = ServiceArgs(self.config, self._stored.relay_rpc_urls).rpc_port
+        rpc_port = ServiceArgs(self.config, self.rpc_urls()).rpc_port
         key = PolkadotRpcWrapper(rpc_port).get_session_key()
         if key:
             event.set_results(results={'session-key': key})
@@ -212,7 +220,7 @@ class PolkadotCharm(ops.CharmBase):
         if not re.match(keypattern, key):
             event.fail("Illegal key pattern, did your key start with 0x ?")
         else:
-            rpc_port = ServiceArgs(self.config, self._stored.relay_rpc_urls).rpc_port
+            rpc_port = ServiceArgs(self.config, self.rpc_urls()).rpc_port
             has_session_key = PolkadotRpcWrapper(rpc_port).has_session_key(key)
             event.set_results(results={'has-key': has_session_key})
 
@@ -223,7 +231,7 @@ class PolkadotCharm(ops.CharmBase):
         if not re.match(keypattern, address):
             event.fail("Illegal key pattern, did your public key/address start with 0x ?")
         else:
-            rpc_port = ServiceArgs(self.config, self._stored.relay_rpc_urls).rpc_port
+            rpc_port = ServiceArgs(self.config, self.rpc_urls()).rpc_port
             PolkadotRpcWrapper(rpc_port).insert_key(mnemonic, address)
 
     def _on_restart_node_service_action(self, event: ops.ActionEvent) -> None:
@@ -256,7 +264,7 @@ class PolkadotCharm(ops.CharmBase):
 
     def _on_find_validator_address_action(self, event: ops.ActionEvent) -> None:
         event.log("Checking sessions key through rpc...")
-        rpc_port = ServiceArgs(self.config, self._stored.relay_rpc_urls).rpc_port
+        rpc_port = ServiceArgs(self.config, self.rpc_urls()).rpc_port
         result = PolkadotRpcWrapper(rpc_port).is_validating_this_era()
         if result:
             event.set_results(results={'message': f'This node is currently validating for address {result["validator"]}.'})
@@ -267,7 +275,7 @@ class PolkadotCharm(ops.CharmBase):
     def _on_is_validating_next_era_action(self, event: ops.ActionEvent) -> None:
         validator_address = event.params['address']
         event.log("Checking sessions key through rpc...")
-        rpc_port = ServiceArgs(self.config, self._stored.relay_rpc_urls).rpc_port
+        rpc_port = ServiceArgs(self.config, self.rpc_urls()).rpc_port
         session_key = PolkadotRpcWrapper(rpc_port).is_validating_next_era(validator_address)
         if session_key:
             event.set_results(results={'message': f'This node will be validating next era for address {validator_address}.'})
@@ -306,7 +314,7 @@ class PolkadotCharm(ops.CharmBase):
             event.set_results(results={'node-relay': utils.get_relay_for_parachain()})
         # On-chain info
         try:
-            rpc_port = ServiceArgs(self.config, self._stored.relay_rpc_urls).rpc_port
+            rpc_port = ServiceArgs(self.config, self.rpc_urls()).rpc_port
             block_height = PolkadotRpcWrapper(rpc_port).get_block_height()
             if block_height:
                 event.set_results(results={'chain-block-height': block_height})
