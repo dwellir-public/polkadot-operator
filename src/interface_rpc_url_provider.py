@@ -11,7 +11,11 @@ import logging
 logger = logging.getLogger(__name__)
 
 class RpcUrlProvider(Object):
-    """RPC url provider interface."""
+    """
+    RPC URL provider interface.
+    This interface is used by relay chain clients broadcast their RPC URLs to parachain clients
+    that use them for relay-over-rpc.
+    """
 
     def __init__(self, charm, relation_name):
         super().__init__(charm, relation_name)
@@ -22,7 +26,7 @@ class RpcUrlProvider(Object):
         )
 
     def _on_relation_joined(self, event: RelationJoinedEvent) -> None:
-        """This event is used to send the ws or http rpc url to another client."""
+        """This event is used to broadcast the rpc url to the parachain clients."""
 
         service_args_obj = ServiceArgs(self._charm.config, "")
 
