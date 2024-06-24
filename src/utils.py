@@ -160,7 +160,7 @@ def perform_sha256_checksums(responses: list, sha256_urls: str) -> None:
             try:
                 target_hash = sha256_target_map[binary_name]
             except KeyError:
-                raise ValueError(f"Could not find target hash for {binary_name}. Was the correct sha256 url provided?")
+                raise ValueError(f"Could not find target hash for {binary_name}. Was the correct sha256 URL provided?")
             # Raise error if hash is incorrect
             if binary_hash != target_hash:
                 raise ValueError(f"Binary {binary_name} downloaded has wrong hash!")

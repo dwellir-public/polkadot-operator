@@ -2,13 +2,7 @@
 # Copyright 2024 Dwellir AB
 # See LICENSE file for licensing details.
 
-"""Charm the service.
-
-Refer to the following post for a quick-start guide that will help you
-develop a new k8s charm using the Operator Framework:
-
-    https://discourse.charmhub.io/t/4208
-"""
+"""Charm the Polkadot blockchain client service."""
 
 import logging
 from pathlib import Path
@@ -32,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 
 class PolkadotCharm(ops.CharmBase):
-    """Charm the service."""
+    """Charm the Polkadot blockchain client service."""
 
     _stored = ops.framework.StoredState()
 
@@ -80,7 +74,7 @@ class PolkadotCharm(ops.CharmBase):
 
     def rpc_urls(self):
         """
-        Return the rpc urls that are currently available in in all relay-rpc-url relations.
+        Return the RPC URL:s that are currently available in all relay-rpc-url relations.
         The magic comprehension below is the unfortunate actual best method to perform this
         list flattening operation in Python.
         """
@@ -206,7 +200,7 @@ class PolkadotCharm(ops.CharmBase):
         self.update_status_simple()
 
     def _on_get_session_key_action(self, event: ops.ActionEvent) -> None:
-        event.log("Getting new session key through rpc...")
+        event.log("Getting new session key through RPC...")
         rpc_port = ServiceArgs(self.config, self.rpc_urls()).rpc_port
         key = PolkadotRpcWrapper(rpc_port).get_session_key()
         if key:
@@ -263,7 +257,7 @@ class PolkadotCharm(ops.CharmBase):
         self.update_status_simple()
 
     def _on_find_validator_address_action(self, event: ops.ActionEvent) -> None:
-        event.log("Checking sessions key through rpc...")
+        event.log("Checking sessions key through RPC...")
         rpc_port = ServiceArgs(self.config, self.rpc_urls()).rpc_port
         result = PolkadotRpcWrapper(rpc_port).is_validating_this_era()
         if result:
@@ -274,7 +268,7 @@ class PolkadotCharm(ops.CharmBase):
 
     def _on_is_validating_next_era_action(self, event: ops.ActionEvent) -> None:
         validator_address = event.params['address']
-        event.log("Checking sessions key through rpc...")
+        event.log("Checking sessions key through RPC...")
         rpc_port = ServiceArgs(self.config, self.rpc_urls()).rpc_port
         session_key = PolkadotRpcWrapper(rpc_port).is_validating_next_era(validator_address)
         if session_key:
