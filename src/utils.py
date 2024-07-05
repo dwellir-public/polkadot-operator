@@ -61,7 +61,7 @@ def find_binary_installed_by_deb(package_name: str, ) -> str:
 
 def install_deb_from_url(url: str) -> None:
     deb_response = requests.get(url, allow_redirects=True, timeout=None)
-    deb_path = Path(c.HOME_PATH, url.split('/')[-1])
+    deb_path = Path(c.HOME_DIR, url.split('/')[-1])
     with open(deb_path, 'wb') as f:
         f.write(deb_response.content)
     package_name = sp.check_output(['dpkg-deb', '-f', deb_path, 'Package']).decode('utf-8').strip()
@@ -70,16 +70,16 @@ def install_deb_from_url(url: str) -> None:
     sp.check_call(['dpkg', '--purge', package_name])
     sp.check_call(['dpkg', '--install', deb_path])
     installed_binary = find_binary_installed_by_deb(package_name)
-    if os.path.exists(c.BINARY_PATH):
-        os.remove(c.BINARY_PATH)
-    os.symlink(installed_binary, c.BINARY_PATH)
+    if os.path.exists(c.BINARY_FILE):
+        os.remove(c.BINARY_FILE)
+    os.symlink(installed_binary, c.BINARY_FILE)
     start_service()
     os.remove(deb_path)
 
 
 def install_tarball_from_url(url, sha256_url, chain_name):
     tarball_response = requests.get(url, allow_redirects=True, timeout=None)
-    tarball_path = Path(c.HOME_PATH, url.split('/')[-1])
+    tarball_path = Path(c.HOME_DIR, url.split('/')[-1])
     if tarball_response.status_code != 200:
         raise ValueError(f"Download binary failed with: {tarball_response.text}. Check 'binary-url'!")
 
@@ -122,7 +122,7 @@ def install_binaries_from_urls(binary_urls: str, sha256_urls: str) -> None:
     stop_service()
     for binary_url, _, response, binary_name, _ in responses:
         logger.debug("Unpack binary downloaded from: %s", binary_url)
-        binary_path = c.HOME_PATH / binary_name
+        binary_path = c.HOME_DIR / binary_name
         with open(binary_path, 'wb') as f:
             f.write(response.content)
             sp.run(['chown', f'{c.USER}:{c.USER}', binary_path], check=False)
@@ -140,10 +140,10 @@ def install_binary_from_url(url: str, sha256_url: str) -> None:
         binary_hash = hashlib.sha256(binary_response.content).hexdigest()
         perform_sha256_checksum(binary_hash, sha256_url)
     stop_service()
-    with open(c.BINARY_PATH, 'wb') as f:
+    with open(c.BINARY_FILE, 'wb') as f:
         f.write(binary_response.content)
-        sp.run(['chown', f'{c.USER}:{c.USER}', c.BINARY_PATH], check=False)
-        sp.run(['chmod', '+x', c.BINARY_PATH], check=False)
+        sp.run(['chown', f'{c.USER}:{c.USER}', c.BINARY_FILE], check=False)
+        sp.run(['chmod', '+x', c.BINARY_FILE], check=False)
     start_service()
 
 
@@ -160,7 +160,7 @@ def perform_sha256_checksums(responses: list, sha256_urls: str) -> None:
             try:
                 target_hash = sha256_target_map[binary_name]
             except KeyError:
-                raise ValueError(f"Could not find target hash for {binary_name}. Was the correct sha256 url provided?")
+                raise ValueError(f"Could not find target hash for {binary_name}. Was the correct sha256 URL provided?")
             # Raise error if hash is incorrect
             if binary_hash != target_hash:
                 raise ValueError(f"Binary {binary_name} downloaded has wrong hash!")
@@ -188,10 +188,10 @@ def get_sha256_response(sha256_url: str) -> requests.Response:
 
 def download_chain_spec(url: str, filename: Path) -> None:
     """Download a chain spec file from a given URL to a given filepath."""
-    if not c.CHAIN_SPEC_PATH.exists():
-        c.CHAIN_SPEC_PATH.mkdir(parents=True)
+    if not c.CHAIN_SPEC_DIR.exists():
+        c.CHAIN_SPEC_DIR.mkdir(parents=True)
     try:
-        download_file(url, Path(c.CHAIN_SPEC_PATH, filename))
+        download_file(url, Path(c.CHAIN_SPEC_DIR, filename))
     except ValueError as e:
         logger.error(f'Failed to download chain spec: {e}')
         raise e
@@ -204,8 +204,8 @@ def download_wasm_runtime(url):
     filename = Path(url.split('/')[-1])
     if not filename.name.endswith('.tar.gz') and not filename.suffix == '.wasm':
         raise ValueError(f'Invalid file format provided for wasm-runtime-url: {filename.name}')
-    if not c.WASM_PATH.exists():
-        c.WASM_PATH.mkdir(parents=True)
+    if not c.WASM_DIR.exists():
+        c.WASM_DIR.mkdir(parents=True)
     with tempfile.TemporaryDirectory() as temp_dir:
         try:
             download_file(url, Path(temp_dir, filename))
@@ -217,15 +217,15 @@ def download_wasm_runtime(url):
             tarball.extractall(temp_dir)
             tarball.close()
         stop_service()
-        files = glob.glob(f'{c.WASM_PATH}/*.wasm')
+        files = glob.glob(f'{c.WASM_DIR}/*.wasm')
         for f in files:
             os.remove(f)
         files_in_temp_dir = glob.glob(f'{temp_dir}/*')
         logger.debug('Files in temp_dir: %s', str(files_in_temp_dir))
         wasm_files = glob.glob(f'{temp_dir}/*.wasm')
         for wasm_file in wasm_files:
-            shutil.move(wasm_file, c.WASM_PATH)
-    sp.run(['chown', '-R', f'{c.USER}:{c.USER}', c.WASM_PATH], check=False)
+            shutil.move(wasm_file, c.WASM_DIR)
+    sp.run(['chown', '-R', f'{c.USER}:{c.USER}', c.WASM_DIR], check=False)
 
 
 def download_file(url: str, filepath: Path) -> None:
@@ -241,9 +241,9 @@ def download_file(url: str, filepath: Path) -> None:
 
 def setup_group_and_user():
     sp.run(['addgroup', '--system', c.USER], check=False)
-    sp.run(['adduser', '--system', '--home', c.HOME_PATH, '--disabled-password', '--ingroup', c.USER, c.USER], check=False)
-    sp.run(['chown', f'{c.USER}:{c.USER}', c.HOME_PATH], check=False)
-    sp.run(['chmod', '700', c.HOME_PATH], check=False)
+    sp.run(['adduser', '--system', '--home', c.HOME_DIR, '--disabled-password', '--ingroup', c.USER, c.USER], check=False)
+    sp.run(['chown', f'{c.USER}:{c.USER}', c.HOME_DIR], check=False)
+    sp.run(['chmod', '700', c.HOME_DIR], check=False)
 
 
 def create_env_file_for_service():
@@ -279,9 +279,9 @@ def install_node_exporter():
 def get_binary_version() -> str:
     """ Returns the version of the binary client by checking the '--version' flag. """
     logger.debug("Getting binary version from client binary.")
-    if c.BINARY_PATH.exists():
+    if c.BINARY_FILE.exists():
         try:
-            command = [c.BINARY_PATH, "--version"]
+            command = [c.BINARY_FILE, "--version"]
             output = sp.run(command, stdout=sp.PIPE, check=False).stdout.decode('utf-8').strip()
             version = re.search(r'([\d.]+)', output).group(1)
             return version
@@ -291,16 +291,16 @@ def get_binary_version() -> str:
 
 
 def get_binary_md5sum() -> str:
-    if c.BINARY_PATH.exists():
-        command = ['md5sum', c.BINARY_PATH]
+    if c.BINARY_FILE.exists():
+        command = ['md5sum', c.BINARY_FILE]
         md5sum_output = sp.run(command, stdout=sp.PIPE, check=False).stdout.decode('utf-8').strip()
         return md5sum_output.split(' ')[0]  # Output includes path of binary, which we skip including
     return ""
 
 
 def get_binary_last_changed() -> str:
-    if c.BINARY_PATH.exists():
-        command = ['stat', c.BINARY_PATH]
+    if c.BINARY_FILE.exists():
+        command = ['stat', c.BINARY_FILE]
         stat_output = sp.run(command, stdout=sp.PIPE, check=False).stdout.decode('utf-8').strip()
         stat_split = re.split('Change: ', stat_output)[1].split(' ')
         date = stat_split[0]
@@ -315,8 +315,8 @@ def restart_service():
 
 def start_service():
     # TODO: remove chown and chmod from here? Runs in the install hook already
-    sp.run(['chown', f'{c.USER}:{c.USER}', c.BINARY_PATH], check=False)
-    sp.run(['chmod', '+x', c.BINARY_PATH], check=False)
+    sp.run(['chown', f'{c.USER}:{c.USER}', c.BINARY_FILE], check=False)
+    sp.run(['chmod', '+x', c.BINARY_FILE], check=False)
     sp.run(['systemctl', 'start', f'{c.USER}.service'], check=False)
 
 
@@ -335,10 +335,10 @@ def service_started(iterations: int = 6) -> bool:
 
 
 def write_node_key_file(key):
-    with open(c.NODE_KEY_PATH, "w", encoding='utf-8') as f:
+    with open(c.NODE_KEY_FILE, "w", encoding='utf-8') as f:
         f.write(key)
-    sp.run(['chown', f'{c.USER}:{c.USER}', c.NODE_KEY_PATH], check=False)
-    sp.run(['chmod', '0600', c.NODE_KEY_PATH], check=False)
+    sp.run(['chown', f'{c.USER}:{c.USER}', c.NODE_KEY_FILE], check=False)
+    sp.run(['chmod', '0600', c.NODE_KEY_FILE], check=False)
 
 
 def get_disk_usage(path: Path) -> str:
@@ -355,14 +355,14 @@ def get_disk_usage(path: Path) -> str:
 
 
 def get_chain_disk_usage() -> str:
-    if c.DB_CHAIN_PATH.exists():
-        return get_disk_usage(c.DB_CHAIN_PATH)
+    if c.DB_CHAIN_DIR.exists():
+        return get_disk_usage(c.DB_CHAIN_DIR)
     return ""
 
 
 def get_relay_disk_usage() -> str:
-    if c.DB_RELAY_PATH.exists():
-        return get_disk_usage(c.DB_RELAY_PATH)
+    if c.DB_RELAY_DIR.exists():
+        return get_disk_usage(c.DB_RELAY_DIR)
     return ""
 
 
@@ -394,10 +394,10 @@ def is_relay_chain_node() -> bool:
 
 def is_parachain_node() -> bool:
     # TODO: should both of these be required to satisfy the node being a parachain, or is one enough?
-    if c.DB_CHAIN_PATH.exists() and c.DB_RELAY_PATH.exists():
+    if c.DB_CHAIN_DIR.exists() and c.DB_RELAY_DIR.exists():
         return True
-    if c.BINARY_PATH.exists():
-        command = f'.{c.BINARY_PATH} --help | grep -i "\-\-collator"'
+    if c.BINARY_FILE.exists():
+        command = f'.{c.BINARY_FILE} --help | grep -i "\-\-collator"'
         output = sp.run(command, stdout=sp.PIPE, cwd='/', shell=True, check=False)
         if output.returncode == 0:
             return True
@@ -408,7 +408,7 @@ def get_relay_for_parachain() -> str:
     if not is_parachain_node():
         return 'Error, this is not a parachain'
     try:
-        chains_dir = Path(c.DB_RELAY_PATH, 'chains')
+        chains_dir = Path(c.DB_RELAY_DIR, 'chains')
         chains_subdirs = [d for d in chains_dir.iterdir() if d.is_dir()]
         if len(chains_subdirs) == 1:
             db_dir = str(chains_subdirs[0])
@@ -427,8 +427,8 @@ def get_relay_for_parachain() -> str:
 
 
 def get_wasm_info() -> str:
-    if c.WASM_PATH.exists():
-        files = list(c.WASM_PATH.glob('*.wasm'))
+    if c.WASM_DIR.exists():
+        files = list(c.WASM_DIR.glob('*.wasm'))
         if not files:
             return "No wasm files found in ~/wasm directory"
         files = [str(f.name) for f in files]
@@ -437,8 +437,8 @@ def get_wasm_info() -> str:
 
 
 def get_client_binary_help_output() -> str:
-    if c.BINARY_PATH.exists():
-        command = f'.{c.BINARY_PATH} --help'
+    if c.BINARY_FILE.exists():
+        command = f'.{c.BINARY_FILE} --help'
         process = sp.run(command, stdout=sp.PIPE, cwd='/', shell=True, check=False)
         if process.returncode == 0:
             return process.stdout.decode('utf-8').strip()

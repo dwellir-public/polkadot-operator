@@ -68,7 +68,9 @@ class Docker():
         elif self.chain_name == 'robonomics':
             self.__extract_from_docker('robonomics/robonomics', 'usr/local/bin/robonomics')
         elif self.chain_name == 'bittensor':
-            self.__extract_from_docker('opentensor/subtensor', 'usr/local/bin/node-subtensor') 
+            self.__extract_from_docker('opentensor/subtensor', 'usr/local/bin/node-subtensor')
+        elif self.chain_name in ['peaq', 'krest']:
+            self.__extract_from_docker('peaq/parachain', 'usr/local/bin/peaq-node')
         else:
             raise ValueError(f"{self.chain_name} is not a supported chain using Docker!")
 
@@ -82,10 +84,10 @@ class Docker():
 
         sp.run(['docker', 'create', '--name', 'tmp', docker_image_and_tag], check=False)
         utils.stop_service()
-        sp.run(['docker', 'cp', f'tmp:{docker_binary_path}', c.BINARY_PATH], check=True)
+        sp.run(['docker', 'cp', f'tmp:{docker_binary_path}', c.BINARY_FILE], check=True)
         if docker_specs_path:
-            sp.run(['docker', 'cp', f'tmp:{docker_specs_path}', c.HOME_PATH], check=True)
-            sp.run(['chown', '-R', 'polkadot:polkadot', Path(c.HOME_PATH, Path(docker_specs_path).name)], check=True)
+            sp.run(['docker', 'cp', f'tmp:{docker_specs_path}', c.HOME_DIR], check=True)
+            sp.run(['chown', '-R', 'polkadot:polkadot', Path(c.HOME_DIR, Path(docker_specs_path).name)], check=True)
         utils.start_service()
         sp.run(['docker', 'rm', 'tmp'], check=True)
         sp.run(['docker', 'rmi', docker_image_and_tag], check=True)
