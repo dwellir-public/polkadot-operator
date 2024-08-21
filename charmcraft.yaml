@@ -23,5 +23,3 @@ parts:
       - setuptools < 58
     charm-binary-python-packages:
       - substrate-interface
-    prime:
-      - files/*
