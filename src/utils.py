@@ -40,7 +40,7 @@ def install_binary(config: ConfigData, chain_name: str) -> None:
         elif config.get('binary-url').endswith('.tar.gz') or config.get('binary-url').endswith('.tgz'):
             install_tarball_from_url(config.get('binary-url'), config.get('binary-sha256-url'), chain_name)
         elif len(config.get('binary-url').split()) > 1:
-            install_binaries_from_urls(config.get('binary-url'), config.get('binary-sha256-url'))
+            install_binaries_from_urls(config.get('binary-url'), config.get('binary-sha256-url'), chain_name)
         else:
             install_binary_from_url(config.get('binary-url'), config.get('binary-sha256-url'))
     elif config.get('docker-tag'):
@@ -104,7 +104,7 @@ def parse_install_urls(binary_urls: str, sha256_urls: str) -> list:
     return url_pairs
 
 
-def install_binaries_from_urls(binary_urls: str, sha256_urls: str) -> None:
+def install_binaries_from_urls(binary_urls: str, sha256_urls: str, chain_name: str) -> None:
     logger.debug('Installing multiple binaries!')
     binary_sha256_pairs = parse_install_urls(binary_urls, sha256_urls)
     responses = []
@@ -115,8 +115,18 @@ def install_binaries_from_urls(binary_urls: str, sha256_urls: str) -> None:
         if response.status_code != 200:
             raise ValueError(f"Download binary failed with: {response.text}. Check 'binary-url'!")
         binary_hash = hashlib.sha256(response.content).hexdigest()
-        # TODO: keeping the binary name won't work for the charm if it's not exactly 'polkadot', adjust this if more chains start using multiple binaries
-        binary_name = binary_url.split('/')[-1]
+        if 'execute-worker' in binary_url.split('/')[-1]:
+            try:
+                binary_name = c.EXECUTE_WORKER_BINARY_FILE[chain_name]
+            except KeyError:
+                binary_name = c.EXECUTE_WORKER_BINARY_FILE['default']
+        elif 'prepare-worker' in binary_url.split('/')[-1]:
+            try:
+                binary_name = c.PREPARE_WORKER_BINARY_FILE[chain_name]
+            except KeyError:
+                binary_name = c.PREPARE_WORKER_BINARY_FILE['default']
+        else:
+            binary_name = c.BINARY_FILE
         responses += [(binary_url, sha256_url, response, binary_name, binary_hash)]
     perform_sha256_checksums(responses, sha256_urls)
     stop_service()
