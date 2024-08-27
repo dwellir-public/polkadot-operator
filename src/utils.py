@@ -115,15 +115,17 @@ def install_binaries_from_urls(binary_urls: str, sha256_urls: str, chain_name: s
         if response.status_code != 200:
             raise ValueError(f"Download binary failed with: {response.text}. Check 'binary-url'!")
         binary_hash = hashlib.sha256(response.content).hexdigest()
+        # Get correct execute worker binary name
         if 'execute-worker' in binary_url.split('/')[-1]:
-            try:
+            if chain_name in c.EXECUTE_WORKER_BINARY_FILE:
                 binary_name = c.EXECUTE_WORKER_BINARY_FILE[chain_name]
-            except KeyError:
+            else:
                 binary_name = c.EXECUTE_WORKER_BINARY_FILE['default']
+        # Get correct prepare worker binary name
         elif 'prepare-worker' in binary_url.split('/')[-1]:
-            try:
+            if chain_name in c.PREPARE_WORKER_BINARY_FILE:
                 binary_name = c.PREPARE_WORKER_BINARY_FILE[chain_name]
-            except KeyError:
+            else:
                 binary_name = c.PREPARE_WORKER_BINARY_FILE['default']
         else:
             binary_name = c.BINARY_FILE
