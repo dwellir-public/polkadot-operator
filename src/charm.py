@@ -204,7 +204,17 @@ class PolkadotCharm(ops.CharmBase):
         rpc_port = ServiceArgs(self.config, self.rpc_urls()).rpc_port
         key = PolkadotRpcWrapper(rpc_port).get_session_key()
         if key:
-            event.set_results(results={'session-key': key})
+            event.set_results(results={'session-keys-merged': key})
+
+            # For convenience, also print a splitted version of the session key
+            # Remove the initial '0x'
+            key_without_prefix = key[2:]
+            # Split the key into chunks of 64 characters
+            chunks = [key_without_prefix[i:i+64] for i in range(0, len(key_without_prefix), 64)]
+            # Add '0x' to each chunk
+            keys_with_prefix = [f"0x{chunk}" for chunk in chunks]
+            for i, key in enumerate(keys_with_prefix):
+                event.set_results(results={f'session-key-{i}': key})
         else:
             event.fail("Unable to get new session key")
 
