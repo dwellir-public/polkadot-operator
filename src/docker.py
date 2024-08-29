@@ -73,6 +73,8 @@ class Docker():
             self.__extract_from_docker('peaq/parachain', 'usr/local/bin/peaq-node')
         elif self.chain_name == 'hyperbridge-nexus':
             self.__extract_from_docker('polytopelabs/hyperbridge', './hyperbridge')
+        elif self.chain_name == 'litentry':
+            self.__extract_from_docker('litentry/litentry-parachain', '/usr/local/bin/litentry-collator')
         else:
             raise ValueError(f"{self.chain_name} is not a supported chain using Docker!")
 
