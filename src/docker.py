@@ -18,7 +18,7 @@ class Docker():
 
     def extract_resources_from_docker(self):
         if self.chain_name in ['spiritnet', 'peregrine', 'peregrine-stg-kilt']:
-            self.__extract_from_docker('kiltprotocol/kilt-node', '/usr/local/bin/node-executable', '/node/dev-specs')
+            self.__extract_from_docker('kiltprotocol/kilt-node', '/usr/local/bin/node-executable')
         elif self.chain_name == 'centrifuge' or self.chain_name == 'altair':
             self.__extract_from_docker('centrifugeio/centrifuge-chain', '/usr/local/bin/centrifuge-chain')
         elif self.chain_name == 'nodle' or self.chain_name == 'arcadia' or self.chain_name == 'eden':
