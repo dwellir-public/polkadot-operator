@@ -91,6 +91,7 @@ class PolkadotCharm(ops.CharmBase):
         self.unit.status = ops.MaintenanceStatus("Installing binary")
         utils.install_binary(self.config, service_args_obj.chain_name)
         utils.download_wasm_runtime(self.config.get('wasm-runtime-url'))
+        utils.generate_node_key()
         # Install polkadot.service file
         self.unit.status = ops.MaintenanceStatus("Installing service")
         source_path = Path(self.charm_dir / 'templates/etc/systemd/system/polkadot.service')

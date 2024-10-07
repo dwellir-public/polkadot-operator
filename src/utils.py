@@ -353,6 +353,13 @@ def write_node_key_file(key):
     sp.run(['chmod', '0600', c.NODE_KEY_FILE], check=False)
 
 
+def generate_node_key():
+    command = [c.BINARY_FILE, 'key', 'generate-node-key', '--file', c.NODE_KEY_FILE]
+    sp.run(command, check=False)
+    sp.run(['chown', f'{c.USER}:{c.USER}', c.NODE_KEY_FILE], check=False)
+    sp.run(['chmod', '0600', c.NODE_KEY_FILE], check=False)
+
+
 def get_disk_usage(path: Path) -> str:
     if not path.exists():
         return ''
