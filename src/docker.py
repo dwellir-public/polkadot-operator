@@ -71,7 +71,7 @@ class Docker():
             self.__extract_from_docker('opentensor/subtensor', 'usr/local/bin/node-subtensor')
         elif self.chain_name in ['peaq', 'krest']:
             self.__extract_from_docker('peaq/parachain', 'usr/local/bin/peaq-node')
-        elif self.chain_name == 'hyperbridge-nexus':
+        elif self.chain_name == 'nexus':
             self.__extract_from_docker('polytopelabs/hyperbridge', './hyperbridge')
         elif self.chain_name == 'litentry':
             self.__extract_from_docker('litentry/litentry-parachain', '/usr/local/bin/litentry-collator')
