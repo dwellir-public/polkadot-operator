@@ -5,6 +5,7 @@ import utils
 from pathlib import Path
 from os.path import exists
 import re
+import json
 from ops.model import ConfigData
 
 
@@ -21,7 +22,10 @@ class ServiceArgs():
         self.__check_service_args(self.service_args_list)
         # Service args that is modified to use for the service.
         self.service_args_list_customized = self.service_args_list
-        self.__customize_service_args()
+        try:
+            self.__customize_service_args()
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Validating spec file failed with error: {e}")
 
     @property
     def service_args_string(self) -> list:
@@ -123,11 +127,17 @@ class ServiceArgs():
 
         # The chain spec configs should be applied after hardcoded chain customizations above since this should override any hardcoded --chain overrides.
         if self._chain_spec_url:
-            utils.download_chain_spec(self._chain_spec_url, 'chain-spec.json')
-            self.__set_chain_name(f'{c.CHAIN_SPEC_DIR}/chain-spec.json', 0)
+            try:
+                utils.download_chain_spec(self._chain_spec_url, 'chain-spec.json')
+                self.__set_chain_name(f'{c.CHAIN_SPEC_DIR}/chain-spec.json', 0)
+            except ValueError as e:
+                raise ValueError(e)
         if self._local_relaychain_spec_url:
-            utils.download_chain_spec(self._local_relaychain_spec_url, 'relaychain-spec.json')
-            self.__set_chain_name(f'{c.CHAIN_SPEC_DIR}/relaychain-spec.json', 1)
+            try:
+                utils.download_chain_spec(self._local_relaychain_spec_url, 'relaychain-spec.json')
+                self.__set_chain_name(f'{c.CHAIN_SPEC_DIR}/relaychain-spec.json', 1)
+            except ValueError as e:
+                raise ValueError(e)
         if self._runtime_wasm_override:
             self.__add_firstchain_args(['--wasm-runtime-overrides', c.WASM_DIR])
 

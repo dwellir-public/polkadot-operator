@@ -11,6 +11,7 @@ import hashlib
 import time
 import logging
 import re
+import json
 import constants as c
 from pathlib import Path
 from ops.model import ConfigData
@@ -204,10 +205,19 @@ def download_chain_spec(url: str, filename: Path) -> None:
         c.CHAIN_SPEC_DIR.mkdir(parents=True)
     try:
         download_file(url, Path(c.CHAIN_SPEC_DIR, filename))
+        validate_file(Path(c.CHAIN_SPEC_DIR, filename), file_type='json')
     except ValueError as e:
         logger.error(f'Failed to download chain spec: {e}')
-        raise e
+        raise ValueError(e)
 
+
+def validate_file(filename: Path, file_type: str):
+    if file_type == 'json':
+        try:
+            file_obj = open(filename, 'r')
+            _ = json.load(file_obj)
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Validating chain spec {filename} failed with error: {e}")
 
 def download_wasm_runtime(url):
     if not url:
