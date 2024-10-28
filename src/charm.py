@@ -19,6 +19,7 @@ from interface_rpc_url_requirer import RpcUrlRequirer
 from polkadot_rpc_wrapper import PolkadotRpcWrapper
 import utils
 from service_args import ServiceArgs
+from CustomErrors import SpecFileError
 
 from charms.grafana_agent.v0.cos_agent import COSAgentProvider
 
@@ -132,7 +133,7 @@ class PolkadotCharm(ops.CharmBase):
                 utils.update_service_args(service_args_obj.service_args_string)
                 self._stored.chain_spec_url = self.config.get('chain-spec-url')
             except ValueError as e:
-                self.unit.status = ops.BlockedStatus(f"Encountered an error {e}")
+                self.unit.status = ops.BlockedStatus(str(e))
                 event.defer()
                 return
 
@@ -142,7 +143,7 @@ class PolkadotCharm(ops.CharmBase):
                 utils.update_service_args(service_args_obj.service_args_string)
                 self._stored.local_relaychain_spec_url = self.config.get('local-relaychain-spec-url')
             except ValueError as e:
-                self.unit.status = ops.BlockedStatus(f"Encountered an error {e}")
+                self.unit.status = ops.BlockedStatus(str(e))
                 event.defer()
                 return
         if self._stored.wasm_runtime_url != self.config.get('wasm-runtime-url'):

@@ -18,6 +18,7 @@ from ops.model import ConfigData
 from docker import Docker
 from tarball import Tarball
 from tarfile import open as open_tarfile
+from CustomErrors import SpecFileError
 
 
 logger = logging.getLogger(__name__)
@@ -203,12 +204,8 @@ def download_chain_spec(url: str, filename: Path) -> None:
     """Download a chain spec file from a given URL to a given filepath."""
     if not c.CHAIN_SPEC_DIR.exists():
         c.CHAIN_SPEC_DIR.mkdir(parents=True)
-    try:
-        download_file(url, Path(c.CHAIN_SPEC_DIR, filename))
-        validate_file(Path(c.CHAIN_SPEC_DIR, filename), file_type='json')
-    except ValueError as e:
-        logger.error(f'Failed to download chain spec: {e}')
-        raise ValueError(e)
+    download_file(url, Path(c.CHAIN_SPEC_DIR, filename))
+    validate_file(Path(c.CHAIN_SPEC_DIR, filename), file_type='json')
 
 
 def validate_file(filename: Path, file_type: str):
