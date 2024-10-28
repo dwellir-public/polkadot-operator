@@ -19,7 +19,6 @@ from interface_rpc_url_requirer import RpcUrlRequirer
 from polkadot_rpc_wrapper import PolkadotRpcWrapper
 import utils
 from service_args import ServiceArgs
-from CustomErrors import SpecFileError
 
 from charms.grafana_agent.v0.cos_agent import COSAgentProvider
 

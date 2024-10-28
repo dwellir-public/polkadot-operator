@@ -18,7 +18,6 @@ from ops.model import ConfigData
 from docker import Docker
 from tarball import Tarball
 from tarfile import open as open_tarfile
-from CustomErrors import SpecFileError
 
 
 logger = logging.getLogger(__name__)
