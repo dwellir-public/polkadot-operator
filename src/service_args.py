@@ -148,5 +148,11 @@ class ServiceArgs():
             self.__set_chain_name('rocky', 0)
 
     def __sora(self):
-        if self.chain_name.endswith('main'):
-            self.__set_chain_name('main', 0)
+        '''
+        Everything after 'sora-' will be used as the chain name.
+        Examples:
+        --chain=sora-main -> --chain=main
+        --chain=sora-another-network -> --chain=another-network
+        '''
+        chain_name = self.chain_name.split('-', 1)[1]
+        self.__set_chain_name(chain_name, 0)
