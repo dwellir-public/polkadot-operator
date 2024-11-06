@@ -77,7 +77,7 @@ class Docker():
             self.__extract_from_docker('litentry/litentry-parachain', '/usr/local/bin/litentry-collator')
         elif self.chain_name == 'laos':
             self.__extract_from_docker('freeverseio/laos-node', '/usr/bin/laos')
-        elif self.chain_name == 'main':
+        elif self.chain_name == 'sora':
             self.__extract_from_docker('sora2/substrate', 'usr/local/bin/framenode')
         else:
             raise ValueError(f"{self.chain_name} is not a supported chain using Docker!")

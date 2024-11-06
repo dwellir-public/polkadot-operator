@@ -120,6 +120,8 @@ class ServiceArgs():
             self.__aleph_zero()
         elif self.chain_name in ['crust-mainnet', 'crust-maxwell', 'crust-rocky']:
             self.__crust()
+        elif self.chain_name == 'sora':
+            self.__sora()
 
         # The chain spec configs should be applied after hardcoded chain customizations above since this should override any hardcoded --chain overrides.
         if self._chain_spec_url:
@@ -144,3 +146,6 @@ class ServiceArgs():
             self.__set_chain_name('maxwell', 0)
         elif self.chain_name == 'crust-rocky':
             self.__set_chain_name('rocky', 0)
+
+    def __sora(self):
+        self.__set_chain_name('main', 0)
