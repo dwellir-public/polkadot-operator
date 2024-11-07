@@ -120,6 +120,8 @@ class ServiceArgs():
             self.__aleph_zero()
         elif self.chain_name in ['crust-mainnet', 'crust-maxwell', 'crust-rocky']:
             self.__crust()
+        elif self.chain_name.startswith('sora'):
+            self.__sora()
 
         # The chain spec configs should be applied after hardcoded chain customizations above since this should override any hardcoded --chain overrides.
         if self._chain_spec_url:
@@ -144,3 +146,13 @@ class ServiceArgs():
             self.__set_chain_name('maxwell', 0)
         elif self.chain_name == 'crust-rocky':
             self.__set_chain_name('rocky', 0)
+
+    def __sora(self):
+        '''
+        Everything after 'sora-' will be used as the chain name.
+        Examples:
+        --chain=sora-main -> --chain=main
+        --chain=sora-another-network -> --chain=another-network
+        '''
+        chain_name = self.chain_name.split('-', 1)[1]
+        self.__set_chain_name(chain_name, 0)

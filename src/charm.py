@@ -91,6 +91,7 @@ class PolkadotCharm(ops.CharmBase):
         self.unit.status = ops.MaintenanceStatus("Installing binary")
         utils.install_binary(self.config, service_args_obj.chain_name)
         utils.download_wasm_runtime(self.config.get('wasm-runtime-url'))
+        utils.generate_node_key()
         # Install polkadot.service file
         self.unit.status = ops.MaintenanceStatus("Installing service")
         source_path = Path(self.charm_dir / 'templates/etc/systemd/system/polkadot.service')
@@ -127,15 +128,24 @@ class PolkadotCharm(ops.CharmBase):
             self._stored.service_args = self.config.get('service-args')
 
         if self._stored.chain_spec_url != self.config.get('chain-spec-url'):
-            self.unit.status = ops.MaintenanceStatus("Updating chain spec")
-            utils.update_service_args(service_args_obj.service_args_string)
-            self._stored.chain_spec_url = self.config.get('chain-spec-url')
+            try:
+                self.unit.status = ops.MaintenanceStatus("Updating chain spec")
+                utils.update_service_args(service_args_obj.service_args_string)
+                self._stored.chain_spec_url = self.config.get('chain-spec-url')
+            except ValueError as e:
+                self.unit.status = ops.BlockedStatus(str(e))
+                event.defer()
+                return
 
         if self._stored.local_relaychain_spec_url != self.config.get('local-relaychain-spec-url'):
-            self.unit.status = ops.MaintenanceStatus("Updating relaychain spec")
-            utils.update_service_args(service_args_obj.service_args_string)
-            self._stored.local_relaychain_spec_url = self.config.get('local-relaychain-spec-url')
-
+            try:
+                self.unit.status = ops.MaintenanceStatus("Updating relaychain spec")
+                utils.update_service_args(service_args_obj.service_args_string)
+                self._stored.local_relaychain_spec_url = self.config.get('local-relaychain-spec-url')
+            except ValueError as e:
+                self.unit.status = ops.BlockedStatus(str(e))
+                event.defer()
+                return
         if self._stored.wasm_runtime_url != self.config.get('wasm-runtime-url'):
             self.unit.status = ops.MaintenanceStatus("Updating wasm runtime")
             utils.download_wasm_runtime(self.config.get('wasm-runtime-url'))

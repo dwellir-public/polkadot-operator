@@ -11,6 +11,7 @@ import hashlib
 import time
 import logging
 import re
+import json
 import constants as c
 from pathlib import Path
 from ops.model import ConfigData
@@ -202,12 +203,17 @@ def download_chain_spec(url: str, filename: Path) -> None:
     """Download a chain spec file from a given URL to a given filepath."""
     if not c.CHAIN_SPEC_DIR.exists():
         c.CHAIN_SPEC_DIR.mkdir(parents=True)
-    try:
-        download_file(url, Path(c.CHAIN_SPEC_DIR, filename))
-    except ValueError as e:
-        logger.error(f'Failed to download chain spec: {e}')
-        raise e
+    download_file(url, Path(c.CHAIN_SPEC_DIR, filename))
+    validate_file(Path(c.CHAIN_SPEC_DIR, filename), file_type='json')
 
+
+def validate_file(filename: Path, file_type: str):
+    if file_type == 'json':
+        try:
+            file_obj = open(filename, 'r')
+            _ = json.load(file_obj)
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Validating chain spec {filename} failed with error: {e}")
 
 def download_wasm_runtime(url):
     if not url:
@@ -349,6 +355,13 @@ def service_started(iterations: int = 6) -> bool:
 def write_node_key_file(key):
     with open(c.NODE_KEY_FILE, "w", encoding='utf-8') as f:
         f.write(key)
+    sp.run(['chown', f'{c.USER}:{c.USER}', c.NODE_KEY_FILE], check=False)
+    sp.run(['chmod', '0600', c.NODE_KEY_FILE], check=False)
+
+
+def generate_node_key():
+    command = [c.BINARY_FILE, 'key', 'generate-node-key', '--file', c.NODE_KEY_FILE]
+    sp.run(command, check=False)
     sp.run(['chown', f'{c.USER}:{c.USER}', c.NODE_KEY_FILE], check=False)
     sp.run(['chmod', '0600', c.NODE_KEY_FILE], check=False)
 
