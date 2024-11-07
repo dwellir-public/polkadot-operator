@@ -12,9 +12,9 @@ logger = logging.getLogger(__name__)
 
 class Docker():
 
-    def __init__(self, chain_name, docker_tag):
-        self.chain_name = chain_name
-        self.docker_tag = docker_tag
+    def __init__(self, chain_name: str, docker_tag: str):
+        self.chain_name: str = chain_name
+        self.docker_tag: str = docker_tag
 
     def extract_resources_from_docker(self):
         if self.chain_name in ['spiritnet', 'peregrine', 'peregrine-stg-kilt']:
@@ -77,7 +77,7 @@ class Docker():
             self.__extract_from_docker('litentry/litentry-parachain', '/usr/local/bin/litentry-collator')
         elif self.chain_name == 'laos':
             self.__extract_from_docker('freeverseio/laos-node', '/usr/bin/laos')
-        elif self.chain_name == 'main':
+        elif self.chain_name.startswith('sora'):
             self.__extract_from_docker('sora2/substrate', 'usr/local/bin/framenode')
         else:
             raise ValueError(f"{self.chain_name} is not a supported chain using Docker!")
