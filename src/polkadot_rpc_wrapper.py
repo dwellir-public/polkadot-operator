@@ -213,4 +213,4 @@ class PolkadotRpcWrapper():
         result = substrate.submit_extrinsic(extrinsic, wait_for_inclusion=True)
         if not result.is_success:
             raise ValueError(result.error_message)
-        return result
+        return result.get_extrinsic_identifier()
