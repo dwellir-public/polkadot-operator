@@ -75,3 +75,8 @@ is-validating-next-era:
         The public address to check. E.g. DuLr6CeLXezrfumF6EkqLeAx9paMcADYU6zHpSZVB8gvjht
       type: string
   required: [ address ]
+start-validating:
+  description: |
+    Starts validating for the validator address passed as parameter.
+    It does so by setting the session key for the validator address on-chain.
+    It will use the wallet secret to sign the transaction. Make sure the wallet is correct and has funds to pay for the transaction.

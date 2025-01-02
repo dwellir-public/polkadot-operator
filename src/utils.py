@@ -478,3 +478,21 @@ def get_readme() -> str:
             return f.read()
     logger.warning("README file not found.")
     return ""
+
+
+def split_session_key(key: str) -> list:
+    # Remove the initial '0x'
+    key_without_prefix = key[2:]
+    # Split the key into chunks of 64 characters
+    chunks = [key_without_prefix[i:i+64] for i in range(0, len(key_without_prefix), 64)]
+    # The 'beefy' key can be longer than 64 characters resulting in an extra chunk with the remaining characters
+    if len(chunks[-1]) < 64:
+        # Add the last chunk to the previous one if it's shorter than 64 characters
+        chunks[-2] += chunks[-1]
+        # Remove the last chunk which should now be empty
+        chunks.pop()
+
+    # Add '0x' to each chunk
+    keys_with_prefix = [f"0x{chunk}" for chunk in chunks]
+
+    return keys_with_prefix

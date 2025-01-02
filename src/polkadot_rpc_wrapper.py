@@ -4,7 +4,8 @@ import requests
 import json
 import re
 from typing import Tuple
-from substrateinterface import SubstrateInterface
+from substrateinterface import SubstrateInterface, Keypair
+import utils
 
 class PolkadotRpcWrapper():
 
@@ -129,3 +130,40 @@ class PolkadotRpcWrapper():
             if self.has_session_key(session_key):
                 return session_key
         return False
+
+    def set_session_key_on_chain(self, mnemonic):
+        """
+        Sets a session key on-chain for a validator/collator.
+        :param mnemonic: string
+        :return: boolean
+        """
+        substrate = SubstrateInterface(url=self.__server_address)
+
+        # Generate a new session key
+        data = '{"id":1, "jsonrpc":"2.0", "method": "author_rotateKeys", "params": []}'
+        response = requests.post(url=self.__server_address, headers=self.__headers, data=data)
+        response_json = json.loads(response.text)
+        session_key = response_json['result']
+        if not session_key:
+            return False
+
+        session_key_split = utils.split_session_key(session_key)
+
+        # Set the new session key on-chain for the validator/collator
+        call = substrate.compose_call(
+            'Session', 'set_keys', {
+                'keys': {
+                    'grandpa': session_key_split[0],
+                    'babe': session_key_split[1],
+                    'para_validator': session_key_split[2],
+                    'para_assignment': session_key_split[3],
+                    'authority_discovery': session_key_split[4],
+                    'beefy': session_key_split[5],
+                },
+                'proof': '0x00',
+            }
+        )
+        keypair = Keypair.create_from_mnemonic(mnemonic)
+        extrinsic = substrate.create_signed_extrinsic(call=call, keypair=keypair)
+        result = substrate.submit_extrinsic(extrinsic, wait_for_inclusion=True)
+        return result
