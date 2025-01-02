@@ -308,9 +308,14 @@ class PolkadotCharm(ops.CharmBase):
         except KeyError:
             event.fail(f"Secret with id {mnemonic_secret_id} does not contain a 'mnemonic' key")
             return
-        result = PolkadotRpcWrapper(rpc_port).set_session_key_on_chain(mnemonic)
-        if result:
-            event.set_results(results={'message': 'Session key set on chain'})
+        try:
+            result = PolkadotRpcWrapper(rpc_port).set_session_key_on_chain(mnemonic)
+        except ValueError as e:
+            event.fail(str(e))
+            return
+
+        event.set_results(results={'message': 'Session key successfully set on chain.'})
+        event.set_results(results={'result': result})
 
     # TODO: this action is getting quite large and specialized, perhaps move all actions to an `actions.py` file?
     def _on_get_node_info_action(self, event: ops.ActionEvent) -> None:

@@ -61,4 +61,8 @@ options:
     type: secret
     description: |
       The wallet to use for setting a session key on chain. This is the wallet that will sign the transaction when moving a validator/collator to this node
-      using the action 'start-validating'.
+      using the action 'start-validating'. The mnemonic needs to be added to the model as a secret with the key name 'mnemonic'. And is needs to be granted to the application.
+      Example:
+      juju add-secret validator1 mnemonic="foo bar" --info 14MofzwMbLm1JeBxLi2BKBRHXJce87DE5UWnttgGBBrQcEy9
+      juju grant-secret validator1 polkadot
+      juju config polkadot mnemonic-secret-id="secret:ctr90nhaeavjam32tflg"

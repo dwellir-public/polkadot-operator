@@ -74,6 +74,16 @@ class PolkadotRpcWrapper():
         peer_list = response_json['result']
         return peer_list, True
 
+    def get_chain_name(self) -> str:
+        """
+        Get the name of the chain this node is connected to.
+        :return: str
+        """
+        data = '{"id":1, "jsonrpc":"2.0", "method": "system_chain", "params": []}'
+        response = requests.post(url=self.__server_address, headers=self.__headers, data=data)
+        response_json = json.loads(response.text)
+        return response_json['result']
+
     def has_session_key(self, session_key):
         """
         Checks if this node has the supplied session_key (E.g. 0xb75f94a5eec... )
@@ -149,21 +159,57 @@ class PolkadotRpcWrapper():
 
         session_key_split = utils.split_session_key(session_key)
 
+        chain_name = self.get_chain_name()
+        is_enjin = 'enjin' in chain_name.lower()
+
+        if is_enjin:
+            # Enjin ecosystem
+            if len(session_key_split) == 6:
+                # Enjin relay chain
+                keys = {
+                    'grandpa': session_key_split[0],
+                    'babe': session_key_split[1],
+                    'im_online': session_key_split[2],
+                    'para_validator': session_key_split[3],
+                    'para_assignment': session_key_split[4],
+                    'authority_discovery': session_key_split[5],
+                }
+            elif len(session_key_split) == 2:
+                # Enjin parachain
+                keys = {
+                    'aura': session_key_split[0],
+                    'pools': session_key_split[1],
+                }
+            else:
+                raise ValueError(f"Enjin chain with {len(session_key_split)} session keys not supported")
+        elif len(session_key_split) == 6:
+            # Relay chain in Polkadot ecosystem
+            keys = {
+                'grandpa': session_key_split[0],
+                'babe': session_key_split[1],
+                'para_validator': session_key_split[2],
+                'para_assignment': session_key_split[3],
+                'authority_discovery': session_key_split[4],
+                'beefy': session_key_split[5],
+            }
+        elif len(session_key_split) == 1:
+            # Parachain in Polkadot ecosystem
+            keys = {
+                'aura': session_key_split[0],
+            }
+        else:
+            raise ValueError(f"Mismatch between chain {chain_name} and number of session keys ({len(session_key_split)})")
+
         # Set the new session key on-chain for the validator/collator
         call = substrate.compose_call(
             'Session', 'set_keys', {
-                'keys': {
-                    'grandpa': session_key_split[0],
-                    'babe': session_key_split[1],
-                    'para_validator': session_key_split[2],
-                    'para_assignment': session_key_split[3],
-                    'authority_discovery': session_key_split[4],
-                    'beefy': session_key_split[5],
-                },
+                'keys': keys,
                 'proof': '0x00',
             }
         )
         keypair = Keypair.create_from_mnemonic(mnemonic)
         extrinsic = substrate.create_signed_extrinsic(call=call, keypair=keypair)
         result = substrate.submit_extrinsic(extrinsic, wait_for_inclusion=True)
+        if not result.is_success:
+            raise ValueError(result.error_message)
         return result
