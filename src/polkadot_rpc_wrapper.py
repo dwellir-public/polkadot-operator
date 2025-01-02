@@ -11,6 +11,7 @@ class PolkadotRpcWrapper():
 
     def __init__(self, port):
         self.__server_address = f'http://localhost:{port}'
+        self.__server_address_ws = f'ws://localhost:{port}'
         self.__headers = {'Content-Type': 'application/json'}
 
     def get_session_key(self):
@@ -145,9 +146,8 @@ class PolkadotRpcWrapper():
         """
         Sets a session key on-chain for a validator/collator.
         :param mnemonic: string
-        :return: boolean
+        :return: the receipt of the extrinsic.
         """
-        substrate = SubstrateInterface(url=self.__server_address)
 
         # Generate a new session key
         data = '{"id":1, "jsonrpc":"2.0", "method": "author_rotateKeys", "params": []}'
@@ -200,6 +200,7 @@ class PolkadotRpcWrapper():
         else:
             raise ValueError(f"Mismatch between chain {chain_name} and number of session keys ({len(session_key_split)})")
 
+        substrate = SubstrateInterface(url=self.__server_address_ws)
         # Set the new session key on-chain for the validator/collator
         call = substrate.compose_call(
             'Session', 'set_keys', {
