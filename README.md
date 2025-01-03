@@ -141,6 +141,30 @@ A parachain node can use an external relaychain node instead of the internal one
 
 Relating to multiple relaychain nodes, to have fallbacks, is supported by the interface. It's also possible to both use the `rpc-url` interface and set URLs manually in the service arguments at the same time. In the charm, the URLs from using the interface are added to the beginning of the service arguments, in the same order as they are related. Adding URLs manually should thus be considered as a fallback since as it has been mentioned, the Polkadot client selects relay chain URL in a round-robin fashion. One can for example use an external providers relaychain node as a fallback in this way, a case where it is not possible to use Juju primitives.
 
+#### Make a node start validating (e.g. move a validator from a node to another)
+
+To start validating, a session key generated on the node needs to be set on-chain for the validator address. This is an extrinsic and requires some tokens for paying the fee. Ideally, a controller account is set up for the validator account with few tokens just enough for paying the fees. A validator account should never be used directly for this, except for testnets where the tokens has no real value. This is how to configure the application for this.
+
+Add the accounts mnemonic to the model as a secret:
+    
+    juju add-secret some-validator mnemonic="ocean apple bridge galaxy lemon tiger velvet orbit shadow maple breeze canyon" --info "useful info, e.g. the public addresses for the validator/controller accounts"
+
+Grant the polkadot application access to the secret
+    
+    juju grant-secret some-validator polkadot
+
+Configure the application to use the secret
+    
+    juju config polkadot mnemonic-secret-id="secret:ctr90nhaeavjam32tflg"
+
+Run the action to make this node start validating
+    
+    juju run polkadot/0 start-validating
+
+You can verify that this node will be validating next era:
+    
+    juju run polkadot/0 is-validating-next-era address="the public address of the validator account"
+
 ## Resources
 
 - [Polkadot](https://polkadot.network/)
