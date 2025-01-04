@@ -155,7 +155,7 @@ class PolkadotRpcWrapper():
         response_json = json.loads(response.text)
         session_key = response_json['result']
         if not session_key:
-            return False
+            raise ValueError("Failed to generate a new session key")
 
         session_key_split = utils.split_session_key(session_key)
 
