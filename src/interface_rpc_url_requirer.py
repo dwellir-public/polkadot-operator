@@ -33,6 +33,7 @@ class RpcUrlRequirer(Object):
         """
         Update service args in response to a change in the relation data.
         """
-        service_args_obj = ServiceArgs(self._charm.config, self._charm.rpc_urls())
-        utils.update_service_args(service_args_obj.service_args_string)
+        argument_string = ServiceArgs(self._charm.config, self._charm.rpc_urls()).service_args_string
+        if utils.arguments_differ_from_disk(argument_string):
+            utils.update_service_args(argument_string)
         self._charm.update_status()
