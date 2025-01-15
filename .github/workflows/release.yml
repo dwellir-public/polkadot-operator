@@ -3,7 +3,7 @@ name: Release Polkadot to Charmhub
 on:
   push:
     branches:
-      - fix-build-workflow
+      - main
 
 jobs:
   build:
@@ -11,3 +11,16 @@ jobs:
     uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v26.0.1
     with:
       charmcraft-snap-revision: 5780
+
+  release:
+    name: Release charm
+    needs:
+      - build
+    uses: canonical/data-platform-workflows/.github/workflows/release_charm.yaml@v26.0.1
+    with:
+      channel: latest/edge
+      artifact-prefix: ${{ needs.build.outputs.artifact-prefix }}
+    secrets:
+      charmhub-token: ${{ secrets.CHARMHUB_TOKEN }}
+    permissions:
+      contents: write  # Needed to create GitHub release
