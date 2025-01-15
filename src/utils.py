@@ -274,12 +274,20 @@ def install_service_file(source_path):
     shutil.copyfile(source_path, target_path)
     sp.run(['systemctl', 'daemon-reload'], check=False)
 
+def render_service_argument_file(service_args):
+    return f"{c.USER.upper()}_CLI_ARGS='{service_args}'\n"
 
+def arguments_differ_from_disk(service_args):
+    try:
+        with open(f'/etc/default/{c.USER}', 'r', encoding='utf-8') as f:
+            args = f.read()
+        return args != render_service_argument_file(service_args)
+    except FileNotFoundError:
+        return True
+    
 def update_service_args(service_args):
-    args = f"{c.USER.upper()}_CLI_ARGS='{service_args}'"
-
     with open(f'/etc/default/{c.USER}', 'w', encoding='utf-8') as f:
-        f.write(args + '\n')
+        f.write(render_service_argument_file(service_args))
     sp.run(['systemctl', 'restart', f'{c.USER}.service'], check=False)
 
 
