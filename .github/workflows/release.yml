@@ -10,4 +10,4 @@ jobs:
     name: Build Polkadot charm
     uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v26.0.1
     with:
-      charmcraft-snap-revision: 3.3.0
+      charmcraft-snap-channel: latest/candidate
