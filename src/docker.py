@@ -24,7 +24,7 @@ class Docker():
         elif self.chain_name == 'nodle' or self.chain_name == 'arcadia' or self.chain_name == 'eden':
             self.__extract_from_docker('nodlecode/chain', '/usr/local/bin/nodle-parachain')
         elif self.chain_name == 'acala' or self.chain_name == 'karura':
-            self.__extract_from_docker(f'acala/{self.chain_name}-node', '/usr/local/bin/acala')
+            self.__extract_from_docker(f'acala/acala-node', '/usr/local/bin/acala')
         elif self.chain_name == 'astar' or self.chain_name == 'shiden' or self.chain_name == 'shibuya':
             self.__extract_from_docker('staketechnologies/astar-collator', '/usr/local/bin/astar-collator')
         elif self.chain_name == 'darwinia' or self.chain_name == 'crab':
