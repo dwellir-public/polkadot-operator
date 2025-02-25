@@ -142,7 +142,7 @@ class PolkadotRpcWrapper():
                 return session_key
         return False
 
-    def set_session_key_on_chain(self, mnemonic):
+    def set_session_key_on_chain(self, mnemonic, address):
         """
         Sets a session key on-chain for a validator/collator.
         :param mnemonic: string
@@ -201,6 +201,7 @@ class PolkadotRpcWrapper():
             raise ValueError(f"Mismatch between chain {chain_name} and number of session keys ({len(session_key_split)})")
 
         substrate = SubstrateInterface(url=self.__server_address_ws)
+        keypair = Keypair.create_from_mnemonic(mnemonic)
         # Set the new session key on-chain for the validator/collator
         call = substrate.compose_call(
             'Session', 'set_keys', {
@@ -208,8 +209,21 @@ class PolkadotRpcWrapper():
                 'proof': '0x00',
             }
         )
-        keypair = Keypair.create_from_mnemonic(mnemonic)
-        extrinsic = substrate.create_signed_extrinsic(call=call, keypair=keypair)
+        # If using proxy account, wrap the set_keys call in a proxy call
+        if address:
+            proxy_call = substrate.compose_call(
+                call_module="Proxy",
+                call_function="proxy",
+                call_params={
+                    "real": address,
+                    "force_proxy_type": "Staking",
+                    "call": call,
+                }
+            )
+            extrinsic = substrate.create_signed_extrinsic(call=proxy_call, keypair=keypair)
+        else:
+            extrinsic = substrate.create_signed_extrinsic(call=call, keypair=keypair)
+
         result = substrate.submit_extrinsic(extrinsic, wait_for_inclusion=True)
         if not result.is_success:
             raise ValueError(result.error_message)
