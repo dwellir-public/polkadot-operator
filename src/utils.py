@@ -496,3 +496,47 @@ def split_session_key(key: str) -> list:
     keys_with_prefix = [f"0x{chunk}" for chunk in chunks]
 
     return keys_with_prefix
+
+
+def name_session_keys(chain_name: str, keys: list) -> dict:
+    """
+    Map the session keys in 'keys' to their names in the chain 'chain_name'.
+    It's needed for extrinsics like 'session.set_keys()'
+    """
+    if chain_name.lower() == 'enjin':
+        # Enjin ecosystem
+        if len(keys) == 6:
+            # Enjin relay chain
+            return {
+                'grandpa': keys[0],
+                'babe': keys[1],
+                'im_online': keys[2],
+                'para_validator': keys[3],
+                'para_assignment': keys[4],
+                'authority_discovery': keys[5],
+            }
+        elif len(keys) == 2:
+            # Enjin parachain
+            return {
+                'aura': keys[0],
+                'pools': keys[1],
+            }
+        else:
+            raise ValueError(f"Enjin chain with {len(keys)} session keys not supported")
+    elif len(keys) == 6:
+        # Relay chain in Polkadot ecosystem
+        return {
+            'grandpa': keys[0],
+            'babe': keys[1],
+            'para_validator': keys[2],
+            'para_assignment': keys[3],
+            'authority_discovery': keys[4],
+            'beefy': keys[5],
+        }
+    elif len(keys) == 1:
+        # Parachain in Polkadot ecosystem
+        return {
+            'aura': keys[0],
+        }
+    else:
+        raise ValueError(f"Mismatch between chain {chain_name} and number of session keys ({len(keys)})")

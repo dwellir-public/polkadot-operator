@@ -160,45 +160,8 @@ class PolkadotRpcWrapper():
         session_key_split = utils.split_session_key(session_key)
 
         chain_name = self.get_chain_name()
-        is_enjin = 'enjin' in chain_name.lower()
 
-        if is_enjin:
-            # Enjin ecosystem
-            if len(session_key_split) == 6:
-                # Enjin relay chain
-                keys = {
-                    'grandpa': session_key_split[0],
-                    'babe': session_key_split[1],
-                    'im_online': session_key_split[2],
-                    'para_validator': session_key_split[3],
-                    'para_assignment': session_key_split[4],
-                    'authority_discovery': session_key_split[5],
-                }
-            elif len(session_key_split) == 2:
-                # Enjin parachain
-                keys = {
-                    'aura': session_key_split[0],
-                    'pools': session_key_split[1],
-                }
-            else:
-                raise ValueError(f"Enjin chain with {len(session_key_split)} session keys not supported")
-        elif len(session_key_split) == 6:
-            # Relay chain in Polkadot ecosystem
-            keys = {
-                'grandpa': session_key_split[0],
-                'babe': session_key_split[1],
-                'para_validator': session_key_split[2],
-                'para_assignment': session_key_split[3],
-                'authority_discovery': session_key_split[4],
-                'beefy': session_key_split[5],
-            }
-        elif len(session_key_split) == 1:
-            # Parachain in Polkadot ecosystem
-            keys = {
-                'aura': session_key_split[0],
-            }
-        else:
-            raise ValueError(f"Mismatch between chain {chain_name} and number of session keys ({len(session_key_split)})")
+        keys = utils.name_session_keys(chain_name, session_key_split)
 
         substrate = SubstrateInterface(url=self.__server_address_ws)
         keypair = Keypair.create_from_mnemonic(mnemonic)
