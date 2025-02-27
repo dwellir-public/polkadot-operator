@@ -309,7 +309,7 @@ class PolkadotCharm(ops.CharmBase):
             event.fail(f"Secret with id {mnemonic_secret_id} does not contain a 'mnemonic' key")
             return
         try:
-            result = PolkadotRpcWrapper(rpc_port).set_session_key_on_chain(mnemonic, event.params['address'])
+            result = PolkadotRpcWrapper(rpc_port).set_session_key_on_chain(mnemonic, event.params.get('address', None))
         except ValueError as e:
             event.fail(str(e))
             return
