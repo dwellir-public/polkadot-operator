@@ -1,3 +1,2 @@
 ops == 2.9
 requests
-charmhelpers == 1.2.1
