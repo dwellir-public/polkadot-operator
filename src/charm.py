@@ -315,7 +315,7 @@ class PolkadotCharm(ops.CharmBase):
             return
 
         event.set_results(results={'message': 'Session key successfully set on chain.'})
-        event.set_results(results={'blocknumber-extrinsicidx': result})
+        event.set_results(results={'blocknumber-extrinsicindex': result})
 
     # TODO: this action is getting quite large and specialized, perhaps move all actions to an `actions.py` file?
     def _on_get_node_info_action(self, event: ops.ActionEvent) -> None:
