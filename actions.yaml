@@ -77,7 +77,7 @@ is-validating-next-era:
   required: [ address ]
 start-validating:
   description: |
-    Makes this node start validating. It will use the config parameter 'mnemonic-secret-id' to sign the transaction and therefor start validating for that address.
+    Makes this node start validating. It will use the config parameter 'mnemonic-secret-id' to sign the transaction and therefore start validating for that address.
     It does so by setting a new session key on-chain. The actual move of the validator might thus take some time to have effect.
     NOTE: Make sure the wallet is correct and has funds to pay for the transaction, or this will fail.
   params:
