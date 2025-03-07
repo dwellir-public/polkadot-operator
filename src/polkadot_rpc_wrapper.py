@@ -150,10 +150,7 @@ class PolkadotRpcWrapper():
         """
 
         # Generate a new session key
-        data = '{"id":1, "jsonrpc":"2.0", "method": "author_rotateKeys", "params": []}'
-        response = requests.post(url=self.__server_address, headers=self.__headers, data=data)
-        response_json = json.loads(response.text)
-        session_key = response_json['result']
+        session_key = self.get_session_key()
         if not session_key:
             raise ValueError("Failed to generate a new session key")
 
