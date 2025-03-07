@@ -481,6 +481,9 @@ def get_readme() -> str:
 
 
 def split_session_key(key: str) -> list:
+    # Check that the key is a valid hex string
+    if not key.startswith('0x') or not all(c in '0123456789abcdef' for c in key[2:]):
+        raise ValueError("Invalid session key")
     # Remove the initial '0x'
     key_without_prefix = key[2:]
     # Split the key into chunks of 64 characters
