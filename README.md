@@ -143,21 +143,21 @@ Relating to multiple relaychain nodes, to have fallbacks, is supported by the in
 
 #### Make a node start validating (e.g. move a validator from a node to another)
 
-To start validating, a session key generated on the node needs to be set on-chain for the validator address. This is an extrinsic and requires some tokens for paying the fee. Ideally, a proxy (previously controller) account is set up for the validator account with few tokens just enough for paying the fees. A validator account should never be used directly for this, except for testnets where the tokens has no real value. This is how to configure the application for this.
+To start validating, a session key generated on the node needs to be set on-chain for the validator address. This is an extrinsic, which requires paying a fee. Ideally, a proxy account account is set up for the validator account, holding just enough tokens to pay the fees. A validator account should never be used directly for this, an exception being for testnets where the tokens have no real value. The steps below describe how to configure the application for this usecase:
 
-Add the accounts mnemonic to the model as a secret
+Add the accounts mnemonic to the model as a secret, example:
     
-    juju add-secret some-proxy mnemonic="ocean apple bridge galaxy lemon tiger velvet orbit shadow maple breeze canyon" --info "useful info, e.g. the public addresses for the validator/controller accounts"
+    juju add-secret mysecret mnemonic="ocean apple bridge galaxy lemon tiger velvet orbit shadow maple breeze canyon" --info "useful info, e.g. the public address of the account"
 
-Grant the polkadot application access to the secret
+Grant the Polkadot application access to the secret, example:
     
-    juju grant-secret some-proxy polkadot
+    juju grant-secret mysecret polkadot
 
-Configure the application to use the secret
+Configure the application to use the secret, example:
     
     juju config polkadot mnemonic-secret-id="secret:ctr90nhaeavjam32tflg"
 
-Run the action to make this node start validating
+Run the action to make this node start validating:
 NOTE: if the secret contains the mnemonic of the actual validator account, and not a proxy account, the address parameter is not needed.
     
     juju run polkadot/0 start-validating address=<validator-address>
