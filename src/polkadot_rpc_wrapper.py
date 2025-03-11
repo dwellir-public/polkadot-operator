@@ -176,7 +176,7 @@ class PolkadotRpcWrapper():
                 call_function="proxy",
                 call_params={
                     "real": address,
-                    "force_proxy_type": "Staking",
+                    "force_proxy_type": utils.get_session_proxy_type(chain_name),
                     "call": call,
                 }
             )

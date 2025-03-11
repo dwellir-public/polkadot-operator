@@ -543,3 +543,12 @@ def name_session_keys(chain_name: str, keys: list) -> dict:
         }
     else:
         raise ValueError(f"Mismatch between chain {chain_name} and number of session keys ({len(keys)})")
+
+
+def get_session_proxy_type(chain_name: str) -> str:
+    """
+    Get the name of the Proxy type that can be used for doing session operations such as setting session keys.
+    """
+    if 'kilt' in chain_name.lower():
+        return "ParachainStaking"
+    return "Staking"
