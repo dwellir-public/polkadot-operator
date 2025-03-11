@@ -506,7 +506,7 @@ def name_session_keys(chain_name: str, keys: list) -> dict:
     Map the session keys in 'keys' to their names in the chain 'chain_name'.
     It's needed for extrinsics like 'session.set_keys()'
     """
-    if chain_name.lower() == 'enjin':
+    if 'enjin' in chain_name.lower():
         # Enjin ecosystem
         if len(keys) == 6:
             # Enjin relay chain
