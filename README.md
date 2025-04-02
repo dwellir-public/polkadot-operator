@@ -145,9 +145,9 @@ Relating to multiple relaychain nodes, to have fallbacks, is supported by the in
 
 To start validating, a session key generated on the node needs to be set on-chain for the validator address. This is an extrinsic, which requires paying a fee. Ideally, a proxy account account is set up for the validator account, holding just enough tokens to pay the fees. A validator account should never be used directly for this, an exception being for testnets where the tokens have no real value. The steps below describe how to configure the application for this usecase:
 
-Add the accounts mnemonic to the model as a secret, example:
+Add the accounts mnemonic to the model as a secret (where 'proxy-type' is only needed if this is a proxy account), example:
     
-    juju add-secret mysecret mnemonic="ocean apple bridge galaxy lemon tiger velvet orbit shadow maple breeze canyon" --info "useful info, e.g. the public address of the account"
+    juju add-secret mysecret mnemonic="ocean apple bridge galaxy lemon tiger velvet orbit shadow maple breeze canyon" proxy-type="Staking" --info "useful info, e.g. the public address of the account"
 
 Grant the Polkadot application access to the secret, example:
     
@@ -157,8 +157,7 @@ Configure the application to use the secret, example:
     
     juju config polkadot mnemonic-secret-id="secret:ctr90nhaeavjam32tflg"
 
-Run the action to make this node start validating:
-NOTE: if the secret contains the mnemonic of the actual validator account, and not a proxy account, the address parameter is not needed.
+Run the action to make this node start validating (where 'address' is only needed if the secret is a proxy account):
     
     juju run polkadot/0 start-validating address=<validator-address>
 

@@ -308,8 +308,16 @@ class PolkadotCharm(ops.CharmBase):
         except KeyError:
             event.fail(f"Secret with id {mnemonic_secret_id} does not contain a 'mnemonic' key")
             return
+        address = event.params.get('address', None)
+        proxy_type = secret.get_content(refresh=True).get('proxy-type', None)
+        if address and not proxy_type:
+            event.fail(f"'proxy-type' needs to be set in the secret '{mnemonic_secret_id}' to use the 'address' parameter.")
+            return
+        if proxy_type and not address:
+            event.fail(f"Parameter 'address' must be used since the secret {mnemonic_secret_id} is configured as a proxy account with 'proxy-type' set.")
+            return
         try:
-            result = PolkadotRpcWrapper(rpc_port).set_session_key_on_chain(mnemonic, event.params.get('address', None))
+            result = PolkadotRpcWrapper(rpc_port).set_session_key_on_chain(mnemonic, proxy_type, address)
         except ValueError as e:
             event.fail(str(e))
             return

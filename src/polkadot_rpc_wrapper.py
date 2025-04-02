@@ -142,7 +142,7 @@ class PolkadotRpcWrapper():
                 return session_key
         return False
 
-    def set_session_key_on_chain(self, mnemonic, address):
+    def set_session_key_on_chain(self, mnemonic, proxy_type, address):
         """
         Sets a session key on-chain for a validator/collator.
         :param mnemonic: string
@@ -170,13 +170,13 @@ class PolkadotRpcWrapper():
             }
         )
         # If using proxy account, wrap the set_keys call in a proxy call
-        if address:
+        if address and proxy_type:
             proxy_call = substrate.compose_call(
                 call_module="Proxy",
                 call_function="proxy",
                 call_params={
                     "real": address,
-                    "force_proxy_type": utils.get_session_proxy_type(chain_name),
+                    "force_proxy_type": proxy_type,
                     "call": call,
                 }
             )
