@@ -4,12 +4,14 @@ import requests
 import json
 import re
 from typing import Tuple
-from substrateinterface import SubstrateInterface
+from substrateinterface import SubstrateInterface, Keypair
+import utils
 
 class PolkadotRpcWrapper():
 
     def __init__(self, port):
         self.__server_address = f'http://localhost:{port}'
+        self.__server_address_ws = f'ws://localhost:{port}'
         self.__headers = {'Content-Type': 'application/json'}
 
     def get_session_key(self):
@@ -73,6 +75,16 @@ class PolkadotRpcWrapper():
         peer_list = response_json['result']
         return peer_list, True
 
+    def get_chain_name(self) -> str:
+        """
+        Get the name of the chain this node is connected to.
+        :return: str
+        """
+        data = '{"id":1, "jsonrpc":"2.0", "method": "system_chain", "params": []}'
+        response = requests.post(url=self.__server_address, headers=self.__headers, data=data)
+        response_json = json.loads(response.text)
+        return response_json['result']
+
     def has_session_key(self, session_key):
         """
         Checks if this node has the supplied session_key (E.g. 0xb75f94a5eec... )
@@ -129,3 +141,50 @@ class PolkadotRpcWrapper():
             if self.has_session_key(session_key):
                 return session_key
         return False
+
+    def set_session_key_on_chain(self, mnemonic, proxy_type, address):
+        """
+        Sets a session key on-chain for a validator/collator.
+        :param mnemonic: string
+        :return: the receipt of the extrinsic.
+        """
+
+        # Generate a new session key
+        session_key = self.get_session_key()
+        if not session_key:
+            raise ValueError("Failed to generate a new session key")
+
+        session_key_split = utils.split_session_key(session_key)
+
+        chain_name = self.get_chain_name()
+
+        keys = utils.name_session_keys(chain_name, session_key_split)
+
+        substrate = SubstrateInterface(url=self.__server_address_ws)
+        keypair = Keypair.create_from_mnemonic(mnemonic)
+        # Set the new session key on-chain for the validator/collator
+        call = substrate.compose_call(
+            'Session', 'set_keys', {
+                'keys': keys,
+                'proof': '0x00',
+            }
+        )
+        # If using proxy account, wrap the set_keys call in a proxy call
+        if address and proxy_type:
+            proxy_call = substrate.compose_call(
+                call_module="Proxy",
+                call_function="proxy",
+                call_params={
+                    "real": address,
+                    "force_proxy_type": proxy_type,
+                    "call": call,
+                }
+            )
+            extrinsic = substrate.create_signed_extrinsic(call=proxy_call, keypair=keypair)
+        else:
+            extrinsic = substrate.create_signed_extrinsic(call=call, keypair=keypair)
+
+        result = substrate.submit_extrinsic(extrinsic, wait_for_inclusion=True)
+        if not result.is_success:
+            raise ValueError(result.error_message)
+        return result.get_extrinsic_identifier()
