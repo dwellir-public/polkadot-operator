@@ -369,6 +369,14 @@ def write_node_key_file(key):
 
 def generate_node_key():
     command = [c.BINARY_FILE, 'key', 'generate-node-key', '--file', c.NODE_KEY_FILE]
+
+    # This is to make it work on Enjin relay deployments
+    logger.debug("Getting binary version from client binary to check if it is Enjin.")
+    get_version_command = [c.BINARY_FILE, "--version"]
+    output = sp.run(get_version_command, stdout=sp.PIPE, check=False).stdout.decode('utf-8').strip().lower()
+    if "enjin" in output:
+        command += ['--chain', 'enjin']
+
     sp.run(command, check=False)
     sp.run(['chown', f'{c.USER}:{c.USER}', c.NODE_KEY_FILE], check=False)
     sp.run(['chmod', '0600', c.NODE_KEY_FILE], check=False)
