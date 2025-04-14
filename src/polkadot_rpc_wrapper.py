@@ -171,7 +171,7 @@ class PolkadotRpcWrapper():
         )
         # If using proxy account, wrap the set_keys call in a proxy call
         if address and proxy_type:
-            proxy_call = substrate.compose_call(
+            final_call = substrate.compose_call(
                 call_module="Proxy",
                 call_function="proxy",
                 call_params={
@@ -180,9 +180,14 @@ class PolkadotRpcWrapper():
                     "call": call,
                 }
             )
-            extrinsic = substrate.create_signed_extrinsic(call=proxy_call, keypair=keypair)
         else:
-            extrinsic = substrate.create_signed_extrinsic(call=call, keypair=keypair)
+            final_call = call
+
+        # A work around to deal with this issue: https://github.com/JAMdotTech/py-polkadot-sdk/issues/412
+        if "kilt" in self.get_chain_name().lower():
+            substrate.runtime_config.update_type_registry_types({'Index': 'U64'})
+
+        extrinsic = substrate.create_signed_extrinsic(call=final_call, keypair=keypair)
 
         result = substrate.submit_extrinsic(extrinsic, wait_for_inclusion=True)
         if not result.is_success:
