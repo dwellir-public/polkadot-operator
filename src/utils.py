@@ -369,6 +369,14 @@ def write_node_key_file(key):
 
 def generate_node_key():
     command = [c.BINARY_FILE, 'key', 'generate-node-key', '--file', c.NODE_KEY_FILE]
+
+    # This is to make it work on Enjin relay deployments
+    logger.debug("Getting binary version from client binary to check if it is Enjin.")
+    get_version_command = [c.BINARY_FILE, "--version"]
+    output = sp.run(get_version_command, stdout=sp.PIPE, check=False).stdout.decode('utf-8').strip().lower()
+    if "enjin" in output:
+        command += ['--chain', 'enjin']
+
     sp.run(command, check=False)
     sp.run(['chown', f'{c.USER}:{c.USER}', c.NODE_KEY_FILE], check=False)
     sp.run(['chmod', '0600', c.NODE_KEY_FILE], check=False)
@@ -486,3 +494,68 @@ def get_readme() -> str:
             return f.read()
     logger.warning("README file not found.")
     return ""
+
+
+def split_session_key(key: str) -> list:
+    # Check that the key is a valid hex string
+    if not key.startswith('0x') or not all(c in '0123456789abcdef' for c in key[2:]):
+        raise ValueError("Invalid session key")
+    # Remove the initial '0x'
+    key_without_prefix = key[2:]
+    # Split the key into chunks of 64 characters
+    chunks = [key_without_prefix[i:i+64] for i in range(0, len(key_without_prefix), 64)]
+    # The 'beefy' key can be longer than 64 characters resulting in an extra chunk with the remaining characters
+    if len(chunks[-1]) < 64:
+        # Add the last chunk to the previous one if it's shorter than 64 characters
+        chunks[-2] += chunks[-1]
+        # Remove the last chunk which should now be empty
+        chunks.pop()
+
+    # Add '0x' to each chunk
+    keys_with_prefix = [f"0x{chunk}" for chunk in chunks]
+
+    return keys_with_prefix
+
+
+def name_session_keys(chain_name: str, keys: list) -> dict:
+    """
+    Map the session keys in 'keys' to their names in the chain 'chain_name'.
+    It's needed for extrinsics like 'session.set_keys()'
+    """
+    if 'enjin' in chain_name.lower():
+        # Enjin ecosystem
+        if len(keys) == 6:
+            # Enjin relay chain
+            return {
+                'grandpa': keys[0],
+                'babe': keys[1],
+                'im_online': keys[2],
+                'para_validator': keys[3],
+                'para_assignment': keys[4],
+                'authority_discovery': keys[5],
+            }
+        elif len(keys) == 2:
+            # Enjin parachain
+            return {
+                'aura': keys[0],
+                'pools': keys[1],
+            }
+        else:
+            raise ValueError(f"Enjin chain with {len(keys)} session keys not supported")
+    elif len(keys) == 6:
+        # Relay chain in Polkadot ecosystem
+        return {
+            'grandpa': keys[0],
+            'babe': keys[1],
+            'para_validator': keys[2],
+            'para_assignment': keys[3],
+            'authority_discovery': keys[4],
+            'beefy': keys[5],
+        }
+    elif len(keys) == 1:
+        # Parachain in Polkadot ecosystem
+        return {
+            'aura': keys[0],
+        }
+    else:
+        raise ValueError(f"Mismatch between chain {chain_name} and number of session keys ({len(keys)})")

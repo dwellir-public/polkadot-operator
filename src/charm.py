@@ -63,6 +63,7 @@ class PolkadotCharm(ops.CharmBase):
         self.framework.observe(self.on.get_node_info_action, self._on_get_node_info_action)
         self.framework.observe(self.on.get_node_help_action, self._on_get_node_help_action)
         self.framework.observe(self.on.print_readme_action, self._on_print_readme_action)
+        self.framework.observe(self.on.start_validating_action, self._on_start_validating_action)
 
         self._stored.set_default(binary_url=self.config.get('binary-url'),
                                  docker_tag=self.config.get('docker-tag'),
@@ -216,14 +217,9 @@ class PolkadotCharm(ops.CharmBase):
         if key:
             event.set_results(results={'session-keys-merged': key})
 
-            # For convenience, also print a splitted version of the session key
-            # Remove the initial '0x'
-            key_without_prefix = key[2:]
-            # Split the key into chunks of 64 characters
-            chunks = [key_without_prefix[i:i+64] for i in range(0, len(key_without_prefix), 64)]
-            # Add '0x' to each chunk
-            keys_with_prefix = [f"0x{chunk}" for chunk in chunks]
-            for i, key in enumerate(keys_with_prefix):
+            # For convenience, also print a split version of the session key
+            keys_split = utils.split_session_key(key)
+            for i, key in enumerate(keys_split):
                 event.set_results(results={f'session-key-{i}': key})
         else:
             event.fail("Unable to get new session key")
@@ -296,6 +292,38 @@ class PolkadotCharm(ops.CharmBase):
             event.set_results(results={'session-key': session_key})
         else:
             event.set_results(results={'message': f'This node will not be validating next era for address {validator_address}'})
+
+    def _on_start_validating_action(self, event: ops.ActionEvent) -> None:
+        mnemonic_secret_id = self.config.get('mnemonic-secret-id')
+        if not mnemonic_secret_id:
+            event.fail("No secret id provided. Please provide a secret id using the mnemonic-secret-id config option.")
+            return
+        rpc_port = ServiceArgs(self.config, self.rpc_urls()).rpc_port
+        secret = self.model.get_secret(id=mnemonic_secret_id)
+        if not secret:
+            event.fail(f"No secret found with the provided id {mnemonic_secret_id}")
+            return
+        try:
+            mnemonic = secret.get_content(refresh=True).get('mnemonic')
+        except KeyError:
+            event.fail(f"Secret with id {mnemonic_secret_id} does not contain a 'mnemonic' key")
+            return
+        address = event.params.get('address', None)
+        proxy_type = secret.get_content(refresh=True).get('proxy-type', None)
+        if address and not proxy_type:
+            event.fail(f"'proxy-type' needs to be set in the secret '{mnemonic_secret_id}' to use the 'address' parameter.")
+            return
+        if proxy_type and not address:
+            event.fail(f"Parameter 'address' must be used since the secret {mnemonic_secret_id} is configured as a proxy account with 'proxy-type' set.")
+            return
+        try:
+            result = PolkadotRpcWrapper(rpc_port).set_session_key_on_chain(mnemonic, proxy_type, address)
+        except ValueError as e:
+            event.fail(str(e))
+            return
+
+        event.set_results(results={'message': 'Session key successfully set on chain.'})
+        event.set_results(results={'blocknumber-extrinsicindex': result})
 
     # TODO: this action is getting quite large and specialized, perhaps move all actions to an `actions.py` file?
     def _on_get_node_info_action(self, event: ops.ActionEvent) -> None:

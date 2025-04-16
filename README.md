@@ -141,6 +141,30 @@ A parachain node can use an external relaychain node instead of the internal one
 
 Relating to multiple relaychain nodes, to have fallbacks, is supported by the interface. It's also possible to both use the `rpc-url` interface and set URLs manually in the service arguments at the same time. In the charm, the URLs from using the interface are added to the beginning of the service arguments, in the same order as they are related. Adding URLs manually should thus be considered as a fallback since as it has been mentioned, the Polkadot client selects relay chain URL in a round-robin fashion. One can for example use an external providers relaychain node as a fallback in this way, a case where it is not possible to use Juju primitives.
 
+#### Make a node start validating (e.g. move a validator from a node to another)
+
+To start validating, a session key generated on the node needs to be set on-chain for the validator address. This is an extrinsic, which requires paying a fee. Ideally, a proxy account account is set up for the validator account, holding just enough tokens to pay the fees. A validator account should never be used directly for this, an exception being for testnets where the tokens have no real value. The steps below describe how to configure the application for this usecase:
+
+Add the accounts mnemonic to the model as a secret (where 'proxy-type' is only needed if this is a proxy account), example:
+    
+    juju add-secret mysecret mnemonic="ocean apple bridge galaxy lemon tiger velvet orbit shadow maple breeze canyon" proxy-type="Staking" --info "useful info, e.g. the public address of the account"
+
+Grant the Polkadot application access to the secret, example:
+    
+    juju grant-secret mysecret polkadot
+
+Configure the application to use the secret, example:
+    
+    juju config polkadot mnemonic-secret-id="secret:ctr90nhaeavjam32tflg"
+
+Run the action to make this node start validating (where 'address' is only needed if the secret is a proxy account):
+    
+    juju run polkadot/0 start-validating address=<validator-address>
+
+You can verify that this node will be validating next era:
+    
+    juju run polkadot/0 is-validating-next-era address=<validator-address>
+
 ## Resources
 
 - [Polkadot](https://polkadot.network/)

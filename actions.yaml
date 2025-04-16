@@ -75,3 +75,15 @@ is-validating-next-era:
         The public address to check. E.g. DuLr6CeLXezrfumF6EkqLeAx9paMcADYU6zHpSZVB8gvjht
       type: string
   required: [ address ]
+start-validating:
+  description: |
+    Makes this node start validating. It will use the config parameter 'mnemonic-secret-id' to sign the transaction and therefore start validating for that address.
+    It does so by setting a new session key on-chain. The actual move of the validator might thus take some time to have effect.
+    NOTE: Make sure the wallet is correct and has funds to pay for the transaction, or this will fail.
+  params:
+    address:
+      description: |
+        Optional! The public address to start validating for. E.g. DuLr6CeLXezrfumF6EkqLeAx9paMcADYU6zHpSZVB8gvjht
+        Only needed if the node should start validating for a different address than the one in the config parameter 'mnemonic-secret-id'.
+        This is typically the case for proxy accounts. I.e. if 'mnemonic-secret-id' is the mnemonic of a proxy account, this parameter should be the address of the validator account.
+      type: string
