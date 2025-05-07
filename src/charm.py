@@ -32,7 +32,6 @@ class PolkadotCharm(ops.CharmBase):
 
     def __init__(self, *args):
         super().__init__(*args)
-        self.prometheus_node_provider = PrometheusProvider(self, 'node-prometheus', 9100, '/metrics')
         self.prometheus_polkadot_provider = PrometheusProvider(self, 'polkadot-prometheus', 9615, '/metrics')
         self.rpc_url_provider = RpcUrlProvider(self, 'rpc_url'),
         self.rpc_url_requirer = RpcUrlRequirer(self, 'relay_rpc_url'),
@@ -98,8 +97,6 @@ class PolkadotCharm(ops.CharmBase):
         source_path = Path(self.charm_dir / 'templates/etc/systemd/system/polkadot.service')
         utils.install_service_file(source_path)
         utils.update_service_args(service_args_obj.service_args_string)
-        self.unit.status = ops.MaintenanceStatus("Installing node exporter")
-        utils.install_node_exporter()
         self.unit.status = ops.MaintenanceStatus("Charm install complete")
 
     def _on_config_changed(self, event: ops.ConfigChangedEvent) -> None:
