@@ -12,6 +12,7 @@ jobs:
     uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v32.0.0
     with:
       charmcraft-snap-revision: 6672
+      cache: false
 
   release:
     name: Release charm
