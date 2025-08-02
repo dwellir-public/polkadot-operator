@@ -21,3 +21,6 @@ NODE_KEY_FILE = Path(HOME_DIR, 'node-key')
 DB_CHAIN_DIR = Path(HOME_DIR, '.local/share/polkadot/chains')
 DB_RELAY_DIR = Path(HOME_DIR, '.local/share/polkadot/polkadot')
 WASM_DIR = Path(HOME_DIR, 'wasm')
+SNAP_SERVICE_NAME = "snap.polkadot.polkadot"
+SNAP_BINARY = "polkadot.polkadot-cli"
+SNAP_NODE_KEY_FILE = Path('/var/snap/polkadot/common', 'node-key')

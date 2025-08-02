@@ -16,12 +16,15 @@ import constants as c
 from pathlib import Path
 from ops.model import ConfigData
 from docker import Docker
+import service_args
 from tarball import Tarball
 from tarfile import open as open_tarfile
+from core.polkadot import Polkadot
 
 
 logger = logging.getLogger(__name__)
-
+polkadot = Polkadot()
+config = {}
 
 def install_docker() -> None:
     try:
@@ -47,9 +50,16 @@ def install_binary(config: ConfigData, chain_name: str) -> None:
     elif config.get('docker-tag'):
         install_docker()
         Docker(chain_name, config.get('docker-tag')).extract_resources_from_docker()
+    elif config.get('snap-channel') and config.get('snap-revision'):
+        polkadot.ensure(
+            channel=str(config.get("snap-channel")),
+            revision=str(config.get("snap-revision")))
+    elif config.get('snap-channel'):
+        polkadot.ensure(channel=str(config.get("snap-channel")))
+    elif config.get('snap-revision'):
+        polkadot.ensure(revision=str(config.get("snap-revision")))
     else:
-        raise ValueError("Either 'binary-url' or 'docker-tag' must be set!")
-
+        polkadot.ensure()
 
 def find_binary_installed_by_deb(package_name: str, ) -> str:
     files = sp.check_output(['dpkg', '-L', package_name]).decode().split('\n')[:-1]
@@ -286,9 +296,12 @@ def arguments_differ_from_disk(service_args):
         return True
     
 def update_service_args(service_args):
-    with open(f'/etc/default/{c.USER}', 'w', encoding='utf-8') as f:
-        f.write(render_service_argument_file(service_args))
-    sp.run(['systemctl', 'restart', f'{c.USER}.service'], check=False)
+    if uses_binary():
+        with open(f'/etc/default/{c.USER}', 'w', encoding='utf-8') as f:
+            f.write(render_service_argument_file(service_args))
+    else:
+        polkadot.set_service_args(service_args)
+    sp.run(['systemctl', 'restart', f'{get_service_name()}.service'], check=False)
 
 
 def install_node_exporter():
@@ -305,7 +318,7 @@ def install_node_exporter():
 def get_binary_version() -> str:
     """ Returns the version of the binary client by checking the '--version' flag. """
     logger.debug("Getting binary version from client binary.")
-    if c.BINARY_FILE.exists():
+    if uses_binary() and c.BINARY_FILE.exists():
         try:
             command = [c.BINARY_FILE, "--version"]
             output = sp.run(command, stdout=sp.PIPE, check=False).stdout.decode('utf-8').strip()
@@ -313,6 +326,14 @@ def get_binary_version() -> str:
             return version
         except (sp.SubprocessError, IndexError, AttributeError) as e:
             logger.error("Couldn't get binary version: %s", {e})
+    else:
+        try:
+            command = ["snap", "run", "polkadot.polkadot-cli", "--version"]
+            output = sp.run(command, stdout=sp.PIPE, check=False).stdout.decode('utf-8').strip()
+            version = re.search(r'([\d.]+)', output).group(1)
+        except (sp.SubprocessError, IndexError, AttributeError) as e:
+            logger.error("Couldn't get binary version: %s", {e})
+        return version
     return ""
 
 
@@ -332,28 +353,35 @@ def get_binary_last_changed() -> str:
         date = stat_split[0]
         timestamp = stat_split[1].split('.')[0]
         return date + ' ' + timestamp  # TODO: make this check if system time is in UTC, and print that?
+    elif polkadot.installed:
+        command = ['stat', "/snap/polkadot/current/bin/polkadot"]
+        snap_info_output = sp.run(command, stdout=sp.PIPE, check=False).stdout.decode('utf-8').strip()
+        match = re.search(r'last updated: (.+)', snap_info_output)
+        if match:
+            return match.group(1)
     return ""
 
 
 def restart_service():
-    sp.run(['systemctl', 'restart', f'{c.USER}.service'], check=False)
+    sp.run(['systemctl', 'restart', f'{get_service_name()}.service'], check=False)
 
 
 def start_service():
     # TODO: remove chown and chmod from here? Runs in the install hook already
-    sp.run(['chown', f'{c.USER}:{c.USER}', c.BINARY_FILE], check=False)
-    sp.run(['chmod', '+x', c.BINARY_FILE], check=False)
-    sp.run(['systemctl', 'start', f'{c.USER}.service'], check=False)
+    if uses_binary():
+        sp.run(['chown', f'{c.USER}:{c.USER}', c.BINARY_FILE], check=False)
+        sp.run(['chmod', '+x', c.BINARY_FILE], check=False)
+    sp.run(['systemctl', 'start', f'{get_service_name()}.service'], check=False)
 
 
 def stop_service():
-    sp.run(['systemctl', 'stop', f'{c.USER}.service'], check=False)
+    sp.run(['systemctl', 'stop', f'{get_service_name()}.service'], check=False)
 
 
 def service_started(iterations: int = 6) -> bool:
     """Checks if the service is running by running the the 'service status' command."""
     for _ in range(iterations):
-        service_status = os.system(f'service {c.SERVICE_NAME} status')
+        service_status = os.system(f'service {get_service_name()} status')
         if service_status == 0:
             return True
         time.sleep(1)
@@ -361,25 +389,44 @@ def service_started(iterations: int = 6) -> bool:
 
 
 def write_node_key_file(key):
-    with open(c.NODE_KEY_FILE, "w", encoding='utf-8') as f:
-        f.write(key)
-    sp.run(['chown', f'{c.USER}:{c.USER}', c.NODE_KEY_FILE], check=False)
-    sp.run(['chmod', '0600', c.NODE_KEY_FILE], check=False)
+    if uses_binary():
+        with open(c.NODE_KEY_FILE, "w", encoding='utf-8') as f:
+            f.write(key)
+        sp.run(['chown', f'{c.USER}:{c.USER}', c.NODE_KEY_FILE], check=False)
+        sp.run(['chmod', '0600', c.NODE_KEY_FILE], check=False)
+    elif polkadot.installed:
+        with open(c.SNAP_NODE_KEY_FILE, "w", encoding='utf-8') as f:
+            f.write(key)
+        sp.run(['chmod', '0600', c.SNAP_NODE_KEY_FILE], check=False)
 
 
 def generate_node_key():
-    command = [c.BINARY_FILE, 'key', 'generate-node-key', '--file', c.NODE_KEY_FILE]
+    if c.BINARY_FILE.exists():
+        command = [c.BINARY_FILE, 'key', 'generate-node-key', '--file', c.NODE_KEY_FILE]
 
-    # This is to make it work on Enjin relay deployments
-    logger.debug("Getting binary version from client binary to check if it is Enjin.")
-    get_version_command = [c.BINARY_FILE, "--version"]
-    output = sp.run(get_version_command, stdout=sp.PIPE, check=False).stdout.decode('utf-8').strip().lower()
-    if "enjin" in output:
-        command += ['--chain', 'enjin']
+        # This is to make it work on Enjin relay deployments
+        logger.debug("Getting binary version from client binary to check if it is Enjin.")
+        get_version_command = [c.BINARY_FILE, "--version"]
+        output = sp.run(get_version_command, stdout=sp.PIPE, check=False).stdout.decode('utf-8').strip().lower()
+        if "enjin" in output:
+            command += ['--chain', 'enjin']
 
-    sp.run(command, check=False)
-    sp.run(['chown', f'{c.USER}:{c.USER}', c.NODE_KEY_FILE], check=False)
-    sp.run(['chmod', '0600', c.NODE_KEY_FILE], check=False)
+        sp.run(command, check=False)
+        sp.run(['chown', f'{c.USER}:{c.USER}', c.NODE_KEY_FILE], check=False)
+        sp.run(['chmod', '0600', c.NODE_KEY_FILE], check=False)
+    elif polkadot.installed:
+        command = f'snap run {c.SNAP_BINARY} key generate-node-key --file {c.SNAP_NODE_KEY_FILE}'
+
+        # This is to make it work on Enjin relay deployments
+        logger.debug("Getting binary version from client binary to check if it is Enjin.")
+        get_version_command = [c.SNAP_BINARY, "--version"]
+        output = sp.run(get_version_command, stdout=sp.PIPE, check=False).stdout.decode('utf-8').strip().lower()
+        if "enjin" in output:
+            command += ['--chain', 'enjin']
+
+        sp.run(command, shell=True, check=False)
+    else:
+        raise ValueError("No binary file found to generate node key. Please check your configuration.")
 
 
 def get_disk_usage(path: Path) -> str:
@@ -408,9 +455,12 @@ def get_relay_disk_usage() -> str:
 
 
 def get_service_args() -> str:
-    command = ['cat', f'/etc/default/{c.USER}']
-    cat_output = sp.run(command, stdout=sp.PIPE, check=False).stdout.decode('utf-8').strip()
-    return cat_output.split('=')[1]  # cat:ed file includes the env variable name, which we skip including
+    if uses_binary():
+        command = ['cat', f'/etc/default/{c.USER}']
+        cat_output = sp.run(command, stdout=sp.PIPE, check=False).stdout.decode('utf-8').strip()
+        return cat_output.split('=')[1]  # cat:ed file includes the env variable name, which we skip including
+    else:
+        return polkadot.get_service_args()
 
 
 def get_polkadot_process_id() -> str:
@@ -440,6 +490,11 @@ def is_parachain_node() -> bool:
     if c.BINARY_FILE.exists():
         command = f'.{c.BINARY_FILE} --help | grep -i "\-\-collator"'
         output = sp.run(command, stdout=sp.PIPE, cwd='/', shell=True, check=False)
+        if output.returncode == 0:
+            return True
+    elif polkadot.installed:
+        command = f'snap run {c.SNAP_BINARY} --help | grep -i "\-\-collator"'
+        output = sp.run(command, stdout=sp.PIPE, shell=True, check=False)
         if output.returncode == 0:
             return True
     return False
@@ -484,6 +539,11 @@ def get_client_binary_help_output() -> str:
         if process.returncode == 0:
             return process.stdout.decode('utf-8').strip()
         return "Could not parse client binary '--help' command"
+    elif polkadot.installed:
+        command = f'snap run {c.SNAP_BINARY} --help'
+        process = sp.run(command, stdout=sp.PIPE, shell=True, check=False)
+        if process.returncode == 0:
+            return process.stdout.decode('utf-8').strip()
     return "Client binary not found"
 
 
@@ -559,3 +619,156 @@ def name_session_keys(chain_name: str, keys: list) -> dict:
         }
     else:
         raise ValueError(f"Mismatch between chain {chain_name} and number of session keys ({len(keys)})")
+    
+
+def get_service_name() -> str:
+    """
+    Returns the name of the service.
+    This is used to check if the service is running or not.
+    """
+    if uses_binary():
+        return c.SERVICE_NAME
+    else:
+        return c.SNAP_SERVICE_NAME
+
+def get_binary() -> str:
+    """
+    Returns the path to the binary file.
+    If the binary file does not exist, it returns an empty string.
+    """
+    if uses_binary():
+        return str(c.BINARY_FILE)
+    else:
+        return str(c.SNAP_BINARY)
+
+def uses_binary() -> bool:
+    """
+    Returns True if the binary file is used, False if the snap package is used.
+    """
+    return config.get('binary-url') or config.get('docker-tag')
+
+def snap_hold_state(hold: bool) -> None:
+    """
+    Returns True if the snap hold state is enabled, False otherwise.
+    """
+    if not uses_binary():
+        if hold:
+            logger.info(f"Holding {c.SNAP_SERVICE_NAME} snap")
+            polkadot.set_hold(True)
+        else:
+            logger.info(f"Unholding {c.SNAP_SERVICE_NAME} snap")
+            polkadot.set_hold(False)
+    else:
+        logger.error("Cannot hold snap state when using binary. Please check your configuration.")
+
+def snap_endure_state(endure: bool) -> None:
+    """
+    Returns True if the snap endure state is enabled, False otherwise.
+    """
+    if not uses_binary():
+        if endure:
+            logger.info(f"Setting {c.SNAP_SERVICE_NAME} snap to endure")
+            polkadot.set_endure(True)
+        else:
+            logger.info(f"Setting {c.SNAP_SERVICE_NAME} snap to not endure")
+            polkadot.set_endure(False)
+    else:
+        logger.error("Cannot set snap endure state when using binary. Please check your configuration.")
+
+def migrate_data(src, dest, dry_run, reverse) -> None:
+    """
+    Migrate data from src to dest.
+    If src is None, the data is not migrated.
+    If dest is None, the data is not migrated.
+    """
+    from core.data_migration import DataMigrator
+    data_migrator = DataMigrator(
+        src_path=Path(src) if src else None,
+        dest_path=Path(dest) if dest else None,
+        reverse=bool(reverse) if reverse else False,
+    )
+    return data_migrator.move_data(dry_run=bool(dry_run) if dry_run else False)
+
+
+def refresh_snap() -> None:
+    """
+    Refresh the snap to the latest version.
+    """
+    if not uses_binary():
+        logger.info(f"Refreshing {c.SNAP_SERVICE_NAME} snap")
+        sp.run(['snap', 'refresh', c.SNAP_SERVICE_NAME], check=False)
+        if not polkadot.installed:
+            logger.error("Snap refresh failed. Please check your configuration.")
+        else:
+            logger.info(f"{c.SNAP_SERVICE_NAME} snap refreshed successfully.")
+    else:
+        logger.error("Cannot refresh snap when using binary. Please check your configuration.")
+
+def migrate_node_key(dry_run: bool, reverse: bool) -> dict:
+    """
+    Migrate the node key from the old location to the new location.
+    """
+    src = c.NODE_KEY_FILE if reverse else c.SNAP_NODE_KEY_FILE
+    dest = c.SNAP_NODE_KEY_FILE if reverse else c.NODE_KEY_FILE
+
+    if not src.exists():
+        logger.info("No node key found to migrate.")
+        return {"status": "error", "message": "No node key found to migrate."}
+    if dry_run:
+        logger.info(f"Dry run: Node key would be migrated from {src} to {dest}.")
+        return {"status": "dry_run", "message": f"Dry run: Node key would be migrated from {src} to {dest}."}
+    try:
+        if not dest.parent.exists():
+            dest.parent.mkdir(parents=True)
+        shutil.copy(src, dest)
+
+        logger.info(f"Node key copied from {src} to {dest}.")
+        logger.info(f"Changing ownership of {dest} to user: {c.USER if reverse else 'root'} and group: {c.USER if reverse else 'root'}.")
+        shutil.chown(dest, user=c.USER if reverse else 'root', group=c.USER if reverse else 'root')
+        logger.info(f"Changing of ownership of {dest} completed.")
+
+        logger.info("Updateing service arguments to reflect the new node key location.")
+        cli_args = None
+        if not reverse:
+            try:
+                logger.info("Reading service args from /etc/default/polkadot")
+                with open('/etc/default/polkadot', 'r', encoding='utf-8') as f:
+                    text = f.read().strip()
+                    if text:
+                        logger.info("Found service args in /etc/default/polkadot")
+                        # Extract POLKADOT_CLI_ARGS from the file
+                        logger.info("Extracting POLKADOT_CLI_ARGS from /etc/default/polkadot")
+                        match = re.search(r"POLKADOT_CLI_ARGS='(.*?)'", text, re.DOTALL)
+                        if match:
+                            logger.info("Found POLKADOT_CLI_ARGS in /etc/default/polkadot")
+                            # Replace the old node key file path with the new one
+                            logger.info(f"Replacing old node key file path {c.NODE_KEY_FILE} with new one in {c.SNAP_NODE_KEY_FILE}")
+                            cli_args = match.group(1).strip().replace(f'{c.NODE_KEY_FILE}', f'{c.SNAP_NODE_KEY_FILE}')
+                            logger.info(f"Service args extracted: {cli_args}")
+                            logger.info(f"Setting snap service args to: {cli_args}")
+                            polkadot.set_service_args(cli_args)
+                            logger.info("Service args set successfully.")
+            except Exception as e:
+                logger.error(f"Failed to read service args from /etc/default/polkadot: {e}")
+        else:
+            try:
+                logger.info("Reading service args from polkadot snap")
+                text = polkadot.get_service_args()
+                if text:
+                    logger.info("Found service args in polkadot snap")
+                    # Replace the old node key file path with the new one
+                    logger.info(f"Replacing old node key file path {c.SNAP_NODE_KEY_FILE} with new one in {c.NODE_KEY_FILE}")
+                    cli_args = text.replace(f'{c.SNAP_NODE_KEY_FILE}', f'{c.NODE_KEY_FILE}')
+                    with open(f'/etc/default/{c.USER}', 'w', encoding='utf-8') as f:
+                        logger.info(f"Writing service args to /etc/default/{c.USER}")
+                        f.write(render_service_argument_file(cli_args))
+                        logger.info("Service args written successfully.")
+            except Exception as e:
+                logger.error(f"Failed to read service args from polkadot snap: {e}")
+        logger.info(f"Service args updated successfully: {cli_args}")
+        
+        logger.info(f"Node key migrated from {src} to {dest}.")
+        return {"status": "success", "message": f"Node key migrated from {src} to {dest}.", "cli_args": cli_args}
+    except Exception as e:
+        logger.error(f"Failed to migrate node key: {e}")
+        return {"status": "error", "message": f"Failed to migrate node key: {e}"}
