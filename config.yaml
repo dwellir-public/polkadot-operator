@@ -70,12 +70,12 @@ options:
   snap-revision:
     type: string
     description: |
-      Revision of the polkadot to use.
+      Revision of the polkadot snap to use.
   snap-channel:
     type: string
     default: latest/stable
     description: |
-      Channel of the polkadot to use.
+      Channel of the polkadot snap to use.
       This is used to determine which version of the polkadot to use.
   snap-hold:
     description: |

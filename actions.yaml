@@ -122,6 +122,5 @@ migrate-node-key:
 
 snap-refresh:
   description: |
-    Refreshes the snap to the latest version. This will not restart the service.
-    Use the action 'restart-node-service' to restart the service after a snap refresh.
-    NOTE: If you have set the snap endure state to false, this will restart the service.
+    Will run snap refresh for the Polkadot snap.
+    NOTE: If the endure config is set to 'true' you will need to restart the service with 'restart-node-service' to make it run with the new version.
