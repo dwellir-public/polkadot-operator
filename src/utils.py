@@ -726,49 +726,9 @@ def migrate_node_key(dry_run: bool, reverse: bool) -> dict:
         logger.info(f"Changing ownership of {dest} to user: {c.USER if reverse else 'root'} and group: {c.USER if reverse else 'root'}.")
         shutil.chown(dest, user=c.USER if reverse else 'root', group=c.USER if reverse else 'root')
         logger.info(f"Changing of ownership of {dest} completed.")
-
-        logger.info("Updateing service arguments to reflect the new node key location.")
-        cli_args = None
-        if not reverse:
-            try:
-                logger.info("Reading service args from /etc/default/polkadot")
-                with open('/etc/default/polkadot', 'r', encoding='utf-8') as f:
-                    text = f.read().strip()
-                    if text:
-                        logger.info("Found service args in /etc/default/polkadot")
-                        # Extract POLKADOT_CLI_ARGS from the file
-                        logger.info("Extracting POLKADOT_CLI_ARGS from /etc/default/polkadot")
-                        match = re.search(r"POLKADOT_CLI_ARGS='(.*?)'", text, re.DOTALL)
-                        if match:
-                            logger.info("Found POLKADOT_CLI_ARGS in /etc/default/polkadot")
-                            # Replace the old node key file path with the new one
-                            logger.info(f"Replacing old node key file path {c.NODE_KEY_FILE} with new one in {c.SNAP_NODE_KEY_FILE}")
-                            cli_args = match.group(1).strip().replace(f'{c.NODE_KEY_FILE}', f'{c.SNAP_NODE_KEY_FILE}')
-                            logger.info(f"Service args extracted: {cli_args}")
-                            logger.info(f"Setting snap service args to: {cli_args}")
-                            polkadot.set_service_args(cli_args)
-                            logger.info("Service args set successfully.")
-            except Exception as e:
-                logger.error(f"Failed to read service args from /etc/default/polkadot: {e}")
-        else:
-            try:
-                logger.info("Reading service args from polkadot snap")
-                text = polkadot.get_service_args()
-                if text:
-                    logger.info("Found service args in polkadot snap")
-                    # Replace the old node key file path with the new one
-                    logger.info(f"Replacing old node key file path {c.SNAP_NODE_KEY_FILE} with new one in {c.NODE_KEY_FILE}")
-                    cli_args = text.replace(f'{c.SNAP_NODE_KEY_FILE}', f'{c.NODE_KEY_FILE}')
-                    with open(f'/etc/default/{c.USER}', 'w', encoding='utf-8') as f:
-                        logger.info(f"Writing service args to /etc/default/{c.USER}")
-                        f.write(render_service_argument_file(cli_args))
-                        logger.info("Service args written successfully.")
-            except Exception as e:
-                logger.error(f"Failed to read service args from polkadot snap: {e}")
-        logger.info(f"Service args updated successfully: {cli_args}")
-        
         logger.info(f"Node key migrated from {src} to {dest}.")
-        return {"status": "success", "message": f"Node key migrated from {src} to {dest}.", "cli_args": cli_args}
+        
+        return {"status": "success", "message": f"Node key migrated from {src} to {dest}."}
     except Exception as e:
         logger.error(f"Failed to migrate node key: {e}")
         return {"status": "error", "message": f"Failed to migrate node key: {e}"}

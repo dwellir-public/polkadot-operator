@@ -431,10 +431,12 @@ class PolkadotCharm(ops.CharmBase):
     def _on_migrate_node_key_action(self, event: ops.ActionEvent) -> None:
         """ Handle node key migration action. """
         try:
+            service_args_obj = ServiceArgs(self.config, self.rpc_urls())
             dry_run = event.params.get('dry-run', False)
             reverse = event.params.get('reverse', False)
             result = utils.migrate_node_key(dry_run=dry_run, reverse=reverse)
-            event.set_results(result)
+            utils.update_service_args(service_args_obj.service_args_string)
+            event.set_results({"message": json.dumps(result, indent=2)})
             self.update_status_simple()
         except Exception as e:
             event.fail(f"Node key migration failed: {str(e)}")
