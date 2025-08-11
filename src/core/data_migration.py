@@ -217,7 +217,7 @@ class DataMigrator:
         needs_migration, reason = self.check_migration_needed()
         if not needs_migration:
             return {
-                "success": True,
+                "success": False,
                 "method": "none",
                 "reason": reason,
                 "dry_run": dry_run

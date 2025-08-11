@@ -31,7 +31,7 @@ class ServiceError(PolkadotError):
     pass
 
 
-class Polkadot:
+class PolkadotSnapManager:
     """Manages the Polkadot workload via snap package."""
 
     SNAP_NAME = "polkadot"
@@ -47,7 +47,7 @@ class Polkadot:
             logger.error(f"Failed to initialize snap cache: {e}")
             raise PolkadotError(f"Failed to initialize: {e}")
 
-    def ensure(self, channel: Optional[str] = None, revision: Optional[str] = None) -> None:
+    def ensure_and_connect(self, channel: Optional[str] = None, revision: Optional[str] = None) -> None:
         """Install or update the Polkadot snap package.
         
         Args:

@@ -19,12 +19,12 @@ from docker import Docker
 import service_args
 from tarball import Tarball
 from tarfile import open as open_tarfile
-from core.polkadot import Polkadot
+from core.polkadot import PolkadotSnapManager
 
 
 logger = logging.getLogger(__name__)
-polkadot = Polkadot()
-config = {}
+polkadot_snap = PolkadotSnapManager()
+global_config = {}
 
 def install_docker() -> None:
     try:
@@ -51,15 +51,15 @@ def install_binary(config: ConfigData, chain_name: str) -> None:
         install_docker()
         Docker(chain_name, config.get('docker-tag')).extract_resources_from_docker()
     elif config.get('snap-channel') and config.get('snap-revision'):
-        polkadot.ensure(
+        polkadot_snap.ensure_and_connect(
             channel=str(config.get("snap-channel")),
             revision=str(config.get("snap-revision")))
     elif config.get('snap-channel'):
-        polkadot.ensure(channel=str(config.get("snap-channel")))
+        polkadot_snap.ensure_and_connect(channel=str(config.get("snap-channel")))
     elif config.get('snap-revision'):
-        polkadot.ensure(revision=str(config.get("snap-revision")))
+        polkadot_snap.ensure_and_connect(revision=str(config.get("snap-revision")))
     else:
-        polkadot.ensure()
+        polkadot_snap.ensure_and_connect()
 
 def find_binary_installed_by_deb(package_name: str, ) -> str:
     files = sp.check_output(['dpkg', '-L', package_name]).decode().split('\n')[:-1]
@@ -300,7 +300,7 @@ def update_service_args(service_args):
         with open(f'/etc/default/{c.USER}', 'w', encoding='utf-8') as f:
             f.write(render_service_argument_file(service_args))
     else:
-        polkadot.set_service_args(service_args)
+        polkadot_snap.set_service_args(service_args)
     sp.run(['systemctl', 'restart', f'{get_service_name()}.service'], check=False)
 
 
@@ -353,7 +353,7 @@ def get_binary_last_changed() -> str:
         date = stat_split[0]
         timestamp = stat_split[1].split('.')[0]
         return date + ' ' + timestamp  # TODO: make this check if system time is in UTC, and print that?
-    elif polkadot.installed:
+    elif polkadot_snap.installed:
         command = ['stat', "/snap/polkadot/current/bin/polkadot"]
         snap_info_output = sp.run(command, stdout=sp.PIPE, check=False).stdout.decode('utf-8').strip()
         match = re.search(r'last updated: (.+)', snap_info_output)
@@ -394,7 +394,7 @@ def write_node_key_file(key):
             f.write(key)
         sp.run(['chown', f'{c.USER}:{c.USER}', c.NODE_KEY_FILE], check=False)
         sp.run(['chmod', '0600', c.NODE_KEY_FILE], check=False)
-    elif polkadot.installed:
+    elif polkadot_snap.installed:
         with open(c.SNAP_NODE_KEY_FILE, "w", encoding='utf-8') as f:
             f.write(key)
         sp.run(['chmod', '0600', c.SNAP_NODE_KEY_FILE], check=False)
@@ -414,7 +414,7 @@ def generate_node_key():
         sp.run(command, check=False)
         sp.run(['chown', f'{c.USER}:{c.USER}', c.NODE_KEY_FILE], check=False)
         sp.run(['chmod', '0600', c.NODE_KEY_FILE], check=False)
-    elif polkadot.installed:
+    elif polkadot_snap.installed:
         command = f'snap run {c.SNAP_BINARY} key generate-node-key --file {c.SNAP_NODE_KEY_FILE}'
 
         # This is to make it work on Enjin relay deployments
@@ -460,7 +460,7 @@ def get_service_args() -> str:
         cat_output = sp.run(command, stdout=sp.PIPE, check=False).stdout.decode('utf-8').strip()
         return cat_output.split('=')[1]  # cat:ed file includes the env variable name, which we skip including
     else:
-        return polkadot.get_service_args()
+        return polkadot_snap.get_service_args()
 
 
 def get_polkadot_process_id() -> str:
@@ -492,7 +492,7 @@ def is_parachain_node() -> bool:
         output = sp.run(command, stdout=sp.PIPE, cwd='/', shell=True, check=False)
         if output.returncode == 0:
             return True
-    elif polkadot.installed:
+    elif polkadot_snap.installed:
         command = f'snap run {c.SNAP_BINARY} --help | grep -i "\-\-collator"'
         output = sp.run(command, stdout=sp.PIPE, shell=True, check=False)
         if output.returncode == 0:
@@ -539,7 +539,7 @@ def get_client_binary_help_output() -> str:
         if process.returncode == 0:
             return process.stdout.decode('utf-8').strip()
         return "Could not parse client binary '--help' command"
-    elif polkadot.installed:
+    elif polkadot_snap.installed:
         command = f'snap run {c.SNAP_BINARY} --help'
         process = sp.run(command, stdout=sp.PIPE, shell=True, check=False)
         if process.returncode == 0:
@@ -645,7 +645,7 @@ def uses_binary() -> bool:
     """
     Returns True if the binary file is used, False if the snap package is used.
     """
-    return config.get('binary-url') or config.get('docker-tag')
+    return global_config.get('binary-url') or global_config.get('docker-tag')
 
 def snap_hold_state(hold: bool) -> None:
     """
@@ -654,10 +654,10 @@ def snap_hold_state(hold: bool) -> None:
     if not uses_binary():
         if hold:
             logger.info(f"Holding {c.SNAP_SERVICE_NAME} snap")
-            polkadot.set_hold(True)
+            polkadot_snap.set_hold(True)
         else:
             logger.info(f"Unholding {c.SNAP_SERVICE_NAME} snap")
-            polkadot.set_hold(False)
+            polkadot_snap.set_hold(False)
     else:
         logger.error("Cannot hold snap state when using binary. Please check your configuration.")
 
@@ -668,10 +668,10 @@ def snap_endure_state(endure: bool) -> None:
     if not uses_binary():
         if endure:
             logger.info(f"Setting {c.SNAP_SERVICE_NAME} snap to endure")
-            polkadot.set_endure(True)
+            polkadot_snap.set_endure(True)
         else:
             logger.info(f"Setting {c.SNAP_SERVICE_NAME} snap to not endure")
-            polkadot.set_endure(False)
+            polkadot_snap.set_endure(False)
     else:
         logger.error("Cannot set snap endure state when using binary. Please check your configuration.")
 
@@ -697,7 +697,7 @@ def refresh_snap() -> None:
     if not uses_binary():
         logger.info(f"Refreshing {c.SNAP_SERVICE_NAME} snap")
         sp.run(['snap', 'refresh', c.SNAP_SERVICE_NAME], check=False)
-        if not polkadot.installed:
+        if not polkadot_snap.installed:
             logger.error("Snap refresh failed. Please check your configuration.")
         else:
             logger.info(f"{c.SNAP_SERVICE_NAME} snap refreshed successfully.")
@@ -713,10 +713,13 @@ def migrate_node_key(dry_run: bool, reverse: bool) -> dict:
 
     if not src.exists():
         logger.info("No node key found to migrate.")
-        return {"status": "error", "message": "No node key found to migrate."}
+        result = {"success": False, "message": "No node key found to migrate."}
+        if dry_run:
+            result["dry_run"] = True
+        return result
     if dry_run:
         logger.info(f"Dry run: Node key would be migrated from {src} to {dest}.")
-        return {"status": "dry_run", "message": f"Dry run: Node key would be migrated from {src} to {dest}."}
+        return {"success": True, "dry_run": True, "message": f"Dry run: Node key would be migrated from {src} to {dest}."}
     try:
         if not dest.parent.exists():
             dest.parent.mkdir(parents=True)
@@ -727,8 +730,8 @@ def migrate_node_key(dry_run: bool, reverse: bool) -> dict:
         shutil.chown(dest, user=c.USER if reverse else 'root', group=c.USER if reverse else 'root')
         logger.info(f"Changing of ownership of {dest} completed.")
         logger.info(f"Node key migrated from {src} to {dest}.")
-        
-        return {"status": "success", "message": f"Node key migrated from {src} to {dest}."}
+
+        return {"success": True, "message": f"Node key migrated from {src} to {dest}."}
     except Exception as e:
         logger.error(f"Failed to migrate node key: {e}")
-        return {"status": "error", "message": f"Failed to migrate node key: {e}"}
+        return {"success": False, "message": f"Failed to migrate node key: {e}"}

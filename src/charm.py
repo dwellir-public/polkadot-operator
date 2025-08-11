@@ -46,7 +46,7 @@ class PolkadotCharm(ops.CharmBase):
             logs_rules_dir="./src/alert_rules/loki"
         )
 
-        utils.config = self.config
+        utils.global_config = self.config
 
         self.framework.observe(self.on.install, self._on_install)
         self.framework.observe(self.on.config_changed, self._on_config_changed)
@@ -78,7 +78,9 @@ class PolkadotCharm(ops.CharmBase):
                                  local_relaychain_spec_url=self.config.get('local-relaychain-spec-url'),
                                  wasm_runtime_url=self.config.get('wasm-runtime-url'),
                                  snap_hold=self.config.get('snap-hold'),
-                                 snap_endure=self.config.get('snap-endure')
+                                 snap_endure=self.config.get('snap-endure'),
+                                 snap_revision=self.config.get('snap-revision'),
+                                 snap_channel=self.config.get('snap-channel')
                                  )
 
     def rpc_urls(self):
@@ -117,7 +119,8 @@ class PolkadotCharm(ops.CharmBase):
             return
 
         # Update of polkadot binary requested
-        if self._stored.binary_url != self.config.get('binary-url') or self._stored.docker_tag != self.config.get('docker-tag'):
+        if self._stored.binary_url != self.config.get('binary-url') or self._stored.docker_tag != self.config.get('docker-tag') \
+                or self._stored.snap_revision != self.config.get('snap-revision') or self._stored.snap_channel != self.config.get('snap-channel'):
             self.unit.status = ops.MaintenanceStatus("Installing binary")
             try:
                 utils.install_binary(self.config, service_args_obj.chain_name)
@@ -127,6 +130,8 @@ class PolkadotCharm(ops.CharmBase):
                 return
             self._stored.binary_url = self.config.get('binary-url')
             self._stored.docker_tag = self.config.get('docker-tag')
+            self._stored.snap_revision = self.config.get('snap-revision')
+            self._stored.snap_channel = self.config.get('snap-channel')
 
         # Update of polkadot service arguments requested
         if self._stored.service_args != self.config.get('service-args'):
@@ -411,12 +416,14 @@ class PolkadotCharm(ops.CharmBase):
                 dest=event.params.get('dest-path', None),
                 dry_run=event.params.get('dry-run', False),
                 reverse=event.params.get('reverse', False))
-            
-            event.set_results({"result": json.dumps(result, indent=2)})
-            logger.info("Data migration completed successfully")
+
+            if result["success"]:
+                event.set_results({"result": json.dumps(result, indent=2)})
+                logger.info("Data migration completed successfully")
+            else:
+                event.fail(f"Data migration failed: {json.dumps(result, indent=2)}")
         except Exception as e:
             event.fail(f"Data migration failed: {str(e)}")
-            event.set_results({"result": f"Data migration failed: {str(e)}"})
     
     def _on_snap_refresh(self, event: ops.ActionEvent) -> None:
         """ Handle snap refresh action. """
@@ -436,11 +443,13 @@ class PolkadotCharm(ops.CharmBase):
             reverse = event.params.get('reverse', False)
             result = utils.migrate_node_key(dry_run=dry_run, reverse=reverse)
             utils.update_service_args(service_args_obj.service_args_string)
-            event.set_results({"message": json.dumps(result, indent=2)})
+            if result["success"]:
+                event.set_results({"message": json.dumps(result, indent=2)})
+            else:
+                event.fail(f"Node key migration failed: {json.dumps(result, indent=2)}")
             self.update_status_simple()
         except Exception as e:
             event.fail(f"Node key migration failed: {str(e)}")
-            event.set_results({"message": f"Node key migration failed: {str(e)}"})
 
 if __name__ == "__main__":
     ops.main(PolkadotCharm)

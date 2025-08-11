@@ -1,7 +1,3 @@
-Here’s your content rewritten into a clean, well-formatted `README.md` suitable for documentation in a repo or charm operations guide:
-
----
-
 # Polkadot Snap Upgrade Process
 
 This guide describes the steps required to upgrade the Polkadot node to use the **Snap-based deployment** in a Juju-managed environment.
@@ -10,7 +6,6 @@ This guide describes the steps required to upgrade the Polkadot node to use the 
 
 ## ⚠️ Prerequisites
 
-* A valid `.charm` file built with Snap support (e.g., `polkadot_ubuntu@24.04-amd64.charm`)
 * Snap installed on the unit machine(s)
 * The `juju` CLI installed and authenticated
 
@@ -33,8 +28,10 @@ juju run polkadot/0 stop-node-service
 Refresh the charm on the unit using the new Snap-based build:
 
 ```bash
-juju refresh polkadot --force-units --path ./polkadot_ubuntu@24.04-amd64.charm
+juju refresh polkadot --force-units --channel latest/edge/develop --switch polkadot
 ```
+> Adjust `charm-channel` if you want to use a different track or risk level (e.g., `stable`, `latest/beta`, etc.).
+You can also use the development branch `latest/edge/develop`
 
 ---
 
@@ -46,7 +43,7 @@ Update the charm configuration to switch from binary or Docker to the Snap-based
 juju config polkadot docker-tag='' binary-url='' snap-channel=latest/edge
 ```
 
-> Adjust `snap-channel` if you want to use a different track or risk level (e.g., `stable`, `latest/beta`, etc.)
+> Adjust `snap-channel` if you want to use a different track or risk level (e.g., `stable`, `latest/beta`, etc.).
 
 ---
 
@@ -72,6 +69,14 @@ juju run polkadot/0 migrate-data
 
 ---
 
+### 5. **Migrate the node key**
+
+```bash
+juju run polkadot/0 migrate-node-key
+```
+
+---
+
 ### 6. **Restart the Polkadot Service**
 
 After migration completes successfully, start the service:
@@ -87,8 +92,5 @@ juju run polkadot/0 start-node-service
 You can verify the node is running and using Snap by checking:
 
 ```bash
-juju ssh polkadot/0 -- snap list | grep polkadot
+juju ssh polkadot/0 -- snap logs polkadot
 ```
-
-Also check logs or metrics to ensure the node starts without issue.
-
