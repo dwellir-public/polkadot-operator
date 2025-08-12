@@ -92,5 +92,5 @@ juju run polkadot/0 start-node-service
 You can verify the node is running and using Snap by checking:
 
 ```bash
-juju ssh polkadot/0 -- snap logs -f polkadot
+juju ssh polkadot/0 -- journalctl -fu snap.polkadot.polkadot.service
 ```
