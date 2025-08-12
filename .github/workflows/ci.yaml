@@ -23,8 +23,6 @@ jobs:
         with:
           pattern: ${{ needs.build.outputs.artifact-prefix }}-*
           merge-multiple: true
-      - name: Setup tmate session
-        uses: mxschmitt/action-tmate@v3
       - name: Find charm files
         id: find-charms
         run: |
