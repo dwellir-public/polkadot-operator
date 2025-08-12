@@ -69,7 +69,7 @@ juju run polkadot/0 migrate-data
 
 ---
 
-### 5. **Migrate the node key**
+### 6. **Migrate the node key**
 
 ```bash
 juju run polkadot/0 migrate-node-key
@@ -77,7 +77,7 @@ juju run polkadot/0 migrate-node-key
 
 ---
 
-### 6. **Restart the Polkadot Service**
+### 7. **Restart the Polkadot Service**
 
 After migration completes successfully, start the service:
 
@@ -92,5 +92,5 @@ juju run polkadot/0 start-node-service
 You can verify the node is running and using Snap by checking:
 
 ```bash
-juju ssh polkadot/0 -- snap logs polkadot
+juju ssh polkadot/0 -- snap logs -f polkadot
 ```
