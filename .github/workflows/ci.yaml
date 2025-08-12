@@ -1,22 +1,27 @@
-name: Build and publish
+name: Release Development Polkadot Operator to Charmhub
+
 on:
   push:
     branches:
       - develop
+
 jobs:
   build:
-    name: Release to edge
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-        with:
-          fetch-depth: 0
-      - name: Upload charm to charmhub
-        uses: canonical/charming-actions/upload-charm@2.7.0
-        with:
-          destructive-mode: false
-          credentials: "${{ secrets.CHARMHUB_TOKEN }}"
-          github-token: "${{ secrets.GITHUB_TOKEN }}"
-          channel: "latest/edge/develop" #latest/edge/develop
-          github-tag: false
+    name: Build Polkadot charm
+    uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v32.0.0
+    with:
+      charmcraft-snap-revision: 6672
+      cache: false
+
+  release:
+    name: Release charm to latest/edge/develop channel
+    needs:
+      - build
+    uses: canonical/data-platform-workflows/.github/workflows/release_charm_edge.yaml@v32.0.0
+    with:
+      track: latest/edge/develop
+      artifact-prefix: ${{ needs.build.outputs.artifact-prefix }}
+    secrets:
+      charmhub-token: ${{ secrets.CHARMHUB_TOKEN }}
+    permissions:
+      contents: write  # Needed to create GitHub release
