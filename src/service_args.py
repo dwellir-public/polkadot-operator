@@ -111,7 +111,10 @@ class ServiceArgs():
         self.service_args_list_customized = self.service_args_list_customized + args
 
     def __customize_service_args(self):
-        self.__add_firstchain_args(['--node-key-file', c.NODE_KEY_FILE])
+        if utils.uses_binary():
+            self.__add_firstchain_args(['--node-key-file', c.NODE_KEY_FILE])
+        else:
+            self.__add_firstchain_args(['--node-key-file', c.SNAP_NODE_KEY_FILE])
         if self._relay_rpc_urls:
             self.__add_firstchain_args(['--relay-chain-rpc-urls', *self._relay_rpc_urls])
 

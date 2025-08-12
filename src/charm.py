@@ -10,6 +10,7 @@ from requests.exceptions import ConnectionError as RequestsConnectionError
 from urllib3.exceptions import NewConnectionError, MaxRetryError
 import time
 import re
+import json
 
 import ops
 
@@ -44,6 +45,9 @@ class PolkadotCharm(ops.CharmBase):
             metrics_rules_dir="./src/alert_rules/prometheus",
             logs_rules_dir="./src/alert_rules/loki"
         )
+
+        utils.global_config = self.config
+
         self.framework.observe(self.on.install, self._on_install)
         self.framework.observe(self.on.config_changed, self._on_config_changed)
         self.framework.observe(self.on.update_status, self._on_update_status)
@@ -63,6 +67,9 @@ class PolkadotCharm(ops.CharmBase):
         self.framework.observe(self.on.get_node_help_action, self._on_get_node_help_action)
         self.framework.observe(self.on.print_readme_action, self._on_print_readme_action)
         self.framework.observe(self.on.start_validating_action, self._on_start_validating_action)
+        self.framework.observe(self.on.migrate_data_action, self._on_migrate_data_action)
+        self.framework.observe(self.on.snap_refresh_action, self._on_snap_refresh)
+        self.framework.observe(self.on.migrate_node_key_action, self._on_migrate_node_key_action)
 
         self._stored.set_default(binary_url=self.config.get('binary-url'),
                                  docker_tag=self.config.get('docker-tag'),
@@ -70,6 +77,10 @@ class PolkadotCharm(ops.CharmBase):
                                  chain_spec_url=self.config.get('chain-spec-url'),
                                  local_relaychain_spec_url=self.config.get('local-relaychain-spec-url'),
                                  wasm_runtime_url=self.config.get('wasm-runtime-url'),
+                                 snap_hold=self.config.get('snap-hold'),
+                                 snap_endure=self.config.get('snap-endure'),
+                                 snap_revision=self.config.get('snap-revision'),
+                                 snap_channel=self.config.get('snap-channel')
                                  )
 
     def rpc_urls(self):
@@ -108,7 +119,8 @@ class PolkadotCharm(ops.CharmBase):
             return
 
         # Update of polkadot binary requested
-        if self._stored.binary_url != self.config.get('binary-url') or self._stored.docker_tag != self.config.get('docker-tag'):
+        if self._stored.binary_url != self.config.get('binary-url') or self._stored.docker_tag != self.config.get('docker-tag') \
+                or self._stored.snap_revision != self.config.get('snap-revision') or self._stored.snap_channel != self.config.get('snap-channel'):
             self.unit.status = ops.MaintenanceStatus("Installing binary")
             try:
                 utils.install_binary(self.config, service_args_obj.chain_name)
@@ -118,6 +130,8 @@ class PolkadotCharm(ops.CharmBase):
                 return
             self._stored.binary_url = self.config.get('binary-url')
             self._stored.docker_tag = self.config.get('docker-tag')
+            self._stored.snap_revision = self.config.get('snap-revision')
+            self._stored.snap_channel = self.config.get('snap-channel')
 
         # Update of polkadot service arguments requested
         if self._stored.service_args != self.config.get('service-args'):
@@ -149,6 +163,25 @@ class PolkadotCharm(ops.CharmBase):
             utils.download_wasm_runtime(self.config.get('wasm-runtime-url'))
             utils.update_service_args(service_args_obj.service_args_string)
             self._stored.wasm_runtime_url = self.config.get('wasm-runtime-url')
+
+        if self._stored.snap_hold != self.config.get('snap-hold'):
+            try:
+                self.unit.status = ops.MaintenanceStatus("Updating snap hold")
+                utils.snap_hold_state(self.config.get('snap-hold'))
+                self._stored.snap_hold = self.config.get('snap-hold')
+            except ValueError as e:
+                self.unit.status = ops.BlockedStatus(str(e))
+                event.defer()
+                return
+        if self._stored.snap_endure != self.config.get('snap-endure'):
+            try:
+                self.unit.status = ops.MaintenanceStatus("Updating snap endure")
+                utils.snap_endure_state(self.config.get('snap-endure'))
+                self._stored.snap_endure = self.config.get('snap-endure')
+            except ValueError as e:
+                self.unit.status = ops.BlockedStatus(str(e))
+                event.defer()
+                return
 
         self.update_status_simple()
 
@@ -375,6 +408,48 @@ class PolkadotCharm(ops.CharmBase):
         """ Handle print readme action. """
         event.set_results(results={'readme': utils.get_readme()})
 
+    def _on_migrate_data_action(self, event: ops.ActionEvent) -> None:
+        """ Handle data migration action. """
+        try:
+            result = utils.migrate_data(
+                src=event.params.get('source-path', None),
+                dest=event.params.get('dest-path', None),
+                dry_run=event.params.get('dry-run', False),
+                reverse=event.params.get('reverse', False))
+
+            if result["success"]:
+                event.set_results({"result": json.dumps(result, indent=2)})
+                logger.info("Data migration completed successfully")
+            else:
+                event.fail(f"Data migration failed: {json.dumps(result, indent=2)}")
+        except Exception as e:
+            event.fail(f"Data migration failed: {str(e)}")
+    
+    def _on_snap_refresh(self, event: ops.ActionEvent) -> None:
+        """ Handle snap refresh action. """
+        try:
+            utils.refresh_snap()
+            event.set_results({"message": "Snap refreshed successfully"})
+            self.update_status_simple()
+        except Exception as e:
+            event.fail(f"Snap refresh failed: {str(e)}")
+            event.set_results({"message": f"Snap refresh failed: {str(e)}"})
+
+    def _on_migrate_node_key_action(self, event: ops.ActionEvent) -> None:
+        """ Handle node key migration action. """
+        try:
+            service_args_obj = ServiceArgs(self.config, self.rpc_urls())
+            dry_run = event.params.get('dry-run', False)
+            reverse = event.params.get('reverse', False)
+            result = utils.migrate_node_key(dry_run=dry_run, reverse=reverse)
+            utils.update_service_args(service_args_obj.service_args_string)
+            if result["success"]:
+                event.set_results({"message": json.dumps(result, indent=2)})
+            else:
+                event.fail(f"Node key migration failed: {json.dumps(result, indent=2)}")
+            self.update_status_simple()
+        except Exception as e:
+            event.fail(f"Node key migration failed: {str(e)}")
 
 if __name__ == "__main__":
     ops.main(PolkadotCharm)

@@ -87,3 +87,40 @@ start-validating:
         Only needed if the node should start validating for a different address than the one in the config parameter 'mnemonic-secret-id'.
         This is typically the case for proxy accounts. I.e. if 'mnemonic-secret-id' is the mnemonic of a proxy account, this parameter should be the address of the validator account.
       type: string
+
+migrate-data:
+  description: Migrate Polkadot data from legacy location to snap common directory
+  params:
+    dry-run:
+      type: boolean
+      description: Perform a dry run without actually moving data
+      default: false
+    reverse:
+      type: boolean
+      description: Undo the migration by moving data back to the legacy location
+      default: false
+    source-path:
+      type: string
+      description: Custom source path for legacy data (optional)
+      default: "/home/polkadot/.local/share/polkadot"
+    dest-path:
+      type: string
+      description: Custom dest path for legacy data (optional)
+      default: "/var/snap/polkadot/common/polkadot_base"
+
+migrate-node-key:
+  description: Migrate the node key from legacy location to snap common directory
+  params:
+    dry-run:
+      type: boolean
+      description: Perform a dry run without actually moving the node key
+      default: false
+    reverse:
+      type: boolean
+      description: Undo the migration by moving the node key back to the legacy location
+      default: false
+
+snap-refresh:
+  description: |
+    Will run snap refresh for the Polkadot snap.
+    NOTE: If the endure config is set to 'true' you will need to restart the service with 'restart-node-service' to make it run with the new version.
