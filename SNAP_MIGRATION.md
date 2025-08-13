@@ -40,7 +40,7 @@ You can also use the development branch `latest/edge/develop`
 Update the charm configuration to switch from binary or Docker to the Snap-based runtime:
 
 ```bash
-juju config polkadot docker-tag='' binary-url='' snap-channel=latest/edge
+juju config polkadot docker-tag='' binary-url='' snap-channel=latest/stable
 ```
 
 > Adjust `snap-channel` if you want to use a different track or risk level (e.g., `stable`, `latest/beta`, etc.).
