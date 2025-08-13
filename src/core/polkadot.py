@@ -37,6 +37,7 @@ class PolkadotSnapManager:
     SNAP_NAME = "polkadot"
     SERVICE_NAME = "polkadot"
     CLI_COMMAND = "polkadot.polkadot-cli"
+    BASE_PATH = "/var/snap/polkadot/common/polkadot_base"
 
     def __init__(self):
         """Initialize the Polkadot workload manager."""
@@ -167,6 +168,8 @@ class PolkadotSnapManager:
         """
         try:
             logger.info(f"Setting service args to: {value}")
+            if not "--base-path" in value:
+                value = f"--base-path {self.BASE_PATH} {value}"
             self._polkadot_snap.set({"service-args": value})
             logger.info("Service args set successfully")
         except Exception as e:
