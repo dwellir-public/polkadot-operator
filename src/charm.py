@@ -442,7 +442,8 @@ class PolkadotCharm(ops.CharmBase):
             dry_run = event.params.get('dry-run', False)
             reverse = event.params.get('reverse', False)
             result = utils.migrate_node_key(dry_run=dry_run, reverse=reverse)
-            utils.update_service_args(service_args_obj.service_args_string)
+            if not dry_run:
+                utils.update_service_args(service_args_obj.service_args_string)
             if result["success"]:
                 event.set_results({"message": json.dumps(result, indent=2)})
             else:

@@ -302,7 +302,7 @@ def update_service_args(service_args):
     else:
         polkadot_snap.set_service_args(service_args)
     logger.info("Checking if service is running to restart it if needed.")
-    if service_started():
+    if service_started(iterations=1):
         logger.info("Service is running, restarting it to apply new arguments.")
         restart_service()
     else:
@@ -712,8 +712,8 @@ def migrate_node_key(dry_run: bool, reverse: bool) -> dict:
     """
     Migrate the node key from the old location to the new location.
     """
-    src = c.NODE_KEY_FILE if reverse else c.SNAP_NODE_KEY_FILE
-    dest = c.SNAP_NODE_KEY_FILE if reverse else c.NODE_KEY_FILE
+    src = c.NODE_KEY_FILE if not reverse else c.SNAP_NODE_KEY_FILE
+    dest = c.SNAP_NODE_KEY_FILE if not reverse else c.NODE_KEY_FILE
 
     if not src.exists():
         logger.info("No node key found to migrate.")
