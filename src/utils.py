@@ -294,15 +294,19 @@ def arguments_differ_from_disk(service_args):
         return args != render_service_argument_file(service_args)
     except FileNotFoundError:
         return True
-    
+
 def update_service_args(service_args):
     if uses_binary():
         with open(f'/etc/default/{c.USER}', 'w', encoding='utf-8') as f:
             f.write(render_service_argument_file(service_args))
     else:
         polkadot_snap.set_service_args(service_args)
-    sp.run(['systemctl', 'restart', f'{get_service_name()}.service'], check=False)
-
+    logger.info("Checking if service is running to restart it if needed.")
+    if service_started():
+        logger.info("Service is running, restarting it to apply new arguments.")
+        restart_service()
+    else:
+        logger.info("Service is not running, no need to restart it.")
 
 def install_node_exporter():
     try:
