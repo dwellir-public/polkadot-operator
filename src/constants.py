@@ -3,8 +3,10 @@
 from pathlib import Path
 
 USER = 'polkadot'
+SNAP_USER = 'root'
 SERVICE_NAME = USER
 HOME_DIR = Path('/home/polkadot')
+SNAP_COMMON_DIR = Path('/var/snap/polkadot/common')
 BINARY_FILE = Path(HOME_DIR, 'polkadot')
 EXECUTE_WORKER_BINARY_FILE = {
     'default': Path(HOME_DIR, 'polkadot-execute-worker'),
@@ -23,4 +25,5 @@ DB_RELAY_DIR = Path(HOME_DIR, '.local/share/polkadot/polkadot')
 WASM_DIR = Path(HOME_DIR, 'wasm')
 SNAP_SERVICE_NAME = "snap.polkadot.polkadot"
 SNAP_BINARY = "polkadot.polkadot-cli"
-SNAP_NODE_KEY_FILE = Path('/var/snap/polkadot/common', 'node-key')
+SNAP_NODE_KEY_FILE = Path(SNAP_COMMON_DIR, 'node-key')
+SNAP_CHAIN_SPEC_DIR = Path(SNAP_COMMON_DIR, 'spec')

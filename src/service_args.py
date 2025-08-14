@@ -128,11 +128,11 @@ class ServiceArgs():
 
         # The chain spec configs should be applied after hardcoded chain customizations above since this should override any hardcoded --chain overrides.
         if self._chain_spec_url:
-            utils.download_chain_spec(self._chain_spec_url, 'chain-spec.json')
-            self.__set_chain_name(f'{c.CHAIN_SPEC_DIR}/chain-spec.json', 0)
+            chain_spec_path = utils.download_chain_spec(self._chain_spec_url, 'chain-spec.json')
+            self.__set_chain_name(str(chain_spec_path), 0)
         if self._local_relaychain_spec_url:
-            utils.download_chain_spec(self._local_relaychain_spec_url, 'relaychain-spec.json')
-            self.__set_chain_name(f'{c.CHAIN_SPEC_DIR}/relaychain-spec.json', 1)
+            relay_chain_spec_path = utils.download_chain_spec(self._local_relaychain_spec_url, 'relaychain-spec.json')
+            self.__set_chain_name(str(relay_chain_spec_path), 1)
         if self._runtime_wasm_override:
             self.__add_firstchain_args(['--wasm-runtime-overrides', c.WASM_DIR])
 

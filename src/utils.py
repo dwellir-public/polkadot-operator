@@ -16,7 +16,6 @@ import constants as c
 from pathlib import Path
 from ops.model import ConfigData
 from docker import Docker
-import service_args
 from tarball import Tarball
 from tarfile import open as open_tarfile
 from core.polkadot import PolkadotSnapManager
@@ -209,12 +208,20 @@ def get_sha256_response(sha256_url: str) -> requests.Response:
     return sha256_response
 
 
-def download_chain_spec(url: str, filename: Path) -> None:
+def download_chain_spec(url: str, filename: Path) -> str:
     """Download a chain spec file from a given URL to a given filepath."""
-    if not c.CHAIN_SPEC_DIR.exists():
-        c.CHAIN_SPEC_DIR.mkdir(parents=True)
-    download_file(url, Path(c.CHAIN_SPEC_DIR, filename))
-    validate_file(Path(c.CHAIN_SPEC_DIR, filename), file_type='json')
+    if uses_binary():
+        if not c.CHAIN_SPEC_DIR.exists():
+            c.CHAIN_SPEC_DIR.mkdir(parents=True)
+        download_file(url, Path(c.CHAIN_SPEC_DIR, f"{filename}"), user=c.USER)
+        validate_file(Path(c.CHAIN_SPEC_DIR, filename), file_type='json')
+        return Path(c.CHAIN_SPEC_DIR, filename)
+    else:
+        if not c.SNAP_CHAIN_SPEC_DIR.exists():
+            c.SNAP_CHAIN_SPEC_DIR.mkdir(parents=True)
+        download_file(url, Path(c.SNAP_CHAIN_SPEC_DIR, f"{filename}"), user=c.SNAP_USER)
+        validate_file(Path(c.SNAP_CHAIN_SPEC_DIR, filename), file_type='json')
+        return Path(c.SNAP_CHAIN_SPEC_DIR, filename)
 
 
 def validate_file(filename: Path, file_type: str):
@@ -256,7 +263,7 @@ def download_wasm_runtime(url):
     sp.run(['chown', '-R', f'{c.USER}:{c.USER}', c.WASM_DIR], check=False)
 
 
-def download_file(url: str, filepath: Path) -> None:
+def download_file(url: str, filepath: Path, user=c.USER) -> None:
     """Download a file from a given URL to a given filepath."""
     logger.debug(f'Downloading file from {url} to {filepath}')
     response = requests.get(url, timeout=None)
@@ -264,7 +271,7 @@ def download_file(url: str, filepath: Path) -> None:
         raise ValueError(f"Download of file failed with: {response.text}")
     with open(filepath, 'wb') as f:
         f.write(response.content)
-    sp.run(['chown', '-R', f'{c.USER}:{c.USER}', filepath], check=False)
+    sp.run(['chown', '-R', f'{user}:{user}', filepath], check=False)
 
 
 def setup_group_and_user():
@@ -707,6 +714,7 @@ def refresh_snap() -> None:
             logger.info(f"{c.SNAP_SERVICE_NAME} snap refreshed successfully.")
     else:
         logger.error("Cannot refresh snap when using binary. Please check your configuration.")
+
 
 def migrate_node_key(dry_run: bool, reverse: bool) -> dict:
     """
