@@ -80,7 +80,8 @@ class PolkadotCharm(ops.CharmBase):
                                  snap_hold=self.config.get('snap-hold'),
                                  snap_endure=self.config.get('snap-endure'),
                                  snap_revision=self.config.get('snap-revision'),
-                                 snap_channel=self.config.get('snap-channel')
+                                 snap_channel=self.config.get('snap-channel'),
+                                 service_init=True
                                  )
 
     def rpc_urls(self):
@@ -182,7 +183,12 @@ class PolkadotCharm(ops.CharmBase):
                 self.unit.status = ops.BlockedStatus(str(e))
                 event.defer()
                 return
-
+        
+        # Start the service if it was just initialized
+        if self._stored.service_init:
+            utils.start_service()
+            self._stored.service_init = False
+        
         self.update_status_simple()
 
     def _on_update_status(self, event: ops.UpdateStatusEvent) -> None:
