@@ -49,16 +49,8 @@ def install_binary(config: ConfigData, chain_name: str) -> None:
     elif config.get('docker-tag'):
         install_docker()
         Docker(chain_name, config.get('docker-tag')).extract_resources_from_docker()
-    elif config.get('snap-channel') and config.get('snap-revision'):
-        polkadot_snap.ensure_and_connect(
-            channel=str(config.get("snap-channel")),
-            revision=str(config.get("snap-revision")))
-    elif config.get('snap-channel'):
-        polkadot_snap.ensure_and_connect(channel=str(config.get("snap-channel")))
-    elif config.get('snap-revision'):
-        polkadot_snap.ensure_and_connect(revision=str(config.get("snap-revision")))
     else:
-        polkadot_snap.ensure_and_connect()
+        install_snap(config.get('snap-channel'), config.get('snap-revision'))
 
 def find_binary_installed_by_deb(package_name: str, ) -> str:
     files = sp.check_output(['dpkg', '-L', package_name]).decode().split('\n')[:-1]
@@ -76,14 +68,17 @@ def install_deb_from_url(url: str) -> None:
         f.write(deb_response.content)
     package_name = sp.check_output(['dpkg-deb', '-f', deb_path, 'Package']).decode('utf-8').strip()
     logger.debug('Installing package %s from deb file %s', package_name, str(deb_path))
-    stop_service()
+    is_running = service_started(1)
+    if is_running:
+        stop_service()
     sp.check_call(['dpkg', '--purge', package_name])
     sp.check_call(['dpkg', '--install', deb_path])
     installed_binary = find_binary_installed_by_deb(package_name)
     if os.path.exists(c.BINARY_FILE):
         os.remove(c.BINARY_FILE)
     os.symlink(installed_binary, c.BINARY_FILE)
-    start_service()
+    if is_running:
+        start_service()
     os.remove(deb_path)
 
 
@@ -97,10 +92,13 @@ def install_tarball_from_url(url, sha256_url, chain_name):
     with open(tarball_path, 'wb') as f:
         f.write(tarball_response.content)
 
-    stop_service()
+    is_running = service_started(1)
+    if is_running:
+        stop_service()
     tarball = Tarball(tarball_path, chain_name)
     tarball.extract_resources_from_tarball()
-    start_service()
+    if is_running:
+        start_service()
 
 
 def parse_install_urls(binary_urls: str, sha256_urls: str) -> list:
@@ -141,7 +139,9 @@ def install_binaries_from_urls(binary_urls: str, sha256_urls: str, chain_name: s
             binary_name = c.BINARY_FILE
         responses += [(binary_url, sha256_url, response, binary_name, binary_hash)]
     perform_sha256_checksums(responses, sha256_urls)
-    stop_service()
+    is_running = service_started(1)
+    if is_running:
+        stop_service()
     for binary_url, _, response, binary_name, _ in responses:
         logger.debug("Unpack binary downloaded from: %s", binary_url)
         binary_path = c.HOME_DIR / binary_name
@@ -149,7 +149,8 @@ def install_binaries_from_urls(binary_urls: str, sha256_urls: str, chain_name: s
             f.write(response.content)
             sp.run(['chown', f'{c.USER}:{c.USER}', binary_path], check=False)
             sp.run(['chmod', '+x', binary_path], check=False)
-    start_service()
+    if is_running:
+        start_service()
 
 
 def install_binary_from_url(url: str, sha256_url: str) -> None:
@@ -161,12 +162,30 @@ def install_binary_from_url(url: str, sha256_url: str) -> None:
     if sha256_url:
         binary_hash = hashlib.sha256(binary_response.content).hexdigest()
         perform_sha256_checksum(binary_hash, sha256_url)
-    stop_service()
+    is_running = service_started(1)
+    if is_running:
+        stop_service()
     with open(c.BINARY_FILE, 'wb') as f:
         f.write(binary_response.content)
         sp.run(['chown', f'{c.USER}:{c.USER}', c.BINARY_FILE], check=False)
         sp.run(['chmod', '+x', c.BINARY_FILE], check=False)
-    start_service()
+    if is_running:
+        start_service()
+
+
+def install_snap(channel: str | None, revision: str | None) -> None:
+    if channel and revision:
+        polkadot_snap.ensure_and_connect(
+            channel=channel,
+            revision=revision)
+    elif channel:
+        polkadot_snap.ensure_and_connect(channel=channel)
+    elif revision:
+        polkadot_snap.ensure_and_connect(revision=revision)
+    else:
+        polkadot_snap.ensure_and_connect()
+    if service_started(1):
+        polkadot_snap.restart()
 
 
 def perform_sha256_checksums(responses: list, sha256_urls: str) -> None:
