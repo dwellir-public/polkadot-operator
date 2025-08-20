@@ -51,6 +51,7 @@ class PolkadotCharm(ops.CharmBase):
         self.framework.observe(self.on.install, self._on_install)
         self.framework.observe(self.on.config_changed, self._on_config_changed)
         self.framework.observe(self.on.update_status, self._on_update_status)
+        self.framework.observe(self.on.upgrade_charm, self._on_upgrade_charm)
         self.framework.observe(self.on.start, self._on_start)
         self.framework.observe(self.on.stop, self._on_stop)
         # Actions
@@ -110,6 +111,11 @@ class PolkadotCharm(ops.CharmBase):
         utils.install_service_file(source_path)
         utils.update_service_args(service_args_obj.service_args_string)
         self.unit.status = ops.MaintenanceStatus("Charm install complete")
+    
+
+    def _on_upgrade_charm(self, event: ops.UpgradeCharmEvent) -> None:
+        # Charm upgrade should not automatically start the service
+        self._stored.service_init = False
 
     def _on_config_changed(self, event: ops.ConfigChangedEvent) -> None:
         try:
