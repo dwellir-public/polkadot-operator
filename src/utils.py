@@ -51,6 +51,7 @@ def install_binary(config: ConfigData, chain_name: str) -> None:
         Docker(chain_name, config.get('docker-tag')).extract_resources_from_docker()
     else:
         install_snap(config.get('snap-channel'), config.get('snap-revision'))
+        snap_endure_state(config.get('snap-endure'))
 
 def find_binary_installed_by_deb(package_name: str, ) -> str:
     files = sp.check_output(['dpkg', '-L', package_name]).decode().split('\n')[:-1]
