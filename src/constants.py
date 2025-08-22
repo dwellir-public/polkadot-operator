@@ -27,3 +27,6 @@ SNAP_SERVICE_NAME = "snap.polkadot.polkadot"
 SNAP_BINARY = "polkadot.polkadot-cli"
 SNAP_NODE_KEY_FILE = Path(SNAP_COMMON_DIR, 'node-key')
 SNAP_CHAIN_SPEC_DIR = Path(SNAP_COMMON_DIR, 'spec')
+SNAP_DB_CHAIN_DIR = Path(SNAP_COMMON_DIR, 'polkadot_base', 'chains')
+SNAP_DB_RELAY_DIR = Path(SNAP_COMMON_DIR, 'polkadot_base', 'polkadot')
+SNAP_WASM_DIR = Path(SNAP_COMMON_DIR, 'wasm')

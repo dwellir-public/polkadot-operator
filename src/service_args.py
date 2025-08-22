@@ -134,7 +134,7 @@ class ServiceArgs():
             relay_chain_spec_path = utils.download_chain_spec(self._local_relaychain_spec_url, 'relaychain-spec.json')
             self.__set_chain_name(str(relay_chain_spec_path), 1)
         if self._runtime_wasm_override:
-            self.__add_firstchain_args(['--wasm-runtime-overrides', c.WASM_DIR])
+            self.__add_firstchain_args(['--wasm-runtime-overrides', c.WASM_DIR if utils.uses_binary() else c.SNAP_WASM_DIR])
 
     def __aleph_zero(self):
         if self.chain_name.endswith('testnet'):

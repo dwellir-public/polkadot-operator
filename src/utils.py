@@ -253,14 +253,15 @@ def validate_file(filename: Path, file_type: str):
             raise ValueError(f"Validating chain spec {filename} failed with error: {e}")
 
 def download_wasm_runtime(url):
+    wasm_path = c.WASM_DIR if uses_binary() else c.SNAP_WASM_DIR
     if not url:
         logger.debug('No wasm runtime url provided, skipping download')
         return
     filename = Path(url.split('/')[-1])
     if not filename.name.endswith('.tar.gz') and not filename.suffix == '.wasm':
         raise ValueError(f'Invalid file format provided for wasm-runtime-url: {filename.name}')
-    if not c.WASM_DIR.exists():
-        c.WASM_DIR.mkdir(parents=True)
+    if not wasm_path.exists():
+        wasm_path.mkdir(parents=True)
     with tempfile.TemporaryDirectory() as temp_dir:
         try:
             download_file(url, Path(temp_dir, filename))
@@ -272,15 +273,15 @@ def download_wasm_runtime(url):
             tarball.extractall(temp_dir)
             tarball.close()
         stop_service()
-        files = glob.glob(f'{c.WASM_DIR}/*.wasm')
+        files = glob.glob(f'{wasm_path}/*.wasm')
         for f in files:
             os.remove(f)
         files_in_temp_dir = glob.glob(f'{temp_dir}/*')
         logger.debug('Files in temp_dir: %s', str(files_in_temp_dir))
         wasm_files = glob.glob(f'{temp_dir}/*.wasm')
         for wasm_file in wasm_files:
-            shutil.move(wasm_file, c.WASM_DIR)
-    sp.run(['chown', '-R', f'{c.USER}:{c.USER}', c.WASM_DIR], check=False)
+            shutil.move(wasm_file, wasm_path)
+    sp.run(['chown', '-R', f'{c.USER}:{c.USER}' if uses_binary() else f'{c.SNAP_USER}:{c.SNAP_USER}', wasm_path], check=False)
 
 
 def download_file(url: str, filepath: Path, user=c.USER) -> None:
@@ -474,14 +475,16 @@ def get_disk_usage(path: Path) -> str:
 
 
 def get_chain_disk_usage() -> str:
-    if c.DB_CHAIN_DIR.exists():
-        return get_disk_usage(c.DB_CHAIN_DIR)
+    db_chain_path = c.DB_CHAIN_DIR if uses_binary() else c.SNAP_DB_CHAIN_DIR
+    if db_chain_path.exists():
+        return get_disk_usage(db_chain_path)
     return ""
 
 
 def get_relay_disk_usage() -> str:
-    if c.DB_RELAY_DIR.exists():
-        return get_disk_usage(c.DB_RELAY_DIR)
+    db_relay_path = c.DB_RELAY_DIR if uses_binary() else c.SNAP_DB_RELAY_DIR
+    if db_relay_path.exists():
+        return get_disk_usage(db_relay_path)
     return ""
 
 
@@ -554,8 +557,9 @@ def get_relay_for_parachain() -> str:
 
 
 def get_wasm_info() -> str:
-    if c.WASM_DIR.exists():
-        files = list(c.WASM_DIR.glob('*.wasm'))
+    wasm_path = c.WASM_DIR if uses_binary() else c.SNAP_WASM_DIR
+    if wasm_path.exists():
+        files = list(wasm_path.glob('*.wasm'))
         if not files:
             return "No wasm files found in ~/wasm directory"
         files = [str(f.name) for f in files]
