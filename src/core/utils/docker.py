@@ -2,9 +2,7 @@
 
 import subprocess as sp
 from pathlib import Path
-import utils
-import constants as c
-import os
+import core.constants as c
 import logging
 
 logger = logging.getLogger(__name__)
@@ -91,7 +89,6 @@ class Docker():
             raise ValueError(f"Could not pull {docker_image_and_tag} check 'docker-tag'!") from err
 
         sp.run(['docker', 'create', '--name', 'tmp', docker_image_and_tag], check=False)
-        utils.stop_service()
         try:
             sp.run(['docker', 'cp', f'tmp:{docker_binary_path}', c.BINARY_FILE], check=True)
         except sp.CalledProcessError as err:
@@ -99,6 +96,5 @@ class Docker():
         if docker_specs_path:
             sp.run(['docker', 'cp', f'tmp:{docker_specs_path}', c.HOME_DIR], check=True)
             sp.run(['chown', '-R', 'polkadot:polkadot', Path(c.HOME_DIR, Path(docker_specs_path).name)], check=True)
-        utils.start_service()
         sp.run(['docker', 'rm', 'tmp'], check=True)
         sp.run(['docker', 'rmi', docker_image_and_tag], check=True)

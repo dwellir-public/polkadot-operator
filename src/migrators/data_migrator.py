@@ -418,4 +418,17 @@ class DataMigrator:
             return f"~{estimated_seconds/60:.1f} minutes"
         else:
             return f"~{estimated_seconds/3600:.1f} hours"
+  
     
+def migrate_data(src, dest, dry_run, reverse) -> None:
+    """
+    Migrate data from src to dest.
+    If src is None, the data is not migrated.
+    If dest is None, the data is not migrated.
+    """
+    data_migrator = DataMigrator(
+        src_path=Path(src) if src else None,
+        dest_path=Path(dest) if dest else None,
+        reverse=bool(reverse) if reverse else False,
+    )
+    return data_migrator.move_data(dry_run=bool(dry_run) if dry_run else False)

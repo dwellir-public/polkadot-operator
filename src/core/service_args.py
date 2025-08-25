@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
 
-import constants as c
-import utils
-from pathlib import Path
-from os.path import exists
 import re
+import core.constants as c
 from ops.model import ConfigData
+from core.utils.download_util import download_chain_spec
 
 
 class ServiceArgs():
@@ -17,6 +15,7 @@ class ServiceArgs():
         self._local_relaychain_spec_url = config.get('local-relaychain-spec-url')
         self._runtime_wasm_override = True if config.get('wasm-runtime-url') else False
         self.__check_service_args(service_args)
+        self._is_binary = config.get('docker-tag') or config.get('binary-url')
         self.service_args_list = self.__service_args_to_list(service_args)
         self.__check_service_args(self.service_args_list)
         # Service args that is modified to use for the service.
@@ -59,8 +58,13 @@ class ServiceArgs():
             return self.service_args_list[i + 1]
         except ValueError:
             return ''
+        
+    @property
+    def is_binary(self) -> bool:
+        """Check if the node is running as a binary or snap."""
+        return self._is_binary
 
-    def __check_service_args(self, service_args: str or list):
+    def __check_service_args(self, service_args: str | list):
         msg = ""
         # Check for service arguments that must be set.
         if "--chain" not in service_args:
@@ -111,10 +115,7 @@ class ServiceArgs():
         self.service_args_list_customized = self.service_args_list_customized + args
 
     def __customize_service_args(self):
-        if utils.uses_binary():
-            self.__add_firstchain_args(['--node-key-file', c.NODE_KEY_FILE])
-        else:
-            self.__add_firstchain_args(['--node-key-file', c.SNAP_NODE_KEY_FILE])
+        self.__add_firstchain_args(['--node-key-file', c.NODE_KEY_FILE if self._is_binary else c.SNAP_NODE_KEY_FILE])
         if self._relay_rpc_urls:
             self.__add_firstchain_args(['--relay-chain-rpc-urls', *self._relay_rpc_urls])
 
@@ -128,13 +129,13 @@ class ServiceArgs():
 
         # The chain spec configs should be applied after hardcoded chain customizations above since this should override any hardcoded --chain overrides.
         if self._chain_spec_url:
-            chain_spec_path = utils.download_chain_spec(self._chain_spec_url, 'chain-spec.json')
+            chain_spec_path = download_chain_spec(self._chain_spec_url, 'chain-spec.json')
             self.__set_chain_name(str(chain_spec_path), 0)
         if self._local_relaychain_spec_url:
-            relay_chain_spec_path = utils.download_chain_spec(self._local_relaychain_spec_url, 'relaychain-spec.json')
+            relay_chain_spec_path = download_chain_spec(self._local_relaychain_spec_url, 'relaychain-spec.json')
             self.__set_chain_name(str(relay_chain_spec_path), 1)
         if self._runtime_wasm_override:
-            self.__add_firstchain_args(['--wasm-runtime-overrides', c.WASM_DIR if utils.uses_binary() else c.SNAP_WASM_DIR])
+            self.__add_firstchain_args(['--wasm-runtime-overrides', c.WASM_DIR if self._is_binary else c.SNAP_WASM_DIR])
 
     def __aleph_zero(self):
         if self.chain_name.endswith('testnet'):
