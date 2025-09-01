@@ -183,6 +183,13 @@ class DataMigrator:
         Returns:
             True if we can use mv, False if we need rsync
         """
+
+        # Find the top-level directory that exists.
+        # The device id is used to check if the source 
+        # and destination are on the same filesystem
+        while not destination.parent.exists():
+            destination = destination.parent
+        
         if not source.exists() or not destination.parent.exists():
             return False
             
@@ -291,9 +298,12 @@ class DataMigrator:
         logger.info(f"Moving {source} to {destination} using mv")
         
         try:
+            destination.mkdir(parents=True, exist_ok=True, mode=0o755)
+
             # Use shutil.move for atomic operation
-            shutil.move(str(source), str(destination))
-            
+            for item in os.listdir(str(source)):
+                shutil.move(os.path.join(str(source), item), str(destination))
+
             return {
                 "operation": "move",
                 "command": f"mv {source} {destination}",
