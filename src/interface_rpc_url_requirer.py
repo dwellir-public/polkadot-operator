@@ -2,10 +2,10 @@
 
 """RPC url interface (requirers side)."""
 
-from service_args import ServiceArgs
+from core.service_args import ServiceArgs
 from ops.framework import Object
-from ops.charm import RelationChangedEvent, RelationDepartedEvent
-import utils
+from core.managers import WorkloadType
+from core.factories import WorkloadFactory
 import logging
 
 logger = logging.getLogger(__name__)
@@ -33,7 +33,12 @@ class RpcUrlRequirer(Object):
         """
         Update service args in response to a change in the relation data.
         """
-        argument_string = ServiceArgs(self._charm.config, self._charm.rpc_urls()).service_args_string
-        if utils.arguments_differ_from_disk(argument_string):
-            utils.update_service_args(argument_string)
+        service_args_obj = ServiceArgs(self._charm.config, self._charm.rpc_urls())
+        if service_args_obj.is_binary:
+            workload = WorkloadFactory.get_workload_manager(WorkloadType.BINARY)
+        else:
+            workload = WorkloadFactory.get_workload_manager(WorkloadType.SNAP)
+        
+        if workload.service_args_obj_differ_from_disk(service_args_obj.service_args_string):
+            workload.set_service_args(service_args_obj.service_args_string)
         self._charm.update_status()

@@ -1,7 +1,7 @@
 import subprocess as sp
 from tarfile import open as open_tarfile
 
-import constants as c
+import core.constants as c
 
 
 class Tarball:

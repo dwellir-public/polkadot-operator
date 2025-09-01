@@ -8,6 +8,7 @@ import logging
 from pathlib import Path
 from requests.exceptions import ConnectionError as RequestsConnectionError
 from urllib3.exceptions import NewConnectionError, MaxRetryError
+from core.managers import WorkloadType, WorkloadFactory
 import time
 import re
 import json
@@ -17,9 +18,13 @@ import ops
 from interface_prometheus import PrometheusProvider
 from interface_rpc_url_provider import RpcUrlProvider
 from interface_rpc_url_requirer import RpcUrlRequirer
+from migrators import node_key_migrator
 from polkadot_rpc_wrapper import PolkadotRpcWrapper
-import utils
-from service_args import ServiceArgs
+from core.service_args import ServiceArgs
+from core.utils import general_util
+
+from core.utils import user_group_util
+from migrators import data_migrator
 
 from charms.grafana_agent.v0.cos_agent import COSAgentProvider
 
@@ -45,8 +50,6 @@ class PolkadotCharm(ops.CharmBase):
             metrics_rules_dir="./src/alert_rules/prometheus",
             logs_rules_dir="./src/alert_rules/loki"
         )
-
-        utils.global_config = self.config
 
         self.framework.observe(self.on.install, self._on_install)
         self.framework.observe(self.on.config_changed, self._on_config_changed)
@@ -82,8 +85,27 @@ class PolkadotCharm(ops.CharmBase):
                                  snap_endure=self.config.get('snap-endure'),
                                  snap_revision=self.config.get('snap-revision'),
                                  snap_channel=self.config.get('snap-channel'),
-                                 service_init=True
+                                 service_init=True,
                                  )
+
+        # Configure the workload as it was the last time the charm was executed
+        if self._stored.binary_url or self._stored.docker_tag:
+            self._workload = WorkloadFactory.BINARY_MANAGER
+            self._workload.configure(
+                charm_base_dir=self.charm_dir,
+                binary_url=self._stored.binary_url,
+                docker_tag=self._stored.docker_tag,
+                binary_sha256_url=self.config.get('binary-sha256-url'),
+                chain_name=general_util.get_chain_name_from_service_args(self.config.get('service-args')),
+            )
+        else:
+            self._workload = WorkloadFactory.SNAP_MANAGER
+            self._workload.configure(
+                channel=self._stored.snap_channel,
+                revision=self._stored.snap_revision,
+                hold=self._stored.snap_hold,
+                endure=self._stored.snap_endure,
+            )
 
     def rpc_urls(self):
         """
@@ -97,19 +119,20 @@ class PolkadotCharm(ops.CharmBase):
         self.unit.status = ops.MaintenanceStatus("Begin installing charm")
         service_args_obj = ServiceArgs(self.config, self.rpc_urls())
         # Setup polkadot group and user, disable login
-        utils.setup_group_and_user()
+        user_group_util.setup_group_and_user()
         # Create environment file for polkadot service arguments
-        utils.create_env_file_for_service()
-        # Download and prepare the binary
-        self.unit.status = ops.MaintenanceStatus("Installing binary")
-        utils.install_binary(self.config, service_args_obj.chain_name)
-        utils.download_wasm_runtime(self.config.get('wasm-runtime-url'))
-        utils.generate_node_key()
-        # Install polkadot.service file
-        self.unit.status = ops.MaintenanceStatus("Installing service")
-        source_path = Path(self.charm_dir / 'templates/etc/systemd/system/polkadot.service')
-        utils.install_service_file(source_path)
-        utils.update_service_args(service_args_obj.service_args_string)
+
+        if service_args_obj.is_binary:
+            self.unit.status = ops.MaintenanceStatus("Installing binary")
+        else:
+            self.unit.status = ops.MaintenanceStatus("Installing snap")
+        self._workload.install()
+        
+        if self.config.get('wasm-runtime-url'):
+            self._workload.download_wasm_runtime(self.config.get('wasm-runtime-url'))
+
+        self._workload.generate_node_key()
+        self._workload.set_service_args(service_args_obj.service_args_string)
         self.unit.status = ops.MaintenanceStatus("Charm install complete")
     
 
@@ -125,31 +148,97 @@ class PolkadotCharm(ops.CharmBase):
             event.defer()
             return
 
-        # Update of polkadot binary requested
-        if self._stored.binary_url != self.config.get('binary-url') or self._stored.docker_tag != self.config.get('docker-tag') \
-                or self._stored.snap_revision != self.config.get('snap-revision') or self._stored.snap_channel != self.config.get('snap-channel'):
-            self.unit.status = ops.MaintenanceStatus("Installing binary")
-            try:
-                utils.install_binary(self.config, service_args_obj.chain_name)
-            except ValueError as e:
-                self.unit.status = ops.BlockedStatus(str(e))
-                event.defer()
-                return
+        # Get the service status to determine if a restart is needed
+        should_restart = self._workload.is_service_running()
+
+        # NB: The install operation would stop the service if it's running.
+        # The caller is responsible for restarting the service afterwards.
+        #
+        # Switching the workload type (binary to snap or snap to binary) would
+        # not cause a restart if the service is already running.
+        # The operator must handle this manually through the juju api. This is necessary
+        # to ensure that data and key migration can or should be applied afterwards.
+        try:
+            # Update of polkadot binary requested
+            if self._stored.binary_url != self.config.get('binary-url') or \
+                self._stored.docker_tag != self.config.get('docker-tag'):
+
+                # If either binary-url or docker-tag is set, switch to binary manager
+                # and configure it with the current settings
+                if  self.config.get('binary-url') or self.config.get('docker-tag'):
+                        if self._workload.get_type() == WorkloadType.SNAP:
+                            self.unit.status = ops.MaintenanceStatus("Stopping snap service")
+                            self._workload.stop_service()
+                            self.unit.status = ops.MaintenanceStatus("Installing binary")
+                            self._workload = WorkloadFactory.BINARY_MANAGER
+                            should_restart = False
+                        else:
+                            self.unit.status = ops.MaintenanceStatus("Updating binary")
+                        self._workload.configure(
+                            binary_url=self.config.get('binary-url'),
+                            docker_tag=self.config.get('docker-tag'),
+                            charm_base_dir=self.charm_dir,
+                            binary_sha256_url=self.config.get('binary-sha256-url'),
+                            chain_name=general_util.get_chain_name_from_service_args(self.config.get('service-args')),
+                        )
+                # If neither binary-url nor docker-tag is set, switch to snap manager
+                # and configure it with the current settings
+                else:
+                    if self._workload.get_type() == WorkloadType.BINARY:
+                        self.unit.status = ops.MaintenanceStatus("Stopping binary service")
+                        self._workload.stop_service()
+                        self.unit.status = ops.MaintenanceStatus("Installing Snap")
+                        self._workload = WorkloadFactory.SNAP_MANAGER
+                        should_restart = False
+                    self._workload.configure(
+                        channel=self.config.get('snap-channel'),
+                        revision=self.config.get('snap-revision'),
+                        hold=self.config.get('snap-hold'),
+                        endure=self.config.get('snap-endure'),
+                    )
+                
+                self._workload.install()
+
+            # Update of snap revision or channel is changed
+            elif self._stored.snap_revision != self.config.get('snap-revision') or \
+                self._stored.snap_channel != self.config.get('snap-channel'):
+
+                # Only update if the workload is of type POLKADOT_SNAP otherwise
+                # ignore the changes to snap-channel and snap-revision
+                if self._workload.get_type() == WorkloadType.SNAP:
+                    self.unit.status = ops.MaintenanceStatus("Updating Snap")
+                    self._workload.configure(
+                        channel=self.config.get('snap-channel'),
+                        revision=self.config.get('snap-revision'),
+                        hold=self.config.get('snap-hold'),
+                        endure=self.config.get('snap-endure'),
+                    )
+                    self._workload.install()
+                else:
+                    should_restart = False
+
+            # Update stored configurations
             self._stored.binary_url = self.config.get('binary-url')
             self._stored.docker_tag = self.config.get('docker-tag')
             self._stored.snap_revision = self.config.get('snap-revision')
             self._stored.snap_channel = self.config.get('snap-channel')
+            self._stored.snap_endure = self.config.get('snap-endure')
+            self._stored.snap_hold = self.config.get('snap-hold')
+        except ValueError as e:
+            self.unit.status = ops.BlockedStatus(str(e))
+            event.defer()
+            return
 
         # Update of polkadot service arguments requested
         if self._stored.service_args != self.config.get('service-args'):
             self.unit.status = ops.MaintenanceStatus("Updating service args")
-            utils.update_service_args(service_args_obj.service_args_string)
+            self._workload.set_service_args(service_args_obj.service_args_string)
             self._stored.service_args = self.config.get('service-args')
 
         if self._stored.chain_spec_url != self.config.get('chain-spec-url'):
             try:
                 self.unit.status = ops.MaintenanceStatus("Updating chain spec")
-                utils.update_service_args(service_args_obj.service_args_string)
+                self._workload.set_service_args(service_args_obj.service_args_string)
                 self._stored.chain_spec_url = self.config.get('chain-spec-url')
             except ValueError as e:
                 self.unit.status = ops.BlockedStatus(str(e))
@@ -159,42 +248,45 @@ class PolkadotCharm(ops.CharmBase):
         if self._stored.local_relaychain_spec_url != self.config.get('local-relaychain-spec-url'):
             try:
                 self.unit.status = ops.MaintenanceStatus("Updating relaychain spec")
-                utils.update_service_args(service_args_obj.service_args_string)
+                self._workload.set_service_args(service_args_obj.service_args_string)
                 self._stored.local_relaychain_spec_url = self.config.get('local-relaychain-spec-url')
             except ValueError as e:
                 self.unit.status = ops.BlockedStatus(str(e))
                 event.defer()
                 return
+        
         if self._stored.wasm_runtime_url != self.config.get('wasm-runtime-url'):
             self.unit.status = ops.MaintenanceStatus("Updating wasm runtime")
-            utils.download_wasm_runtime(self.config.get('wasm-runtime-url'))
-            utils.update_service_args(service_args_obj.service_args_string)
+            self._workload.download_wasm_runtime(self.config.get('wasm-runtime-url'))
+            self._workload.set_service_args(service_args_obj.service_args_string)
             self._stored.wasm_runtime_url = self.config.get('wasm-runtime-url')
 
-        if self._stored.snap_hold != self.config.get('snap-hold'):
-            try:
-                self.unit.status = ops.MaintenanceStatus("Updating snap hold")
-                utils.snap_hold_state(self.config.get('snap-hold'))
-                self._stored.snap_hold = self.config.get('snap-hold')
-            except ValueError as e:
-                self.unit.status = ops.BlockedStatus(str(e))
-                event.defer()
-                return
-        if self._stored.snap_endure != self.config.get('snap-endure'):
-            try:
-                self.unit.status = ops.MaintenanceStatus("Updating snap endure")
-                utils.snap_endure_state(self.config.get('snap-endure'))
-                self._stored.snap_endure = self.config.get('snap-endure')
-            except ValueError as e:
-                self.unit.status = ops.BlockedStatus(str(e))
-                event.defer()
-                return
-        
-        # Start the service if it was just initialized
-        if self._stored.service_init:
-            utils.start_service()
-            self._stored.service_init = False
-        
+        if self._workload.get_type() == WorkloadType.SNAP:
+            if self._stored.snap_hold != self.config.get('snap-hold'):
+                try:
+                    self.unit.status = ops.MaintenanceStatus("Updating snap hold")
+                    self._workload.set_hold(self.config.get('snap-hold'))
+                    self._stored.snap_hold = self.config.get('snap-hold')
+                except ValueError as e:
+                    self.unit.status = ops.BlockedStatus(str(e))
+                    event.defer()
+                    return
+            
+            if self._stored.snap_endure != self.config.get('snap-endure'):
+                try:
+                    self.unit.status = ops.MaintenanceStatus("Updating snap endure")
+                    self._workload.set_endure(self.config.get('snap-endure'))
+                    self._stored.snap_endure = self.config.get('snap-endure')
+                except ValueError as e:
+                    self.unit.status = ops.BlockedStatus(str(e))
+                    event.defer()
+                    return
+
+        self._workload.set_service_args(service_args_obj.service_args_string)
+        # Start the service if it was just initialized or restart is required due to config changes
+        if self._stored.service_init or should_restart:
+            self._workload.start_service()
+
         self.update_status_simple()
 
     def _on_update_status(self, event: ops.UpdateStatusEvent) -> None:
@@ -208,7 +300,7 @@ class PolkadotCharm(ops.CharmBase):
         The validating check can take a long time so this boolean can be used to skip it in some cases.
         During a benchmark, it took 20 seconds on Kusama where there are 1000 validators.
         """
-        if utils.service_started():
+        if self._workload.is_service_running():
             service_args = ServiceArgs(self.config, self.rpc_urls())
             rpc_port = service_args.rpc_port
             for i in range(connection_attempts):
@@ -222,7 +314,7 @@ class PolkadotCharm(ops.CharmBase):
                         else:
                             status_message += ", Validating: No"
                     self.unit.status = ops.ActiveStatus(status_message)
-                    self.unit.set_workload_version(utils.get_binary_version())
+                    self.unit.set_workload_version(self._workload.get_binary_version())
                     break
                 except RequestsConnectionError as e:
                     logger.warning(e)
@@ -238,18 +330,19 @@ class PolkadotCharm(ops.CharmBase):
         Update the status of the unit based on the state of the service.
         This is a simplified version of the update_status method, meant to give a quicker response.
         """
-        if utils.service_started(iterations=iterations):
-            self.unit.status = ops.ActiveStatus("Service running")
+        is_snap = '*' if self._workload.get_type() == WorkloadType.SNAP else ''
+        if self._workload.is_service_started(iterations=iterations):
+            self.unit.status = ops.ActiveStatus(f"Service running{is_snap}")
         else:
-            self.unit.status = ops.BlockedStatus("Service not running")
-        self.unit.set_workload_version(utils.get_binary_version())
+            self.unit.status = ops.BlockedStatus(f"Service not running{is_snap}")
+        self.unit.set_workload_version(self._workload.get_binary_version())
 
     def _on_start(self, event: ops.StartEvent) -> None:
-        utils.start_service()
+        self._workload.start_service()
         self.update_status_simple()
 
     def _on_stop(self, event: ops.StopEvent) -> None:
-        utils.stop_service()
+        self._workload.stop_service()
         self.update_status_simple()
 
     def _on_get_session_key_action(self, event: ops.ActionEvent) -> None:
@@ -260,7 +353,7 @@ class PolkadotCharm(ops.CharmBase):
             event.set_results(results={'session-keys-merged': key})
 
             # For convenience, also print a split version of the session key
-            keys_split = utils.split_session_key(key)
+            keys_split = general_util.split_session_key(key)
             for i, key in enumerate(keys_split):
                 event.set_results(results={f'session-key-{i}': key})
         else:
@@ -287,31 +380,34 @@ class PolkadotCharm(ops.CharmBase):
             PolkadotRpcWrapper(rpc_port).insert_key(mnemonic, address)
 
     def _on_restart_node_service_action(self, event: ops.ActionEvent) -> None:
-        utils.restart_service()
-        if not utils.service_started(iterations=4):
+        self._workload.restart_service()
+        if not self._workload.is_service_running(iterations=4):
             event.fail("Could not restart service")
         event.set_results(results={'message': 'Node service restarted'})
         self.update_status_simple()
 
     def _on_start_node_service_action(self, event: ops.ActionEvent) -> None:
-        utils.start_service()
-        if not utils.service_started(iterations=4):
+        self._workload.start_service()
+        if not self._workload.is_service_running(iterations=4):
             event.fail("Could not start service")
         event.set_results(results={'message': 'Node service started'})
         self.update_status_simple()
 
     def _on_stop_node_service_action(self, event: ops.ActionEvent) -> None:
-        utils.stop_service()
-        if utils.service_started(iterations=2):
+        self._workload.stop_service()
+        if self._workload.is_service_running(iterations=2):
             event.fail("Could not stop service")
         event.set_results(results={'message': 'Node service stopped'})
         self.update_status_simple(iterations=2)
 
     def _on_set_node_key_action(self, event: ops.ActionEvent) -> None:
         key = event.params['key']
-        utils.stop_service()
-        utils.write_node_key_file(key)
-        utils.start_service()
+        should_restart = self._workload.is_service_running()
+        if should_restart:
+            self._workload.stop_service()
+        self._workload.write_node_key_file(key)
+        if should_restart:
+            self._workload.start_service()
         self.update_status_simple()
 
     def _on_find_validator_address_action(self, event: ops.ActionEvent) -> None:
@@ -370,8 +466,8 @@ class PolkadotCharm(ops.CharmBase):
     # TODO: this action is getting quite large and specialized, perhaps move all actions to an `actions.py` file?
     def _on_get_node_info_action(self, event: ops.ActionEvent) -> None:
         # Disk usage
-        relay_du = utils.get_relay_disk_usage()
-        chain_du = utils.get_chain_disk_usage()
+        relay_du = self._workload.get_relay_disk_usage()
+        chain_du = self._workload.get_chain_disk_usage()
         if not relay_du:
             # If only the chain DB exists, we're on a relay chain
             event.set_results(results={'disk-usage': chain_du})
@@ -380,22 +476,23 @@ class PolkadotCharm(ops.CharmBase):
             event.set_results(results={'disk-usage-relay': relay_du})
             event.set_results(results={'disk-usage-para': chain_du})
         # Client
-        event.set_results(results={'client-service-args': utils.get_service_args()})
-        event.set_results(results={'client-binary-version': utils.get_binary_version()})
-        event.set_results(results={'client-binary-md5sum': utils.get_binary_md5sum()})
-        event.set_results(results={'client-binary-last-changed': utils.get_binary_last_changed()})
-        event.set_results(results={'client-wasm-files': utils.get_wasm_info()})
-        proc_cmdline = utils.get_polkadot_proc_cmdline()
+        event.set_results(results={'client-service-args': self._workload.get_service_args()})
+        event.set_results(results={'client-binary-version': self._workload.get_binary_version()})
+        event.set_results(results={'client-workload-type': self._workload.get_type().value})
+        event.set_results(results={'client-binary-md5sum': self._workload.get_binary_md5sum()})
+        event.set_results(results={'client-binary-last-changed': self._workload.get_binary_last_changed()})
+        event.set_results(results={'client-wasm-files': self._workload.get_wasm_info()})
+        proc_cmdline = self._workload.get_proc_cmdline()
         if proc_cmdline:
             event.set_results(results={'client-proc-cmdline': proc_cmdline})
         else:
             event.set_results(results={'client-proc-cmdline': 'Process not found'})
         # Node type
-        if utils.is_relay_chain_node():
+        if self._workload.is_relay_chain_node():
             event.set_results(results={'node-type': 'Relaychain node'})
-        elif utils.is_parachain_node():
+        elif self._workload.is_parachain_node():
             event.set_results(results={'node-type': 'Parachain node'})
-            event.set_results(results={'node-relay': utils.get_relay_for_parachain()})
+            event.set_results(results={'node-relay': self._workload.get_relay_for_parachain()})
         # On-chain info
         try:
             rpc_port = ServiceArgs(self.config, self.rpc_urls()).rpc_port
@@ -414,16 +511,16 @@ class PolkadotCharm(ops.CharmBase):
             event.set_results(results={'on-chain-info': 'Unable to establish HTTP connection to client'})
 
     def _on_get_node_help_action(self, event: ops.ActionEvent) -> None:
-        event.set_results(results={'help-output': utils.get_client_binary_help_output()})
+        event.set_results(results={'help-output': self._workload.get_client_binary_help_output()})
 
     def _on_print_readme_action(self, event: ops.ActionEvent) -> None:
         """ Handle print readme action. """
-        event.set_results(results={'readme': utils.get_readme()})
+        event.set_results(results={'readme': general_util.get_readme()})
 
     def _on_migrate_data_action(self, event: ops.ActionEvent) -> None:
         """ Handle data migration action. """
         try:
-            result = utils.migrate_data(
+            result = data_migrator.migrate_data(
                 src=event.params.get('source-path', None),
                 dest=event.params.get('dest-path', None),
                 dry_run=event.params.get('dry-run', False),
@@ -440,7 +537,7 @@ class PolkadotCharm(ops.CharmBase):
     def _on_snap_refresh(self, event: ops.ActionEvent) -> None:
         """ Handle snap refresh action. """
         try:
-            utils.refresh_snap()
+            self._workload.refresh()
             event.set_results({"message": "Snap refreshed successfully"})
             self.update_status_simple()
         except Exception as e:
@@ -453,9 +550,9 @@ class PolkadotCharm(ops.CharmBase):
             service_args_obj = ServiceArgs(self.config, self.rpc_urls())
             dry_run = event.params.get('dry-run', False)
             reverse = event.params.get('reverse', False)
-            result = utils.migrate_node_key(dry_run=dry_run, reverse=reverse)
+            result = node_key_migrator.migrate_node_key(dry_run=dry_run, reverse=reverse)
             if not dry_run:
-                utils.update_service_args(service_args_obj.service_args_string)
+                self._workload.set_service_args(service_args_obj.service_args_string)
             if result["success"]:
                 event.set_results({"message": json.dumps(result, indent=2)})
             else:
