@@ -300,10 +300,12 @@ def start_service():
     sp.run(['chown', f'{c.USER}:{c.USER}', c.BINARY_FILE], check=False)
     sp.run(['chmod', '+x', c.BINARY_FILE], check=False)
     sp.run(['systemctl', 'start', f'{c.SERVICE_NAME}.service'], check=False)
+    sp.run(['systemctl', 'enable', f'{c.SERVICE_NAME}.service'], check=False)
 
 
 def stop_service():
     sp.run(['systemctl', 'stop', f'{c.SERVICE_NAME}.service'], check=False)
+    sp.run(['systemctl', 'disable', f'{c.SERVICE_NAME}.service'], check=False)
 
 
 def service_started(iterations: int = 6) -> bool:
