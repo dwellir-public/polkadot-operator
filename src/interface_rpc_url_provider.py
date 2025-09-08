@@ -6,7 +6,7 @@ from core.service_args import ServiceArgs
 from ops.framework import Object
 from ops.charm import RelationJoinedEvent
 from core.managers import WorkloadType
-from core.factories import WorkloadFactory
+from core.managers import WorkloadFactory
 import logging
 
 logger = logging.getLogger(__name__)

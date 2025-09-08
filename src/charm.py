@@ -5,7 +5,6 @@
 """Charm the Polkadot blockchain client service."""
 
 import logging
-from pathlib import Path
 from requests.exceptions import ConnectionError as RequestsConnectionError
 from urllib3.exceptions import NewConnectionError, MaxRetryError
 from core.managers import WorkloadType, WorkloadFactory
