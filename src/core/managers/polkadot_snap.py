@@ -34,7 +34,7 @@ class PolkadotSnapManager(WorkloadManager):
         """Initialize the Polkadot workload manager."""
         super().__init__(WorkloadType.SNAP)
 
-    def _refresh(self, channel: str = None, revision: Optional[str] = None) -> None:
+    def refresh(self, channel: str = None, revision: Optional[str] = None) -> None:
         """Refresh the Polkadot snap to a new channel or revision.
         
         Args:
@@ -47,15 +47,12 @@ class PolkadotSnapManager(WorkloadManager):
         channel = channel or self._channel # change to self._channel if not provided
         revision = revision or self._revision # change to self._revision if not provided
 
-        run_args = ["snap", "refresh", self.SNAP_NAME]
-        if channel:
-            run_args.extend(["--channel", channel])
-        if revision:
-            run_args.extend(["--revision", revision])
-
         try:
-            run(run_args, check=True)
-            logger.info(f"Refreshed {self.SNAP_NAME} to channel={channel}, revision={revision}")
+            self._polkadot_snap.ensure(
+                snap.SnapState.Latest,
+                channel=channel,
+                revision=revision,
+            )
         except Exception as e:
             logger.error(f"Failed to refresh {self.SNAP_NAME}: {e}")
             raise InstallError(f"Refresh failed: {e}")

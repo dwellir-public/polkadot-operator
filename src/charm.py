@@ -7,7 +7,7 @@
 import logging
 from requests.exceptions import ConnectionError as RequestsConnectionError
 from urllib3.exceptions import NewConnectionError, MaxRetryError
-from core.managers import WorkloadType, WorkloadFactory
+from core.managers import WorkloadType, WorkloadFactory, PolkadotSnapManager
 import time
 import re
 import json
@@ -536,6 +536,8 @@ class PolkadotCharm(ops.CharmBase):
     def _on_snap_refresh(self, event: ops.ActionEvent) -> None:
         """ Handle snap refresh action. """
         try:
+            if not isinstance(self._workload, PolkadotSnapManager):
+                raise ValueError("Current workload type is not a snap")
             self._workload.refresh()
             event.set_results({"message": "Snap refreshed successfully"})
             self.update_status_simple()
