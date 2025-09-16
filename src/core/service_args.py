@@ -16,6 +16,11 @@ class ServiceArgs():
         self._runtime_wasm_override = True if config.get('wasm-runtime-url') else False
         self.__check_service_args(service_args)
         self._is_binary = config.get('docker-tag') or config.get('binary-url')
+
+        if not self._is_binary and not config.get('snap-name'):
+            raise ValueError("Either 'docker-tag', 'binary-url' or 'snap-name' must be set.")
+        self._snap_config = c.SNAP_CONFIG.get(config.get('snap-name')) if config.get('snap-name') else None
+        
         self.service_args_list = self.__service_args_to_list(service_args)
         self.__check_service_args(self.service_args_list)
         # Service args that is modified to use for the service.
@@ -115,7 +120,7 @@ class ServiceArgs():
         self.service_args_list_customized = self.service_args_list_customized + args
 
     def __customize_service_args(self):
-        self.__add_firstchain_args(['--node-key-file', c.NODE_KEY_FILE if self._is_binary else c.SNAP_NODE_KEY_FILE])
+        self.__add_firstchain_args(['--node-key-file', c.NODE_KEY_FILE if self._is_binary else self._snap_config.get('node_key_file')])
         if self._relay_rpc_urls:
             self.__add_firstchain_args(['--relay-chain-rpc-urls', *self._relay_rpc_urls])
 
@@ -135,7 +140,7 @@ class ServiceArgs():
             relay_chain_spec_path = download_chain_spec(self._local_relaychain_spec_url, 'relaychain-spec.json')
             self.__set_chain_name(str(relay_chain_spec_path), 1)
         if self._runtime_wasm_override:
-            self.__add_firstchain_args(['--wasm-runtime-overrides', c.WASM_DIR if self._is_binary else c.SNAP_WASM_DIR])
+            self.__add_firstchain_args(['--wasm-runtime-overrides', c.WASM_DIR if self._is_binary else self._snap_config.get('wasm_dir')])
 
     def __aleph_zero(self):
         if self.chain_name.endswith('testnet'):

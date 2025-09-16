@@ -1,6 +1,7 @@
 import re
 import logging
 import subprocess as sp
+from typing import Union
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -28,7 +29,7 @@ def get_disk_usage(path: Path) -> str:
         return "Error parsing disk usage"
     
     
-def get_binary_md5sum(binary_path: Path | str) -> str:
+def get_binary_md5sum(binary_path: Union[Path, str]) -> str:
     binary_path = binary_path if isinstance(binary_path, Path) else Path(binary_path)
     if binary_path.exists():
         command = ['md5sum', binary_path]
@@ -37,7 +38,7 @@ def get_binary_md5sum(binary_path: Path | str) -> str:
     return ""
 
 
-def get_binary_last_changed(binary_path: Path | str) -> str:
+def get_binary_last_changed(binary_path: Union[Path, str]) -> str:
     binary_path = binary_path if isinstance(binary_path, Path) else Path(binary_path)
     if binary_path.exists():
         command = ['stat', binary_path]
@@ -164,8 +165,28 @@ def get_client_binary_help_output(help_command: str) -> str:
         return "Error occurred while getting client binary help output"
 
 
-def write_node_key_file(key_path: Path | str, key: str, owner: str) -> None:
+def write_node_key_file(key_path: Union[Path, str], key: str, owner: str) -> None:
     with open(key_path, "w", encoding='utf-8') as f:
         f.write(key)
     sp.run(['chown', f'{owner}:{owner}', key_path], check=False)
     sp.run(['chmod', '0600', key_path], check=False)
+
+
+def get_relay_for_parachain(relay_db_dir: Path) -> str:
+    try:
+        chains_dir = Path(relay_db_dir, 'chains')
+        chains_subdirs = [d for d in chains_dir.iterdir() if d.is_dir()]
+        if len(chains_subdirs) == 1:
+            db_dir = str(chains_subdirs[0])
+            relay_chain = db_dir
+            if 'polkadot' in db_dir:
+                relay_chain = 'Polkadot'
+            if 'ksm' in db_dir:
+                relay_chain = 'Kusama'
+            if 'westend' in db_dir:
+                relay_chain = 'Westend'
+            return relay_chain
+        return 'Error finding Relay Chain DB directory'
+    except Exception as e:
+        logger.warning(e)
+        return 'Error finding Relay Chain'

@@ -84,6 +84,7 @@ class PolkadotCharm(ops.CharmBase):
                                  snap_endure=self.config.get('snap-endure'),
                                  snap_revision=self.config.get('snap-revision'),
                                  snap_channel=self.config.get('snap-channel'),
+                                 snap_name=self.config.get('snap-name'),
                                  service_init=True,
                                  )
 
@@ -104,6 +105,7 @@ class PolkadotCharm(ops.CharmBase):
                 revision=self._stored.snap_revision,
                 hold=self._stored.snap_hold,
                 endure=self._stored.snap_endure,
+                snap_name=self._stored.snap_name,
             )
 
     def rpc_urls(self):
@@ -194,6 +196,7 @@ class PolkadotCharm(ops.CharmBase):
                         revision=self.config.get('snap-revision'),
                         hold=self.config.get('snap-hold'),
                         endure=self.config.get('snap-endure'),
+                        snap_name=self.config.get('snap-name'),
                     )
                 
                 self._workload.install()
@@ -211,6 +214,7 @@ class PolkadotCharm(ops.CharmBase):
                         revision=self.config.get('snap-revision'),
                         hold=self.config.get('snap-hold'),
                         endure=self.config.get('snap-endure'),
+                        snap_name=self.config.get('snap-name'),
                     )
                     self._workload.install()
                 else:
@@ -223,6 +227,7 @@ class PolkadotCharm(ops.CharmBase):
             self._stored.snap_channel = self.config.get('snap-channel')
             self._stored.snap_endure = self.config.get('snap-endure')
             self._stored.snap_hold = self.config.get('snap-hold')
+            self._stored.snap_name = self.config.get('snap-name')
         except ValueError as e:
             self.unit.status = ops.BlockedStatus(str(e))
             event.defer()
@@ -520,8 +525,7 @@ class PolkadotCharm(ops.CharmBase):
         """ Handle data migration action. """
         try:
             result = data_migrator.migrate_data(
-                src=event.params.get('source-path', None),
-                dest=event.params.get('dest-path', None),
+                snap_name=event.params.get('snap-name'),
                 dry_run=event.params.get('dry-run', False),
                 reverse=event.params.get('reverse', False))
 
@@ -531,6 +535,7 @@ class PolkadotCharm(ops.CharmBase):
             else:
                 event.fail(f"Data migration failed: {json.dumps(result, indent=2)}")
         except Exception as e:
+            logger.error(f"Data migration failed: {e}")
             event.fail(f"Data migration failed: {str(e)}")
     
     def _on_snap_refresh(self, event: ops.ActionEvent) -> None:
@@ -551,7 +556,8 @@ class PolkadotCharm(ops.CharmBase):
             service_args_obj = ServiceArgs(self.config, self.rpc_urls())
             dry_run = event.params.get('dry-run', False)
             reverse = event.params.get('reverse', False)
-            result = node_key_migrator.migrate_node_key(dry_run=dry_run, reverse=reverse)
+            snap_name = event.params.get('snap-name')
+            result = node_key_migrator.migrate_node_key(snap_name=snap_name, dry_run=dry_run, reverse=reverse)
             if not dry_run:
                 self._workload.set_service_args(service_args_obj.service_args_string)
             if result["success"]:
@@ -560,6 +566,7 @@ class PolkadotCharm(ops.CharmBase):
                 event.fail(f"Node key migration failed: {json.dumps(result, indent=2)}")
             self.update_status_simple()
         except Exception as e:
+            logger.error(f"Node key migration failed: {e}")
             event.fail(f"Node key migration failed: {str(e)}")
 
 if __name__ == "__main__":
