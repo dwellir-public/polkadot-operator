@@ -71,7 +71,7 @@ class PolkadotCharm(ops.CharmBase):
         self.framework.observe(self.on.print_readme_action, self._on_print_readme_action)
         self.framework.observe(self.on.start_validating_action, self._on_start_validating_action)
         self.framework.observe(self.on.migrate_data_action, self._on_migrate_data_action)
-        self.framework.observe(self.on.snap_refresh_action, self._on_snap_refresh)
+        self.framework.observe(self.on.snap_refresh_action, self._on_snap_refresh_action)
         self.framework.observe(self.on.migrate_node_key_action, self._on_migrate_node_key_action)
 
         self._stored.set_default(binary_url=self.config.get('binary-url'),
@@ -117,6 +117,13 @@ class PolkadotCharm(ops.CharmBase):
         return [subdata["ws_url"] for relation in self.model.relations["relay-rpc-url"] for subdata in relation.data.values() if "ws_url" in subdata]
 
     def _on_install(self, event: ops.InstallEvent) -> None:
+        # validate that the client configuration is correct
+        if not self._has_valid_client_config():
+            logger.error("Invalid client configuration, only one of 'binary-url', 'docker-tag' or 'snap-name' can be set at a time.")
+            self.unit.status = ops.BlockedStatus("Only one of 'binary-url', 'docker-tag' or 'snap-name' can be set at a time.")
+            event.defer()
+            return
+        
         self.unit.status = ops.MaintenanceStatus("Begin installing charm")
         service_args_obj = ServiceArgs(self.config, self.rpc_urls())
         # Setup polkadot group and user, disable login
@@ -142,6 +149,13 @@ class PolkadotCharm(ops.CharmBase):
         self._stored.service_init = False
 
     def _on_config_changed(self, event: ops.ConfigChangedEvent) -> None:
+        # validate that the client configuration is correct
+        if not self._has_valid_client_config():
+            logger.error("Invalid client configuration, only one of 'binary-url', 'docker-tag' or 'snap-name' can be set at a time.")
+            self.unit.status = ops.BlockedStatus("Only one of 'binary-url', 'docker-tag' or 'snap-name' can be set at a time.")
+            event.defer()
+            return
+        
         try:
             service_args_obj = ServiceArgs(self.config, self.rpc_urls())
         except ValueError as e:
@@ -317,6 +331,7 @@ class PolkadotCharm(ops.CharmBase):
                             status_message += ", Validating: Yes"
                         else:
                             status_message += ", Validating: No"
+                    status_message += f", client-type: {self._get_client_type()}"
                     self.unit.status = ops.ActiveStatus(status_message)
                     self.unit.set_workload_version(self._workload.get_binary_version())
                     break
@@ -334,11 +349,10 @@ class PolkadotCharm(ops.CharmBase):
         Update the status of the unit based on the state of the service.
         This is a simplified version of the update_status method, meant to give a quicker response.
         """
-        is_snap = '*' if self._workload.get_type() == WorkloadType.SNAP else ''
         if self._workload.is_service_started(iterations=iterations):
-            self.unit.status = ops.ActiveStatus(f"Service running{is_snap}")
+            self.unit.status = ops.ActiveStatus(f"Service running, client-type: {self._get_client_type()}")
         else:
-            self.unit.status = ops.BlockedStatus(f"Service not running{is_snap}")
+            self.unit.status = ops.BlockedStatus(f"Service not running, client-type: {self._get_client_type()}")
         self.unit.set_workload_version(self._workload.get_binary_version())
 
     def _on_start(self, event: ops.StartEvent) -> None:
@@ -538,7 +552,7 @@ class PolkadotCharm(ops.CharmBase):
             logger.error(f"Data migration failed: {e}")
             event.fail(f"Data migration failed: {str(e)}")
     
-    def _on_snap_refresh(self, event: ops.ActionEvent) -> None:
+    def _on_snap_refresh_action(self, event: ops.ActionEvent) -> None:
         """ Handle snap refresh action. """
         try:
             if not isinstance(self._workload, PolkadotSnapManager):
@@ -568,6 +582,18 @@ class PolkadotCharm(ops.CharmBase):
         except Exception as e:
             logger.error(f"Node key migration failed: {e}")
             event.fail(f"Node key migration failed: {str(e)}")
+    
+    def _get_client_type(self) -> str:
+        """ Return the current client type as a string. """
+        return 'snap' if self._workload.get_type() == WorkloadType.SNAP else 'binary'
+    
+    def _has_valid_client_config(self) -> bool:
+        """ Validate that the client configuration is correct. """
+        # Only one of binary-url, docker-tag or snap-name can be set at a time
+        values = [self.config.get('binary-url'), self.config.get('docker-tag'), self.config.get('snap-name')]
+        if sum(bool(v) for v in values) >= 2:
+            return False
+        return True
 
 if __name__ == "__main__":
     ops.main(PolkadotCharm)
