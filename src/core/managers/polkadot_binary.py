@@ -103,3 +103,6 @@ class PolkadotBinaryManager(WorkloadManager):
     
     def write_node_key_file(self, key) -> None:
         general_util.write_node_key_file(c.NODE_KEY_FILE, key, c.USER)
+
+    def get_relay_for_parachain(self):
+        return binary_util.get_relay_for_parachain()

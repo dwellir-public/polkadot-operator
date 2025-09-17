@@ -9,7 +9,8 @@ import os
 import shutil
 import subprocess
 from pathlib import Path
-from typing import Tuple, Optional
+from typing import Tuple
+from core.constants import SNAP_CONFIG
 import pwd
 
 logger = logging.getLogger(__name__)
@@ -25,24 +26,25 @@ class DataMigrator:
     
     # Default paths
     LEGACY_DATA_DIR = Path("/home/polkadot/.local/share/polkadot")
-    SNAP_COMMON_DIR = Path("/var/snap/polkadot/common/polkadot_base")
 
-    def __init__(self, src_path: Optional[Path] = None, dest_path: Optional[Path] = None, reverse: bool = False):
+    def __init__(self, snap_name: str = None, reverse: bool = False):
         """Initialize the data migrator.
         
         Args:
-            src_path: Custom source data path (defaults to ~/.local/share/polkadot)
-            dest_path: Custom destination data path (defaults to /var/snap/polkadot/common)
+            snap_name: Name of the snap (optional)
         """
+        
+        if not snap_name in SNAP_CONFIG:
+            raise ValueError(f"Invalid snap_name '{snap_name}'. Valid options are: {list(SNAP_CONFIG.keys())}")
+        
+        # Normal migration from legacy to snap
+        self.src_path = self.LEGACY_DATA_DIR
+        self.dest_path = Path(SNAP_CONFIG.get(snap_name).get('base_path'))
+
         if reverse:
             # If reverse is True, swap the paths
-            self.src_path = dest_path or self.SNAP_COMMON_DIR
-            self.dest_path = src_path or self.LEGACY_DATA_DIR
-        else:
-            # Normal migration from legacy to snap
-            self.src_path = src_path or self.LEGACY_DATA_DIR
-            self.dest_path = dest_path or self.SNAP_COMMON_DIR
-        
+            self.src_path, self.dest_path = self.dest_path, self.src_path
+
     def check_migration_needed(self) -> Tuple[bool, str]:
         """Check if migration is needed.
         
@@ -267,7 +269,7 @@ class DataMigrator:
                 raise DataMigrationError("Migration verification failed")
 
             # Ensure permissions and ownership
-            if self.dest_path.is_relative_to("/var/snap/polkadot"):
+            if self.dest_path.is_relative_to("/var/snap/"):
                 subprocess.run(["chown", "-R", "root:root", str(self.dest_path)])
             elif self.dest_path.is_relative_to("/home/polkadot/.local/share/polkadot"):
                 subprocess.run(["chown", "-R", "polkadot:polkadot", str(self.dest_path)])
@@ -430,15 +432,19 @@ class DataMigrator:
             return f"~{estimated_seconds/3600:.1f} hours"
   
     
-def migrate_data(src, dest, dry_run, reverse) -> None:
+def migrate_data(snap_name: str, dry_run: bool, reverse: bool) -> None:
     """
     Migrate data from src to dest.
     If src is None, the data is not migrated.
     If dest is None, the data is not migrated.
     """
+    if not snap_name or snap_name not in SNAP_CONFIG:
+        message = f"Invalid or missing 'snap-name' parameter for migration operation. The snap-name must be one of the supported applications: {', '.join(SNAP_CONFIG.keys())}. Please specify a valid snap name to proceed with the migration."
+        logger.error(message)
+        raise ValueError(message)
+    
     data_migrator = DataMigrator(
-        src_path=Path(src) if src else None,
-        dest_path=Path(dest) if dest else None,
-        reverse=bool(reverse) if reverse else False,
+        snap_name=snap_name,
+        reverse=reverse,
     )
-    return data_migrator.move_data(dry_run=bool(dry_run) if dry_run else False)
+    return data_migrator.move_data(dry_run=dry_run)

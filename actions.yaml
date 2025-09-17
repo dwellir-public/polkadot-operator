@@ -99,14 +99,10 @@ migrate-data:
       type: boolean
       description: Undo the migration by moving data back to the legacy location
       default: false
-    source-path:
+    snap-name:
       type: string
-      description: Custom source path for legacy data (optional)
-      default: "/home/polkadot/.local/share/polkadot"
-    dest-path:
-      type: string
-      description: Custom dest path for legacy data (optional)
-      default: "/var/snap/polkadot/common/polkadot_base"
+      description: Name of the snap
+      enum: [ polkadot, polkadot-parachain ]
 
 migrate-node-key:
   description: Migrate the node key from legacy location to snap common directory
@@ -119,6 +115,10 @@ migrate-node-key:
       type: boolean
       description: Undo the migration by moving the node key back to the legacy location
       default: false
+    snap-name:
+      type: string
+      description: Name of the snap
+      enum: [ polkadot, polkadot-parachain ]
 
 snap-refresh:
   description: |

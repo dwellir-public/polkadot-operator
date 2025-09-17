@@ -3,10 +3,8 @@
 from pathlib import Path
 
 USER = 'polkadot'
-SNAP_USER = 'root'
 SERVICE_NAME = USER
 HOME_DIR = Path('/home/polkadot')
-SNAP_COMMON_DIR = Path('/var/snap/polkadot/common')
 BINARY_FILE = Path(HOME_DIR, 'polkadot')
 EXECUTE_WORKER_BINARY_FILE = {
     'default': Path(HOME_DIR, 'polkadot-execute-worker'),
@@ -24,10 +22,30 @@ DB_CHAIN_DIR = Path(HOME_DIR, '.local/share/polkadot/chains')
 DB_RELAY_DIR = Path(HOME_DIR, '.local/share/polkadot/polkadot')
 WASM_DIR = Path(HOME_DIR, 'wasm')
 
-SNAP_SERVICE_NAME = "snap.polkadot.polkadot"
-SNAP_BINARY = "polkadot.polkadot-cli"
-SNAP_NODE_KEY_FILE = Path(SNAP_COMMON_DIR, 'node-key')
-SNAP_CHAIN_SPEC_DIR = Path(SNAP_COMMON_DIR, 'spec')
-SNAP_DB_CHAIN_DIR = Path(SNAP_COMMON_DIR, 'polkadot_base', 'chains')
-SNAP_DB_RELAY_DIR = Path(SNAP_COMMON_DIR, 'polkadot_base', 'polkadot')
-SNAP_WASM_DIR = Path(SNAP_COMMON_DIR, 'wasm')
+SNAP_USER = 'root'
+SNAP_CONFIG = {
+    'polkadot': {
+        'snap_name': 'polkadot',
+        'service_name': 'polkadot',
+        'cli_command': 'polkadot.polkadot-cli',
+        'base_path': Path('/var/snap/polkadot/common/polkadot_base'),
+        'snap_binary_path': Path('/snap/polkadot/current/bin/polkadot'),
+        'chain_spec_dir': Path('/var/snap/polkadot/common/polkadot_base/spec'),
+        'chain_db_dir': Path('/var/snap/polkadot/common/polkadot_base/chains'),
+        'relay_db_dir': Path('/var/snap/polkadot/common/polkadot_base/polkadot'),
+        'wasm_dir': Path('/var/snap/polkadot/common/polkadot_base/wasm'),
+        'node_key_file': Path('/var/snap/polkadot/common/node-key')
+    },
+    'polkadot-parachain': {
+        'snap_name': 'polkadot-parachain',
+        'service_name': 'polkadot-parachain',
+        'cli_command': 'polkadot-parachain.cli',
+        'base_path': Path('/var/snap/polkadot-parachain/common/polkadot_base'),
+        'snap_binary_path': Path('/snap/polkadot-parachain/current/bin/polkadot-parachain'),
+        'chain_spec_dir': Path('/var/snap/polkadot-parachain/common/polkadot_base/spec'),
+        'chain_db_dir': Path('/var/snap/polkadot-parachain/common/polkadot_base/chains'),
+        'relay_db_dir': Path('/var/snap/polkadot-parachain/common/polkadot_base/polkadot'),
+        'wasm_dir': Path('/var/snap/polkadot-parachain/common/polkadot_base/wasm'),
+        'node_key_file': Path('/var/snap/polkadot-parachain/common/node-key')
+    }
+}

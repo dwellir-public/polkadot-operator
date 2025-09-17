@@ -117,3 +117,7 @@ class WorkloadManager(ABC):
     @abstractmethod
     def write_node_key_file(self, key) -> None:
         pass
+
+    @abstractmethod
+    def get_relay_for_parachain(self):
+        pass

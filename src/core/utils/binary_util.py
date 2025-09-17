@@ -245,23 +245,7 @@ def is_parachain_node() -> bool:
 def get_relay_for_parachain() -> str:
     if not is_parachain_node():
         return 'Error, this is not a parachain'
-    try:
-        chains_dir = Path(c.DB_RELAY_DIR, 'chains')
-        chains_subdirs = [d for d in chains_dir.iterdir() if d.is_dir()]
-        if len(chains_subdirs) == 1:
-            db_dir = str(chains_subdirs[0])
-            relay_chain = db_dir
-            if 'polkadot' in db_dir:
-                relay_chain = 'Polkadot'
-            if 'ksm' in db_dir:
-                relay_chain = 'Kusama'
-            if 'westend' in db_dir:
-                relay_chain = 'Westend'
-            return relay_chain
-        return 'Error finding Relay Chain DB directory'
-    except Exception as e:
-        logger.warning(e)
-        return 'Error finding Relay Chain'
+    return general_util.get_relay_for_parachain(c.DB_RELAY_DIR)
 
 
 def get_binary_version() -> str:

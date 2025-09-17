@@ -73,7 +73,6 @@ options:
       Revision of the polkadot snap to use.
   snap-channel:
     type: string
-    default: latest/stable
     description: |
       Channel of the polkadot snap to use.
       This is used to determine which version of the polkadot to use.
@@ -87,3 +86,8 @@ options:
       Configures the snap endure state. If true, the charm will set the snap to not restart after a new snap version refresh.
     default: false
     type: boolean
+  snap-name:
+    type: string
+    enum: [ polkadot, 'polkadot-parachain' ]
+    description: |
+      The name of the polkadot snap to use. E.g. 'polkadot' or 'polkadot-parachain'.
