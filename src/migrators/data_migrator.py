@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Tuple
 from core.constants import SNAP_CONFIG
 import pwd
+from core import constants as c
 
 logger = logging.getLogger(__name__)
 
@@ -270,9 +271,9 @@ class DataMigrator:
 
             # Ensure permissions and ownership
             if self.dest_path.is_relative_to("/var/snap/"):
-                subprocess.run(["chown", "-R", "root:root", str(self.dest_path)])
-            elif self.dest_path.is_relative_to("/home/polkadot/.local/share/polkadot"):
-                subprocess.run(["chown", "-R", "polkadot:polkadot", str(self.dest_path)])
+                subprocess.run(["chown", "-R", f"{c.SNAP_USER}:{c.SNAP_USER}", str(self.dest_path)])
+            elif self.dest_path.is_relative_to(c.HOME_DIR):
+                subprocess.run(["chown", "-R", f"{c.USER}:{c.USER}", f"{c.HOME_DIR.joinpath('.local')}"])
 
             result.update({
                 "success": True,
