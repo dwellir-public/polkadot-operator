@@ -87,22 +87,22 @@ class PolkadotSnapManager(WorkloadManager):
             InstallError: If installation fails
         """
         try:
-            logger.info(f"Installing {self._snap_config.get("snap_name")} from channel={self._channel}, revision={self._revision}")
+            logger.info(f"Installing {self._snap_config.get('snap_name')} from channel={self._channel}, revision={self._revision}")
             self._polkadot_snap.ensure(
                 snap.SnapState.Latest,
                 channel=self._channel,
                 revision=self._revision,
             )
-            logger.info(f"{self._snap_config.get("snap_name")} installed successfully")
+            logger.info(f"{self._snap_config.get('snap_name')} installed successfully")
 
-            logger.info(f"Setting connection plugs for {self._snap_config.get("snap_name")}")
+            logger.info(f"Setting connection plugs for {self._snap_config.get('snap_name')}")
             self._polkadot_snap.connect(plug='hardware-observe', service='polkadot')
             self._polkadot_snap.connect(plug='system-observe', service='polkadot')
             self._polkadot_snap.connect(plug='removable-media', service='polkadot')
-            logger.info(f"Connection plugs set successfully for {self._snap_config.get("snap_name")}")
+            logger.info(f"Connection plugs set successfully for {self._snap_config.get('snap_name')}")
 
         except Exception as e:
-            logger.error(f"Failed to install {self._snap_config.get("snap_name")}: {e}")
+            logger.error(f"Failed to install {self._snap_config.get('snap_name')}: {e}")
             raise InstallError(f"Installation failed: {e}")
 
     def start_service(self) -> None:
@@ -112,9 +112,9 @@ class PolkadotSnapManager(WorkloadManager):
             ServiceError: If service start fails
         """
         try:
-            logger.info(f"Starting {self._snap_config.get("service_name")} service")
+            logger.info(f"Starting {self._snap_config.get('service_name')} service")
             self._polkadot_snap.start(enable=True)
-            logger.info(f"{self._snap_config.get("service_name")} service started successfully")
+            logger.info(f"{self._snap_config.get('service_name')} service started successfully")
         except Exception as e:
             logger.error(f"Failed to start service: {e}")
             raise ServiceError(f"Service start failed: {e}")
@@ -126,9 +126,9 @@ class PolkadotSnapManager(WorkloadManager):
             ServiceError: If service stop fails
         """
         try:
-            logger.info(f"Stopping {self._snap_config.get("service_name")} service")
+            logger.info(f"Stopping {self._snap_config.get('service_name')} service")
             self._polkadot_snap.stop(disable=True)
-            logger.info(f"{self._snap_config.get("service_name")} service stopped successfully")
+            logger.info(f"{self._snap_config.get('service_name')} service stopped successfully")
         except Exception as e:
             logger.error(f"Failed to stop service: {e}")
             raise ServiceError(f"Service stop failed: {e}")
@@ -140,9 +140,9 @@ class PolkadotSnapManager(WorkloadManager):
             ServiceError: If service restart fails
         """
         try:
-            logger.info(f"Restarting {self._snap_config.get("service_name")} service")
+            logger.info(f"Restarting {self._snap_config.get('service_name')} service")
             self._polkadot_snap.restart(reload=True)
-            logger.info(f"{self._snap_config.get("service_name")} service restarted successfully")
+            logger.info(f"{self._snap_config.get('service_name')} service restarted successfully")
         except Exception as e:
             logger.error(f"Failed to restart service: {e}")
             raise ServiceError(f"Service restart failed: {e}")
@@ -250,7 +250,7 @@ class PolkadotSnapManager(WorkloadManager):
         return self.get_binary_version()
 
     def get_client_binary_help_output(self):
-        return general_util.get_client_binary_help_output(f"{self._snap_config.get("cli_command")} --help")
+        return general_util.get_client_binary_help_output(f"{self._snap_config.get('cli_command')} --help")
 
     def download_wasm_runtime(self, url: str) -> None:
         download_util.download_wasm_runtime(url, self._snap_config.get("wasm_dir"), c.SNAP_USER)
@@ -272,7 +272,7 @@ class PolkadotSnapManager(WorkloadManager):
     
     def service_args_differ_from_disk(self, argument_string):
         current_args = self.get_service_args()
-        return current_args != f"--base-path {self._snap_config.get("base_path")} {argument_string}"
+        return current_args != f"--base-path {self._snap_config.get('base_path')} {argument_string}"
 
     def generate_node_key(self) -> str:
         if self.is_service_installed():
