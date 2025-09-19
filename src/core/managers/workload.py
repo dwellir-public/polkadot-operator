@@ -23,6 +23,13 @@ class WorkloadManager(ABC):
         pass
 
     @abstractmethod
+    def uninstall(self) -> None:
+        """Uninstalling the workload would involve stopping the service, removing the binary and service,
+        associated data and configuration will not be removed.
+        """
+        pass
+
+    @abstractmethod
     def start_service(self):
         pass
 
