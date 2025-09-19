@@ -73,8 +73,16 @@ class PolkadotSnapManager(WorkloadManager):
             raise PolkadotError(f"Failed to initialize: {e}")
 
     def install(self):
+        if self._polkadot_snap.present:
+            sp.run(['snap', 'enable', self._snap_config.get("snap_name")], check=False)
         self.ensure_and_connect()
         self.stop_service()
+
+    def uninstall(self):
+        if self.is_service_installed():
+            if self.is_service_running():
+                self.stop_service()
+            sp.run(['snap', 'disable', self._snap_config.get("snap_name")], check=False)
 
     def ensure_and_connect(self) -> None:
         """Install or update the Polkadot snap package.

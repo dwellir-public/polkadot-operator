@@ -25,6 +25,9 @@ class PolkadotBinaryManager(WorkloadManager):
             binary_util.install_binary_from_docker_container(self._chain_name, self._docker_tag)
         binary_util.create_env_file_for_service()
         binary_util.install_service_file(self._service_template_path)
+    
+    def uninstall(self):
+        binary_util.uninstall_binary()
 
     def start_service(self):
         return binary_util.start_service()

@@ -144,10 +144,18 @@ def install_binary_from_url(url: str, sha256_url: str) -> None:
         sp.run(['chown', f'{c.USER}:{c.USER}', c.BINARY_FILE], check=False)
         sp.run(['chmod', '+x', c.BINARY_FILE], check=False)
 
+def uninstall_binary() -> None:
+    if is_installed():
+        if service_started():
+            stop_service()
+        os.remove(c.BINARY_FILE)
+    service_file = Path(f'/etc/systemd/system/{c.SERVICE_NAME}.service')
+    if service_file.exists():
+        os.remove(service_file)
+        sp.run(['systemctl', 'daemon-reload'], check=False)
 
 def is_installed() -> bool:
     return c.BINARY_FILE.exists()
-
 
 def perform_sha256_checksums(responses: list, sha256_urls: str) -> None:
     if len(sha256_urls.split()) == 1:

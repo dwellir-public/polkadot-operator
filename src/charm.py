@@ -182,8 +182,8 @@ class PolkadotCharm(ops.CharmBase):
                 # and configure it with the current settings
                 if  self.config.get('binary-url') or self.config.get('docker-tag'):
                         if self._workload.get_type() == WorkloadType.SNAP:
-                            self.unit.status = ops.MaintenanceStatus("Stopping snap service")
-                            self._workload.stop_service()
+                            self.unit.status = ops.MaintenanceStatus("Uninstalling snap")
+                            self._workload.uninstall()
                             self.unit.status = ops.MaintenanceStatus("Installing binary")
                             self._workload = WorkloadFactory.BINARY_MANAGER
                             should_restart = False
@@ -200,8 +200,8 @@ class PolkadotCharm(ops.CharmBase):
                 # and configure it with the current settings
                 else:
                     if self._workload.get_type() == WorkloadType.BINARY:
-                        self.unit.status = ops.MaintenanceStatus("Stopping binary service")
-                        self._workload.stop_service()
+                        self.unit.status = ops.MaintenanceStatus("Uninstalling binary")
+                        self._workload.uninstall()
                         self.unit.status = ops.MaintenanceStatus("Installing Snap")
                         self._workload = WorkloadFactory.SNAP_MANAGER
                         should_restart = False
@@ -342,7 +342,7 @@ class PolkadotCharm(ops.CharmBase):
             if type(self.unit.status) != ops.ActiveStatus:
                 self.unit.status = ops.WaitingStatus("Service running but not responding to HTTP")
         else:
-            self.unit.status = ops.BlockedStatus("Service not running")
+            self.unit.status = ops.BlockedStatus(f"Service not running, client-type: {self._get_client_type()}")
 
     def update_status_simple(self, iterations=4) -> None:
         """
