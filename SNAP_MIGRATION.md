@@ -107,8 +107,14 @@ juju run polkadot/leader start-node-service
 
 You can verify the node is running and using Snap by checking:
 
+For relay chain nodes (when using `snap-name=polkadot`):
 ```bash
 juju ssh polkadot/leader -- journalctl -fu snap.polkadot.polkadot.service
+```
+
+For parachain nodes (when using `snap-name=polkadot-parachain`):
+```bash
+juju ssh polkadot/leader -- journalctl -fu snap.polkadot-parachain.polkadot-parachain.service
 ```
 
 ---
