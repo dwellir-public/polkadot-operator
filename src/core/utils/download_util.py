@@ -17,7 +17,7 @@ def download_chain_spec(url: str, filename: Path, spec_dir: Path, owner: str) ->
     """Download a chain spec file from a given URL to a given filepath."""
     if not spec_dir.exists():
         spec_dir.mkdir(parents=True)
-    download_file(url, Path(spec_dir, f"{filename}"), user=owner)
+    download_file(url, Path(spec_dir, f"{filename}"), owner)
     validate_file(Path(spec_dir, filename), file_type='json')
     return Path(spec_dir, filename)
 
@@ -41,7 +41,7 @@ def download_wasm_runtime(url: str, wasm_path: Path, owner: str)-> None:
         wasm_path.mkdir(parents=True)
     with tempfile.TemporaryDirectory() as temp_dir:
         try:
-            download_file(url, Path(temp_dir, filename))
+            download_file(url, Path(temp_dir, filename), owner)
         except ValueError as e:
             logger.error(f'Failed to download wasm runtime: {e}')
             raise e
@@ -60,7 +60,7 @@ def download_wasm_runtime(url: str, wasm_path: Path, owner: str)-> None:
     sp.run(['chown', '-R', f'{owner}:{owner}', wasm_path], check=False)
 
 
-def download_file(url: str, filepath: Path, owner=str) -> None:
+def download_file(url: str, filepath: Path, owner: str) -> None:
     """Download a file from a given URL to a given filepath."""
     logger.debug(f'Downloading file from {url} to {filepath}')
     response = requests.get(url, timeout=None)
