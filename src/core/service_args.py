@@ -15,6 +15,8 @@ class ServiceArgs():
         self._local_relaychain_spec_url = config.get('local-relaychain-spec-url')
         self._runtime_wasm_override = True if config.get('wasm-runtime-url') else False
         self.__check_service_args(service_args)
+
+        # Currently how to determine if binary or snap.
         self._is_binary = config.get('docker-tag') or config.get('binary-url')
 
         if not self._is_binary and not config.get('snap-name'):
@@ -133,11 +135,13 @@ class ServiceArgs():
             self.__sora()
 
         # The chain spec configs should be applied after hardcoded chain customizations above since this should override any hardcoded --chain overrides.
+        owner = c.USER if self._is_binary else c.SNAP_USER
+        spec_dir = c.CHAIN_SPEC_DIR if self._is_binary else self._snap_config.get('chain_spec_dir')
         if self._chain_spec_url:
-            chain_spec_path = download_chain_spec(self._chain_spec_url, 'chain-spec.json')
+            chain_spec_path = download_chain_spec(self._chain_spec_url, 'chain-spec.json', spec_dir, owner)
             self.__set_chain_name(str(chain_spec_path), 0)
         if self._local_relaychain_spec_url:
-            relay_chain_spec_path = download_chain_spec(self._local_relaychain_spec_url, 'relaychain-spec.json')
+            relay_chain_spec_path = download_chain_spec(self._local_relaychain_spec_url, 'relaychain-spec.json', spec_dir, owner)
             self.__set_chain_name(str(relay_chain_spec_path), 1)
         if self._runtime_wasm_override:
             self.__add_firstchain_args(['--wasm-runtime-overrides', c.WASM_DIR if self._is_binary else self._snap_config.get('wasm_dir')])
