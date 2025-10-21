@@ -280,7 +280,9 @@ class PolkadotSnapManager(WorkloadManager):
     
     def service_args_differ_from_disk(self, argument_string):
         current_args = self.get_service_args()
-        return current_args != f"--base-path {self._snap_config.get('base_path')} {argument_string}"
+        if not '--base-path' in argument_string:
+            argument_string = f"--base-path {self._snap_config.get('base_path')} {current_args}"
+        return current_args != argument_string
 
     def generate_node_key(self) -> str:
         if self.is_service_installed():
