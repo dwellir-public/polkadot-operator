@@ -39,6 +39,6 @@ class RpcUrlRequirer(Object):
         else:
             workload = WorkloadFactory.get_workload_manager(WorkloadType.SNAP)
         
-        if workload.service_args_obj_differ_from_disk(service_args_obj.service_args_string):
+        if workload.service_args_differ_from_disk(service_args_obj.service_args_string):
             workload.set_service_args(service_args_obj.service_args_string)
         self._charm.update_status()
