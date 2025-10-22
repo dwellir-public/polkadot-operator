@@ -75,17 +75,17 @@ class ServiceArgs():
         msg = ""
         # Check for service arguments that must be set.
         if "--chain" not in service_args:
-            msg = "'--chain' must be set in 'service-args'."
-        elif "--rpc-port" not in service_args:
-            msg = "'--rpc-port' must be set in 'service-args'."
+            msg += "'--chain' must be set in 'service-args'.\n"
+        if "--rpc-port" not in service_args:
+            msg += "'--rpc-port' must be set in 'service-args'.\n"
 
         # Check for service arguments that must NOT be set.
-        elif "--prometheus-port" in service_args:
-            msg = "'--prometheus-port' may not be set! Charm assumes default port 9615."
-        elif "--node-key-file" in service_args:
-            msg = f'\'--node-key-file\' may not be set! Path is hardcoded to {c.NODE_KEY_FILE}'
-        elif "--base-path" in service_args:
-            msg = "'--base-path' may not be set! Charm handles this automatically."
+        if "--prometheus-port" in service_args:
+            msg += "'--prometheus-port' may not be set! Charm assumes default port 9615.\n"
+        if "--node-key-file" in service_args:
+            msg += f"'--node-key-file' may not be set! Path is hardcoded to {c.NODE_KEY_FILE}\n"
+        if "--base-path" in service_args:
+            msg += "'--base-path' may not be set! Charm handles this automatically.\n"
 
         if msg:
             raise ValueError(msg)
