@@ -41,4 +41,6 @@ class RpcUrlRequirer(Object):
         
         if workload.service_args_differ_from_disk(service_args_obj.service_args_string):
             workload.set_service_args(service_args_obj.service_args_string)
+            if workload.is_service_running():
+                workload.restart_service()
         self._charm.update_status()
