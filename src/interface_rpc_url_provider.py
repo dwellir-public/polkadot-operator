@@ -2,10 +2,11 @@
 
 """RPC url interface (providers side)."""
 
-from service_args import ServiceArgs
+from core.service_args import ServiceArgs
 from ops.framework import Object
 from ops.charm import RelationJoinedEvent
-import utils
+from core.managers import WorkloadType
+from core.managers import WorkloadFactory
 import logging
 
 logger = logging.getLogger(__name__)
@@ -36,8 +37,13 @@ class RpcUrlProvider(Object):
             event.defer()
             return
 
+        if service_args_obj.is_binary:
+            workload = WorkloadFactory.get_workload_manager(WorkloadType.BINARY)
+        else:
+            workload = WorkloadFactory.get_workload_manager(WorkloadType.SNAP)
+        
         # In newer version of Polkadot the ws options are removed, and ws and http uses the same port specified by --rpc-port instead.
-        if "--ws-port" not in utils.get_client_binary_help_output():
+        if "--ws-port" not in workload.get_client_binary_help_output():
             logger.info(f'Using same RPC port ({rpc_port}) for websocket and http due to newer version of Polkadot.')
             ws_port = rpc_port
         

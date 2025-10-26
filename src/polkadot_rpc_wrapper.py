@@ -5,7 +5,7 @@ import json
 import re
 from typing import Tuple
 from substrateinterface import SubstrateInterface, Keypair
-import utils
+from core.utils import general_util
 
 class PolkadotRpcWrapper():
 
@@ -154,11 +154,11 @@ class PolkadotRpcWrapper():
         if not session_key:
             raise ValueError("Failed to generate a new session key")
 
-        session_key_split = utils.split_session_key(session_key)
+        session_key_split = general_util.split_session_key(session_key)
 
         chain_name = self.get_chain_name()
 
-        keys = utils.name_session_keys(chain_name, session_key_split)
+        keys = general_util.name_session_keys(chain_name, session_key_split)
 
         substrate = SubstrateInterface(url=self.__server_address_ws)
         keypair = Keypair.create_from_mnemonic(mnemonic)

@@ -67,3 +67,27 @@ options:
       juju add-secret validator1 mnemonic="foo bar" proxy-type="Staking" --info 14MofzwMbLm1JeBxLi2BKBRHXJce87DE5UWnttgGBBrQcEy9
       juju grant-secret validator1 polkadot
       juju config polkadot mnemonic-secret-id="secret:ctr90nhaeavjam32tflg"
+  snap-revision:
+    type: string
+    description: |
+      Revision of the polkadot snap to use.
+  snap-channel:
+    type: string
+    description: |
+      Channel of the polkadot snap to use.
+      This is used to determine which version of the polkadot to use.
+  snap-hold:
+    description: |
+      Configures the snap to hold E.g. NOT to be upgraded automaticall as part of the snapd automatic upgrades.
+    default: false
+    type: boolean
+  snap-endure:
+    description: |  
+      Configures the snap endure state. If true, the charm will set the snap to not restart after a new snap version refresh.
+    default: false
+    type: boolean
+  snap-name:
+    type: string
+    enum: [ polkadot, 'polkadot-parachain' ]
+    description: |
+      The name of the polkadot snap to use. E.g. 'polkadot' or 'polkadot-parachain'.
