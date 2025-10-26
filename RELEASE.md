@@ -31,3 +31,18 @@ WRITE ME
 How it is actually done.
 
 [Risk level]: https://snapcraft.io/docs/channels#heading--risk-levels
+
+## Github actions
+To extract a token, you need to be member of the "launchpad team" (https://launchpad.net/~dwellir). Request this from Erik.
+
+```
+# log in in a browser, then export a scoped token file
+charmcraft login \
+  --export charmhub.auth \
+  --ttl 7776000 \
+  --charm polkadot \
+  --channel edge \
+  --permission package-manage \
+  --permission package-view
+```
+The token will be stored unencrypted in the file charmhub.auth use this to update the "CHARMCRAFT_AUTH" cariable in github. It has permissions only to push to the edge channel which is enough for safe autmation in github.
