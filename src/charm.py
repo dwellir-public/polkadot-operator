@@ -233,15 +233,16 @@ class PolkadotCharm(ops.CharmBase):
                     self._workload.install()
                 else:
                     should_restart = False
+                # Update stored snap configurations
+                self._stored.snap_name = self.config.get('snap-name')
+                self._stored.snap_hold = self.config.get('snap-hold')
+                self._stored.snap_endure = self.config.get('snap-endure')
 
             # Update stored configurations
             self._stored.binary_url = self.config.get('binary-url')
             self._stored.docker_tag = self.config.get('docker-tag')
             self._stored.snap_revision = self.config.get('snap-revision')
             self._stored.snap_channel = self.config.get('snap-channel')
-            self._stored.snap_endure = self.config.get('snap-endure')
-            self._stored.snap_hold = self.config.get('snap-hold')
-            self._stored.snap_name = self.config.get('snap-name')
         except ValueError as e:
             self.unit.status = ops.BlockedStatus(str(e))
             event.defer()
@@ -282,9 +283,11 @@ class PolkadotCharm(ops.CharmBase):
         if self._workload.get_type() == WorkloadType.SNAP:
             if self._stored.snap_hold != self.config.get('snap-hold'):
                 try:
+                    logger.info(f"Changing snap hold: from {self._stored.snap_hold} to {self.config.get('snap-hold')}")
                     self.unit.status = ops.MaintenanceStatus("Updating snap hold")
                     self._workload.set_hold(self.config.get('snap-hold'))
                     self._stored.snap_hold = self.config.get('snap-hold')
+                    logger.info(f"Snap hold changed to {self.config.get('snap-hold')} successfully")
                 except ValueError as e:
                     self.unit.status = ops.BlockedStatus(str(e))
                     event.defer()
@@ -292,9 +295,37 @@ class PolkadotCharm(ops.CharmBase):
             
             if self._stored.snap_endure != self.config.get('snap-endure'):
                 try:
+                    logger.info(f"Changing snap endure: from {self._stored.snap_endure} to {self.config.get('snap-endure')}")
                     self.unit.status = ops.MaintenanceStatus("Updating snap endure")
                     self._workload.set_endure(self.config.get('snap-endure'))
                     self._stored.snap_endure = self.config.get('snap-endure')
+                    logger.info(f"Snap endure changed to {self.config.get('snap-endure')} successfully")
+                except ValueError as e:
+                    self.unit.status = ops.BlockedStatus(str(e))
+                    event.defer()
+                    return
+            if self._stored.snap_name != self.config.get('snap-name'):
+                try:
+                    logger.info(f"Changing snap name: from {self._stored.snap_name} to {self.config.get('snap-name')}")
+                    self.unit.status = ops.MaintenanceStatus("Updating snap name")
+                    if self._workload.is_service_running():
+                        self._workload.stop_service()
+                        should_restart = True
+
+                    self.unit.status = ops.MaintenanceStatus("Uninstalling old snap")
+                    self._workload.uninstall()
+
+                    self.unit.status = ops.MaintenanceStatus("Installing new snap")
+                    self._workload.configure(
+                        channel=self.config.get('snap-channel'),
+                        revision=self.config.get('snap-revision'),
+                        hold=self.config.get('snap-hold'),
+                        endure=self.config.get('snap-endure'),
+                        snap_name=self.config.get('snap-name'),
+                    )
+                    self._workload.install()
+                    self._stored.snap_name = self.config.get('snap-name')
+                    logger.info(f"Snap name changed to {self.config.get('snap-name')} successfully")
                 except ValueError as e:
                     self.unit.status = ops.BlockedStatus(str(e))
                     event.defer()
