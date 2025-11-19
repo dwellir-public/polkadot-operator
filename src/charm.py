@@ -11,7 +11,6 @@ from core.managers import WorkloadType, WorkloadFactory, PolkadotSnapManager
 import time
 import re
 import json
-import subprocess as sp
 
 import ops
 
