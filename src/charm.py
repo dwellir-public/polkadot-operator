@@ -97,7 +97,7 @@ class PolkadotCharm(ops.CharmBase):
                 binary_url=self._stored.binary_url,
                 docker_tag=self._stored.docker_tag,
                 binary_sha256_url=self.config.get('binary-sha256-url'),
-                chain_name=general_util.get_chain_name_from_service_args(self.config.get('service-args')),
+                chain_name=ServiceArgs(self.config, self.rpc_urls()).chain_name,
             )
         else:
             self._workload = WorkloadFactory.SNAP_MANAGER
@@ -195,7 +195,7 @@ class PolkadotCharm(ops.CharmBase):
                             docker_tag=self.config.get('docker-tag'),
                             charm_base_dir=self.charm_dir,
                             binary_sha256_url=self.config.get('binary-sha256-url'),
-                            chain_name=general_util.get_chain_name_from_service_args(self.config.get('service-args')),
+                            chain_name=service_args_obj.chain_name,
                         )
                 # If neither binary-url nor docker-tag is set, switch to snap manager
                 # and configure it with the current settings
@@ -629,11 +629,10 @@ class PolkadotCharm(ops.CharmBase):
     
     def _get_workload_version(self) -> str:
         """ Return the current workload version. """
-        chain_name = general_util.get_chain_name_from_service_args(self.config.get('service-args'))
-        if chain_name == 'bittensor':
+        service_args = ServiceArgs(self.config, self.rpc_urls())
+        if service_args.chain_name == 'bittensor':
             try:
-                rpc_port = ServiceArgs(self.config, self.rpc_urls()).rpc_port
-                return PolkadotRpcWrapper(rpc_port).get_version()
+                return PolkadotRpcWrapper(service_args.rpc_port).get_version()
             except Exception as e:
                 logger.error(f"Could not get bittensor version via RPC: {e}")
         return self._workload.get_binary_version()
