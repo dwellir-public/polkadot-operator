@@ -54,15 +54,6 @@ def get_process_id(process_name: str) -> str:
     pgrep_output = sp.run(command, stdout=sp.PIPE, check=False).stdout.decode('utf-8').strip()
     return pgrep_output
 
-def get_chain_name_from_service_args(service_args: str):
-    """Get the value of '--chain' current set in the service-args config parameter."""
-    try:
-        service_args_list = re.split(' +|=', service_args)
-        i = service_args_list.index('--chain')
-        return service_args_list[i + 1]
-    except ValueError:
-        return ''
-
 
 def get_process_cmdline(process_name: str) -> str:
     proc_id = get_process_id(process_name)
