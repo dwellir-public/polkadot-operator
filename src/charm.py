@@ -96,7 +96,7 @@ class PolkadotCharm(ops.CharmBase):
                 binary_url=self._stored.binary_url,
                 docker_tag=self._stored.docker_tag,
                 binary_sha256_url=self.config.get('binary-sha256-url'),
-                chain_name=general_util.get_chain_name_from_service_args(self.config.get('service-args')),
+                chain_name=ServiceArgs(self.config, self.rpc_urls()).chain_name,
             )
         else:
             self._workload = WorkloadFactory.SNAP_MANAGER
@@ -194,7 +194,7 @@ class PolkadotCharm(ops.CharmBase):
                             docker_tag=self.config.get('docker-tag'),
                             charm_base_dir=self.charm_dir,
                             binary_sha256_url=self.config.get('binary-sha256-url'),
-                            chain_name=general_util.get_chain_name_from_service_args(self.config.get('service-args')),
+                            chain_name=service_args_obj.chain_name,
                         )
                 # If neither binary-url nor docker-tag is set, switch to snap manager
                 # and configure it with the current settings
@@ -364,7 +364,7 @@ class PolkadotCharm(ops.CharmBase):
                             status_message += ", Validating: No"
                     status_message += f", client-type: {self._get_client_type()}"
                     self.unit.status = ops.ActiveStatus(status_message)
-                    self.unit.set_workload_version(self._workload.get_binary_version())
+                    self.unit.set_workload_version(self._get_workload_version())
                     break
                 except RequestsConnectionError as e:
                     logger.warning(e)
@@ -384,7 +384,7 @@ class PolkadotCharm(ops.CharmBase):
             self.unit.status = ops.ActiveStatus(f"Service running, client-type: {self._get_client_type()}")
         else:
             self.unit.status = ops.BlockedStatus(f"Service not running, client-type: {self._get_client_type()}")
-        self.unit.set_workload_version(self._workload.get_binary_version())
+        self.unit.set_workload_version(self._get_workload_version())
 
     def _on_start(self, event: ops.StartEvent) -> None:
         self._workload.start_service()
@@ -526,7 +526,7 @@ class PolkadotCharm(ops.CharmBase):
             event.set_results(results={'disk-usage-para': chain_du})
         # Client
         event.set_results(results={'client-service-args': self._workload.get_service_args()})
-        event.set_results(results={'client-binary-version': self._workload.get_binary_version()})
+        event.set_results(results={'client-binary-version': self._get_workload_version()})
         event.set_results(results={'client-workload-type': self._workload.get_type().value})
         event.set_results(results={'client-binary-md5sum': self._workload.get_binary_md5sum()})
         event.set_results(results={'client-binary-last-changed': self._workload.get_binary_last_changed()})
@@ -625,6 +625,16 @@ class PolkadotCharm(ops.CharmBase):
         if sum(bool(v) for v in values) >= 2:
             return False
         return True
+    
+    def _get_workload_version(self) -> str:
+        """ Return the current workload version. """
+        service_args = ServiceArgs(self.config, self.rpc_urls())
+        if service_args.chain_name == 'bittensor':
+            try:
+                return PolkadotRpcWrapper(service_args.rpc_port).get_version()
+            except Exception as e:
+                logger.error(f"Could not get bittensor version via RPC: {e}")
+        return self._workload.get_binary_version()
 
 if __name__ == "__main__":
     ops.main(PolkadotCharm)
