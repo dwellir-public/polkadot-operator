@@ -634,6 +634,7 @@ class PolkadotCharm(ops.CharmBase):
                 return PolkadotRpcWrapper(service_args.rpc_port).get_version()
             except Exception as e:
                 logger.error(f"Could not get bittensor version via RPC: {e}")
+            return "unknown"
         return self._workload.get_binary_version()
 
 if __name__ == "__main__":

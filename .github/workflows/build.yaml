@@ -1,0 +1,14 @@
+name: Build Charm
+on:
+  push:
+    branches:
+      - develop
+
+jobs:
+  build:
+    
+    name: Build Polkadot charm
+    uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v35
+    with:
+      charmcraft-snap-revision: 6672
+      cache: false
