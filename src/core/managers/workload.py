@@ -1,7 +1,7 @@
 from enum import Enum
 
 from abc import ABC, abstractmethod
-
+from pathlib import Path
 
 class WorkloadType(Enum):
     BINARY = 'binary'
@@ -127,4 +127,8 @@ class WorkloadManager(ABC):
 
     @abstractmethod
     def get_relay_for_parachain(self):
+        pass
+
+    @abstractmethod
+    def get_binary_path(self) -> str:
         pass

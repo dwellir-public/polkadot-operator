@@ -348,3 +348,7 @@ def get_client_binary_help_output() -> str:
             return process.stdout.decode('utf-8').strip()
         return "Could not parse client binary '--help' command"
     return "Client binary not found"
+
+
+def get_binary_path() -> str:
+    return str(c.BINARY_FILE)

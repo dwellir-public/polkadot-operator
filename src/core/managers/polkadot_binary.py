@@ -109,3 +109,6 @@ class PolkadotBinaryManager(WorkloadManager):
 
     def get_relay_for_parachain(self):
         return binary_util.get_relay_for_parachain()
+    
+    def get_binary_path(self) -> str:
+        return binary_util.get_binary_path()
