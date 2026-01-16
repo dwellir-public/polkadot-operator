@@ -50,11 +50,38 @@ class BlockchainMetadata:
 
     blockchain_ecosystem: str
     blockchain_network_name: str
-    chain_id: int
     client_name: str
     client_version: str
     cmdline: str
     binary_path: str
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return a validated dict representation.
+        This controls that the resulting datastruct is consistent.
+        """
+        return _validate_blockchain_section(
+            required_keys = {
+                "blockchain_ecosystem": str,
+                "blockchain_network_name": str,
+                "client_name": str,
+                "client_version": str,
+                "cmdline": str,
+                "binary_path": str,
+            },
+            data = {
+                "blockchain_ecosystem": self.blockchain_ecosystem,
+                "blockchain_network_name": self.blockchain_network_name,
+                "client_name": self.client_name,
+                "client_version": self.client_version,
+                "cmdline": self.cmdline,
+                "binary_path": self.binary_path,
+            }
+        )
+
+@dataclass
+class EVMBlockchainMetadata(BlockchainMetadata):
+    """Canonical shape of the blockchain metadata section."""
+    chain_id: int
     l1_chain_id: int | None = None
     l2_chain_id: int | None = None
 
@@ -63,67 +90,41 @@ class BlockchainMetadata:
         This controls that the resulting datastruct is consistent.
         """
         return _validate_blockchain_section(
-            {
-                "blockchain_ecosystem": self.blockchain_ecosystem,
-                "blockchain_network_name": self.blockchain_network_name,
+            required_keys={
+                "chain_id": int,
+                "l1_chain_id": (int, type(None)),
+                "l2_chain_id": (int, type(None)),
+            },
+            data={
                 "chain_id": self.chain_id,
                 "l1_chain_id": self.l1_chain_id,
-                "l2_chain_id": self.l2_chain_id,
-                "client_name": self.client_name,
-                "client_version": self.client_version,
-                "cmdline": self.cmdline,
-                "binary_path": self.binary_path,
+                "l2_chain_id": self.l2_chain_id
             }
-        )
+        ) | super().to_dict()
+
+@dataclass
+class SubstrateBlockchainMetadata(BlockchainMetadata):
+    """Canonical shape of the blockchain metadata section."""
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return a validated dict representation.
+        This controls that the resulting datastruct is consistent.
+        """
+        return super().to_dict()
 
 
-def _validate_blockchain_section(blockchain: dict[str, Any]) -> dict[str, Any]:
+def _validate_blockchain_section(required_keys: dict[str, type[str | int | bool]], data: dict[str, Any]) -> dict[str, Any]:
     """Validate required blockchain keys and types, returning a normalized dict."""
-    required_keys = (
-        "blockchain_ecosystem",
-        "blockchain_network_name",
-        "chain_id",
-        "l1_chain_id",
-        "l2_chain_id",
-        "client_name",
-        "client_version",
-        "cmdline",
-        "binary_path",
-    )
 
-    missing = [key for key in required_keys if key not in blockchain]
+    missing = [key for key in required_keys.keys() if key not in data]
     if missing:
         raise ValueError(f"missing blockchain metadata fields: {', '.join(missing)}")
-
-    def _require_str(key: str) -> str:
-        value = blockchain.get(key)
-        if not isinstance(value, str) or not value.strip():
-            raise ValueError(f"{key} must be a non-empty string")
-        return value
-
-    chain_id = blockchain.get("chain_id")
-    if isinstance(chain_id, bool) or not isinstance(chain_id, int):
-        raise ValueError("chain_id must be an int")
-
-    def _require_optional_int(key: str) -> int | None:
-        value = blockchain.get(key)
-        if value is None:
-            return None
-        if isinstance(value, bool) or not isinstance(value, int):
-            raise ValueError(f"{key} must be an int when provided")
-        return value
-
-    return {
-        "blockchain_ecosystem": _require_str("blockchain_ecosystem"),
-        "blockchain_network_name": _require_str("blockchain_network_name"),
-        "chain_id": chain_id,
-        "l1_chain_id": _require_optional_int("l1_chain_id"),
-        "l2_chain_id": _require_optional_int("l2_chain_id"),
-        "client_name": _require_str("client_name"),
-        "client_version": _require_str("client_version"),
-        "cmdline": _require_str("cmdline"),
-        "binary_path": _require_str("binary_path"),
-    }
+    
+    for key, expected_type in required_keys.items():
+        value = data.get(key)
+        if not isinstance(value, expected_type):
+            raise ValueError(f"{key} must be of type {expected_type.__name__}")
+    return data
 
 
 def normalize_blockchain_metadata(blockchain: BlockchainMetadata | dict[str, Any]) -> dict[str, Any]:

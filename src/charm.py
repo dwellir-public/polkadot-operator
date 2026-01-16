@@ -658,7 +658,6 @@ class PolkadotCharm(ops.CharmBase):
         else:
             logger.info("collector-s3-credentials not set; will write payload locally without upload.")
 
-        cid = None
         netname = None
         try:
             rpc_port = ServiceArgs(self.config, self.rpc_urls()).rpc_port
@@ -671,10 +670,9 @@ class PolkadotCharm(ops.CharmBase):
         cname_local = Path(self._workload.get_binary_path()).name
         logger.debug(f"Local clientname: {cname_local}")
 
-        my_blockchain = metadata_manager.BlockchainMetadata(
+        my_blockchain = metadata_manager.SubstrateBlockchainMetadata(
             blockchain_ecosystem="substrate",
             blockchain_network_name=netname or "unknown",
-            chain_id=cid or -1,
             client_name=cname_local,
             client_version=binver,
             cmdline=self._workload.get_proc_cmdline() or "",
