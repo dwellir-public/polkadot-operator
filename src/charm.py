@@ -658,12 +658,21 @@ class PolkadotCharm(ops.CharmBase):
         else:
             logger.info("collector-s3-credentials not set; will write payload locally without upload.")
 
+
+        rpc_port = ServiceArgs(self.config, self.rpc_urls()).rpc_port
+        rpc_wrapper = PolkadotRpcWrapper(rpc_port)
+
         netname = None
         try:
-            rpc_port = ServiceArgs(self.config, self.rpc_urls()).rpc_port
-            netname = PolkadotRpcWrapper(rpc_port).get_chain_name()
+            netname = rpc_wrapper.get_chain_name()
         except Exception as e:
             logger.warning(f"system_chain RPC failed: {e}")
+
+        genesis_hash = None
+        try:
+            genesis_hash = rpc_wrapper.get_genesis_hash()
+        except Exception as e:
+            logger.warning(f"genesis_hash RPC failed: {e}")
 
         binary_path_value = self._workload.get_binary_path()
         binver = self._workload.get_binary_version()
@@ -677,6 +686,7 @@ class PolkadotCharm(ops.CharmBase):
             client_version=binver,
             cmdline=self._workload.get_proc_cmdline() or "",
             binary_path=binary_path_value,
+            genesis_hash=genesis_hash
         )
 
         try:

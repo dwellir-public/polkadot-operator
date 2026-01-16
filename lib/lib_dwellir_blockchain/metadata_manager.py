@@ -92,8 +92,10 @@ class EVMBlockchainMetadata(BlockchainMetadata):
         return _validate_blockchain_section(
             required_keys={
                 "chain_id": int,
-                "l1_chain_id": (int, type(None)),
-                "l2_chain_id": (int, type(None)),
+            },
+            optional_keys={
+                "l1_chain_id": int,
+                "l2_chain_id": int,
             },
             data={
                 "chain_id": self.chain_id,
@@ -105,15 +107,25 @@ class EVMBlockchainMetadata(BlockchainMetadata):
 @dataclass
 class SubstrateBlockchainMetadata(BlockchainMetadata):
     """Canonical shape of the blockchain metadata section."""
+    genesis_hash: str
 
     def to_dict(self) -> dict[str, Any]:
         """Return a validated dict representation.
         This controls that the resulting datastruct is consistent.
         """
-        return super().to_dict()
+        return _validate_blockchain_section(
+            required_keys={
+                "genesis_hash": str,
+            },
+            data={
+                "genesis_hash": self.genesis_hash,
+            }
+        ) | super().to_dict()
 
 
-def _validate_blockchain_section(required_keys: dict[str, type[str | int | bool]], data: dict[str, Any]) -> dict[str, Any]:
+def _validate_blockchain_section(data: dict[str, Any], 
+                                 required_keys: dict[str, type[str | int | bool]], 
+                                 optional_keys: dict[str, type[str | int | bool]] | None = None) -> dict[str, Any]:
     """Validate required blockchain keys and types, returning a normalized dict."""
 
     missing = [key for key in required_keys.keys() if key not in data]
@@ -124,6 +136,11 @@ def _validate_blockchain_section(required_keys: dict[str, type[str | int | bool]
         value = data.get(key)
         if not isinstance(value, expected_type):
             raise ValueError(f"{key} must be of type {expected_type.__name__}")
+    if optional_keys:
+        for key, expected_type in optional_keys.items():
+            value = data.get(key)
+            if value is not None and not isinstance(value, expected_type):
+                raise ValueError(f"{key} must be of type {expected_type.__name__} when provided")
     return data
 
 
