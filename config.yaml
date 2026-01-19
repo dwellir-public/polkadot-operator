@@ -93,16 +93,28 @@ options:
       The name of the polkadot snap to use. E.g. 'polkadot' or 'polkadot-parachain'.
   collector-s3-credentials:
     description: |
-      JSON blob with S3 (or S3-compatible) target and credentials for uploading charm metadata.
+      Name of a Juju secret containing S3 (or S3-compatible) target details and credentials
+      used for uploading charm metadata.
+
+      The secret must be created using `juju add-secret` with the following keys:
+        - bucket
+        - region
+        - endpoint-url
+        - key-prefix
+        - access-key-id
+        - secret-access-key
+        - session-token (optional)
       Example:
-        {
-          "bucket": "my-bucket",
-          "region": "eu-north-1",
-          "endpoint_url": "https://s3.eu-north-1.amazonaws.com",
-          "key_prefix": "uploads/",
-          "access_key_id": "...",
-          "secret_access_key": "...",
-          "session_token": "..."
-        }
-    type: string
+        juju add-secret collector-s3-credential \
+          bucket=my-bucket \
+          region=eu-north-1 \
+          endpoint-url=https://s3.eu-north-1.amazonaws.com \
+          key-prefix=uploads/ \
+          access-key-id=... \
+          secret-access-key=... \
+          session-token=...
+
+      Then configure the charm with:
+        juju config <application> collector-s3-credentials=collector-s3-credential
+    type: secret
     default: ""
