@@ -8,6 +8,8 @@ import logging
 from requests.exceptions import ConnectionError as RequestsConnectionError
 from urllib3.exceptions import NewConnectionError, MaxRetryError
 from core.managers import WorkloadType, WorkloadFactory, PolkadotSnapManager
+from lib_dwellir_blockchain import metadata_manager, rpcrequest
+from pathlib import Path
 import time
 import re
 import json
@@ -365,6 +367,7 @@ class PolkadotCharm(ops.CharmBase):
                     status_message += f", client-type: {self._get_client_type()}"
                     self.unit.status = ops.ActiveStatus(status_message)
                     self.unit.set_workload_version(self._get_workload_version())
+                    self.collectUploadMetadata()
                     break
                 except RequestsConnectionError as e:
                     logger.warning(e)
@@ -636,6 +639,95 @@ class PolkadotCharm(ops.CharmBase):
                 logger.error(f"Could not get bittensor version via RPC: {e}")
             return "unknown"
         return self._workload.get_binary_version()
+    
+    def collectUploadMetadata(self):
+        """
+        Build a metadata payload and upload it to S3 if credentials are provided.
+        Mirrors the behaviour implemented in the reth charm.
+        """
+        logger.info("collectUploadMetadata invoked") 
+        credentials_blob = self.config.get("collector-s3-credentials")
+        creds = None
+        if credentials_blob:
+            try:
+                creds = metadata_manager.parse_credentials(credentials_blob)
+            except ValueError as exc:
+                msg = f"invalid collector-s3-credentials: {exc}"
+                logger.error(msg)
+                return
+        else:
+            logger.info("collector-s3-credentials not set; will write payload locally without upload.")
+
+
+        rpc_port = ServiceArgs(self.config, self.rpc_urls()).rpc_port
+        rpc_wrapper = PolkadotRpcWrapper(rpc_port)
+
+        netname = None
+        try:
+            netname = rpc_wrapper.get_chain_name()
+        except Exception as e:
+            logger.warning(f"system_chain RPC failed: {e}")
+
+        genesis_hash = None
+        try:
+            genesis_hash = rpc_wrapper.get_genesis_hash()
+        except Exception as e:
+            logger.warning(f"genesis_hash RPC failed: {e}")
+
+        binary_path_value = self._workload.get_binary_path()
+        binver = self._workload.get_binary_version()
+        cname_local = Path(self._workload.get_binary_path()).name
+        logger.debug(f"Local clientname: {cname_local}")
+
+        my_blockchain = metadata_manager.SubstrateBlockchainMetadata(
+            blockchain_ecosystem="substrate",
+            blockchain_network_name=netname or "unknown",
+            client_name=cname_local,
+            client_version=binver,
+            cmdline=self._workload.get_proc_cmdline() or "",
+            binary_path=binary_path_value,
+            genesis_hash=genesis_hash
+        )
+
+        try:
+            upload_base = Path("/tmp/dwellir-metadata-uploader")
+            extra_sections = {"blockchain": my_blockchain}
+            no_upload = creds is None
+            logger.debug(
+                "invoking collect_and_upload with credentials=%s, model=%s, "
+                "app=%s, unit=%s, meta=%s, base_dir=%s, extra_sections=%s, "
+                "no_upload=%s",
+                creds,
+                self.model,
+                self.app,
+                self.unit,
+                self.meta,
+                upload_base,
+                extra_sections,
+                no_upload,
+            )
+            metadata_manager.collect_and_upload(
+                credentials=creds,
+                model=self.model,
+                app=self.app,
+                unit=self.unit,
+                meta=self.meta,
+                base_dir=upload_base,
+                extra_sections=extra_sections,
+                no_upload=no_upload,
+            )
+        except ValueError as exc:
+            msg = f"invalid blockchain metadata: {exc}"
+            logger.error(msg)
+            return
+        except metadata_manager.UploadError as exc:
+            msg = f"upload failed: {exc}"
+            logger.error(msg)
+            return
+        except Exception as exc:  # noqa: BLE001 - surface unexpected issues
+            msg = f"unexpected error during update-status: {exc}"
+            logger.exception(msg)
+            return
 
 if __name__ == "__main__":
     ops.main(PolkadotCharm)
