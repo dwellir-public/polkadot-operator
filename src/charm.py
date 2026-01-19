@@ -645,8 +645,17 @@ class PolkadotCharm(ops.CharmBase):
         Build a metadata payload and upload it to S3 if credentials are provided.
         Mirrors the behaviour implemented in the reth charm.
         """
-        logger.info("collectUploadMetadata invoked") 
-        credentials_blob = self.config.get("collector-s3-credentials")
+        logger.info("collectUploadMetadata invoked")
+
+        credentials_blob = None
+        credentials_id = self.config.get("collector-s3-credentials")
+        if credentials_id:
+            secret = self.model.get_secret(id=credentials_id).get_content()
+            # Juju does not allow underscore in secret keys
+            # Transform hyphenated keys to underscored keys
+            credetials = {key.replace('-', '_'): value for key, value in secret.items()}
+            credentials_blob = json.dumps(credetials)
+        
         creds = None
         if credentials_blob:
             try:
