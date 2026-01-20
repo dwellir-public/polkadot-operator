@@ -59,6 +59,16 @@ class PolkadotRpcWrapper():
         block_height = int(response_json['result']['number'], 16)
         return block_height
 
+    def get_genesis_hash(self) -> str:
+        """
+        Gets the genesis hash of the chain this node is connected to.
+        :return: string
+        """
+        data = '{"jsonrpc": "2.0", "id": 1, "method": "chain_getBlockHash", "params": [0]}'
+        response = requests.post(url=self.__server_address, headers=self.__headers, data=data, timeout=None)
+        response_json = json.loads(response.text)
+        return response_json['result']
+
     def get_system_peers(self) -> Tuple[list, bool]:
         """
         Gets the list of currently connected peers for this node.

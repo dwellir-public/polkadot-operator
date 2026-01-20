@@ -7,10 +7,10 @@
 This module provides functionality for managing the Polkadot snap package,
 including installation, service management, and configuration.
 """
-
 import re
 import logging
 import subprocess as sp
+from pathlib import Path
 from typing import Optional
 from core import constants as c
 from core.utils import download_util, general_util
@@ -332,3 +332,6 @@ class PolkadotSnapManager(WorkloadManager):
         if not self.is_parachain_node():
             return 'Error, this is not a parachain'
         return general_util.get_relay_for_parachain(self._snap_config.get("relay_db_dir"))
+    
+    def get_binary_path(self) -> str:
+        return str(self._snap_config.get("snap_binary_path"))
