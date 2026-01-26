@@ -18,6 +18,8 @@ def install_docker_runtime() -> None:
     try:
         sp.check_call(["docker", "--version"])
     except FileNotFoundError:
+        c.DOCKER_DEAMON_CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
+        c.DOCKER_DEAMON_CONFIG_PATH.write_text(c.DOCKER_DEAMON_JSON_CONFIG)
         sp.run(['curl', '-fsSL', 'https://get.docker.com', '-o', 'get-docker.sh'], check=False)
         sp.run(['sh', 'get-docker.sh'], check=False)
         sp.run(['usermod', '-aG', 'docker', c.USER], check=False)
