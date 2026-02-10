@@ -684,7 +684,7 @@ class PolkadotCharm(ops.CharmBase):
             logger.warning(f"genesis_hash RPC failed: {e}")
 
         binary_path_value = self._workload.get_binary_path()
-        binver = self._workload.get_binary_version()
+        binver = self._get_workload_version()
         cname_local = Path(self._workload.get_binary_path()).name
         logger.debug(f"Local clientname: {cname_local}")
 

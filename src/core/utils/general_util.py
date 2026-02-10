@@ -102,11 +102,10 @@ def name_session_keys(chain_name: str, keys: list) -> dict:
                 'para_assignment': keys[4],
                 'authority_discovery': keys[5],
             }
-        elif len(keys) == 2:
+        elif len(keys) == 1:
             # Enjin parachain
             return {
                 'aura': keys[0],
-                'pools': keys[1],
             }
         else:
             raise ValueError(f"Enjin chain with {len(keys)} session keys not supported")
