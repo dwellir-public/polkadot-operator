@@ -50,7 +50,7 @@ def get_binary_last_changed(binary_path: Union[Path, str]) -> str:
     return ""
 
 def get_process_id(process_name: str) -> str:
-    command = ['pgrep', f'{process_name}']
+    command = ['pgrep', '-x', f'{process_name}']
     pgrep_output = sp.run(command, stdout=sp.PIPE, check=False).stdout.decode('utf-8').strip()
     return pgrep_output
 
