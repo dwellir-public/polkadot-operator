@@ -49,3 +49,9 @@ SNAP_CONFIG = {
         'node_key_file': Path('/var/snap/polkadot-parachain/common/node-key')
     }
 }
+
+DOCKER_DEAMON_CONFIG_PATH = Path("/etc/docker/daemon.json")
+DOCKER_DEAMON_JSON_CONFIG = """{
+  "storage-driver": "fuse-overlayfs"
+}
+"""
