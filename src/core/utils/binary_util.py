@@ -244,13 +244,13 @@ def update_service_args(service_args):
         f.write(render_service_argument_file(service_args))
 
 
-def is_relay_chain_node() -> bool:
-    return not is_parachain_node()
+def is_relay_chain_node(chain_db_dir: Path = c.DB_CHAIN_DIR, relay_db_dir: Path = c.DB_RELAY_DIR) -> bool:
+    return not is_parachain_node(chain_db_dir, relay_db_dir)
 
 
-def is_parachain_node() -> bool:
+def is_parachain_node(chain_db_dir: Path = c.DB_CHAIN_DIR, relay_db_dir: Path = c.DB_RELAY_DIR) -> bool:
     # TODO: should both of these be required to satisfy the node being a parachain, or is one enough?
-    if c.DB_CHAIN_DIR.exists() and c.DB_RELAY_DIR.exists():
+    if chain_db_dir.exists() and relay_db_dir.exists():
         return True
     if c.BINARY_FILE.exists():
         command = f'.{c.BINARY_FILE} --help | grep -i "\-\-collator"'
@@ -260,10 +260,10 @@ def is_parachain_node() -> bool:
     return False
 
 
-def get_relay_for_parachain() -> str:
-    if not is_parachain_node():
+def get_relay_for_parachain(chain_db_dir: Path = c.DB_CHAIN_DIR, relay_db_dir: Path = c.DB_RELAY_DIR) -> str:
+    if not is_parachain_node(chain_db_dir, relay_db_dir):
         return 'Error, this is not a parachain'
-    return general_util.get_relay_for_parachain(c.DB_RELAY_DIR)
+    return general_util.get_relay_for_parachain(relay_db_dir)
 
 
 def get_binary_version() -> str:
@@ -339,15 +339,15 @@ def generate_node_key():
         raise ValueError("No binary file found to generate node key. Please check your configuration.")
 
 
-def get_chain_disk_usage() -> str:
-    if c.DB_CHAIN_DIR.exists():
-        return general_util.get_disk_usage(c.DB_CHAIN_DIR)
+def get_chain_disk_usage(chain_db_dir: Path = c.DB_CHAIN_DIR) -> str:
+    if chain_db_dir.exists():
+        return general_util.get_disk_usage(chain_db_dir)
     return ""
 
 
-def get_relay_disk_usage() -> str:
-    if c.DB_RELAY_DIR.exists():
-        return general_util.get_disk_usage(c.DB_RELAY_DIR)
+def get_relay_disk_usage(relay_db_dir: Path = c.DB_RELAY_DIR) -> str:
+    if relay_db_dir.exists():
+        return general_util.get_disk_usage(relay_db_dir)
     return ""
 
 def get_client_binary_help_output() -> str:
