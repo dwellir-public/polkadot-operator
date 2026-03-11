@@ -1,3 +1,4 @@
 ops == 2.9
 boto3==1.37.38
+charms-dwellir-blockchain-common==0.0.2
 requests
