@@ -334,8 +334,10 @@ class PolkadotCharm(ops.CharmBase):
                     return
 
         self._workload.set_service_args(service_args_obj.service_args_string)
-        # Start the service if it was just initialized or restart is required due to config changes
-        if self._stored.service_init or should_restart:
+        # Restart the service if it was running before config changes, or start it if just initialized
+        if should_restart:
+            self._workload.restart_service()
+        elif self._stored.service_init:
             self._workload.start_service()
 
         self.update_status_simple()
