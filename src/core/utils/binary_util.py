@@ -14,18 +14,18 @@ from core.utils import general_util
 
 logger = logging.getLogger(__name__)
 
-def install_fuse_overlay_fs() -> None:
+def install_fuse_overlayfs() -> None:
     try:
-        sp.run(['sudo', 'apt', 'install', '-y', 'fuse-overlay-fs'], check=True)
+        sp.run(['sudo', 'apt', 'install', '-y', 'fuse-overlayfs'], check=True)
     except sp.CalledProcessError as e:
-        logger.error(f"failed to install fuse-oveerlay-fs: {e}")
+        logger.error(f"failed to install fuse-overlayfs: {e}")
         raise e
 
 def install_docker_runtime() -> None:
     try:
         sp.check_call(["docker", "--version"])
     except FileNotFoundError:
-        install_fuse_overlay_fs()
+        install_fuse_overlayfs()
         c.DOCKER_DEAMON_CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
         c.DOCKER_DEAMON_CONFIG_PATH.write_text(c.DOCKER_DEAMON_JSON_CONFIG)
         sp.run(['curl', '-fsSL', 'https://get.docker.com', '-o', 'get-docker.sh'], check=False)
