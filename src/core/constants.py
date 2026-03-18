@@ -5,6 +5,7 @@ from pathlib import Path
 USER = 'polkadot'
 SERVICE_NAME = USER
 HOME_DIR = Path('/home/polkadot')
+BASE_PATH = Path(HOME_DIR, '.local/share/polkadot')
 BINARY_FILE = Path(HOME_DIR, 'polkadot')
 EXECUTE_WORKER_BINARY_FILE = {
     'default': Path(HOME_DIR, 'polkadot-execute-worker'),
@@ -18,8 +19,8 @@ PREPARE_WORKER_BINARY_FILE = {
 }
 CHAIN_SPEC_DIR = Path(HOME_DIR, 'spec')
 NODE_KEY_FILE = Path(HOME_DIR, 'node-key')
-DB_CHAIN_DIR = Path(HOME_DIR, '.local/share/polkadot/chains')
-DB_RELAY_DIR = Path(HOME_DIR, '.local/share/polkadot/polkadot')
+DB_CHAIN_DIR = Path(BASE_PATH, 'chains')
+DB_RELAY_DIR = Path(BASE_PATH, 'polkadot')
 WASM_DIR = Path(HOME_DIR, 'wasm')
 
 SNAP_USER = 'root'

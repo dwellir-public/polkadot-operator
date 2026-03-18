@@ -78,6 +78,7 @@ class PolkadotCharm(ops.CharmBase):
         self._stored.set_default(binary_url=self.config.get('binary-url'),
                                  docker_tag=self.config.get('docker-tag'),
                                  service_args=self.config.get('service-args'),
+                                 data_dir=self.config.get('data-dir'),
                                  chain_spec_url=self.config.get('chain-spec-url'),
                                  local_relaychain_spec_url=self.config.get('local-relaychain-spec-url'),
                                  wasm_runtime_url=self.config.get('wasm-runtime-url'),
@@ -98,6 +99,7 @@ class PolkadotCharm(ops.CharmBase):
                 docker_tag=self._stored.docker_tag,
                 binary_sha256_url=self.config.get('binary-sha256-url'),
                 chain_name=ServiceArgs(self.config, self.rpc_urls()).chain_name,
+                data_dir=self._stored.data_dir,
             )
         else:
             self._workload = WorkloadFactory.SNAP_MANAGER
@@ -107,6 +109,7 @@ class PolkadotCharm(ops.CharmBase):
                 hold=self._stored.snap_hold,
                 endure=self._stored.snap_endure,
                 snap_name=self._stored.snap_name,
+                data_dir=self._stored.data_dir,
             )
 
     def rpc_urls(self):
@@ -156,6 +159,11 @@ class PolkadotCharm(ops.CharmBase):
             self.unit.status = ops.BlockedStatus("Only one of 'binary-url', 'docker-tag' or 'snap-name' can be set at a time.")
             event.defer()
             return
+
+        if self._stored.data_dir != self.config.get('data-dir'):
+            self.unit.status = ops.BlockedStatus("data-dir must not be changed after deployment.")
+            event.defer()
+            return
         
         try:
             service_args_obj = ServiceArgs(self.config, self.rpc_urls())
@@ -196,6 +204,7 @@ class PolkadotCharm(ops.CharmBase):
                             charm_base_dir=self.charm_dir,
                             binary_sha256_url=self.config.get('binary-sha256-url'),
                             chain_name=service_args_obj.chain_name,
+                            data_dir=self._stored.data_dir,
                         )
                 # If neither binary-url nor docker-tag is set, switch to snap manager
                 # and configure it with the current settings
@@ -212,6 +221,7 @@ class PolkadotCharm(ops.CharmBase):
                         hold=self.config.get('snap-hold'),
                         endure=self.config.get('snap-endure'),
                         snap_name=self.config.get('snap-name'),
+                        data_dir=self._stored.data_dir,
                     )
                 
                 self._workload.install()
@@ -230,6 +240,7 @@ class PolkadotCharm(ops.CharmBase):
                         hold=self.config.get('snap-hold'),
                         endure=self.config.get('snap-endure'),
                         snap_name=self.config.get('snap-name'),
+                        data_dir=self._stored.data_dir,
                     )
                     self._workload.install()
                 else:
@@ -323,6 +334,7 @@ class PolkadotCharm(ops.CharmBase):
                         hold=self.config.get('snap-hold'),
                         endure=self.config.get('snap-endure'),
                         snap_name=self.config.get('snap-name'),
+                        data_dir=self._stored.data_dir,
                     )
                     self._workload.install()
                     self._stored.snap_name = self.config.get('snap-name')

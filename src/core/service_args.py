@@ -11,6 +11,7 @@ class ServiceArgs():
     def __init__(self, config: ConfigData, relay_rpc_urls: dict):
         service_args = self.__encode_for_emoji(config.get('service-args'))
         self._relay_rpc_urls = relay_rpc_urls
+        self._data_dir = config.get('data-dir')
         self._chain_spec_url = config.get('chain-spec-url')
         self._local_relaychain_spec_url = config.get('local-relaychain-spec-url')
         self._runtime_wasm_override = True if config.get('wasm-runtime-url') else False
@@ -30,7 +31,7 @@ class ServiceArgs():
         self.__customize_service_args()
 
     @property
-    def service_args_string(self) -> list:
+    def service_args_string(self) -> str:
         """Get the modified service args as string. This is what should be used for the service."""
         return ' '.join(str(x) for x in self.service_args_list_customized)
 
@@ -147,6 +148,16 @@ class ServiceArgs():
             self.__set_chain_name(str(relay_chain_spec_path), 1)
         if self._runtime_wasm_override:
             self.__add_firstchain_args(['--wasm-runtime-overrides', c.WASM_DIR if self._is_binary else self._snap_config.get('wasm_dir')])
+
+        # Apply --base-path whenever data-dir config parameter is set, or
+        # use the snap default base path for snap workloads.
+        base_path = self._data_dir if self._data_dir else None
+        if not base_path and not self._is_binary:
+            base_path = self._snap_config.get('base_path')
+        if base_path:
+            self.__add_firstchain_args(['--base-path', base_path])
+            if '--' in self.service_args_list_customized:
+                self.__add_secondchain_args(['--base-path', base_path])
 
     def __aleph_zero(self):
         if self.chain_name.endswith('testnet'):

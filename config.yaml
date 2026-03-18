@@ -35,6 +35,15 @@ options:
     description: |
       Extra arguments that the service should run with.
       '--chain=... --rpc-port=...' are required to set for the charm to run.
+  data-dir:
+    type: string
+    default: ""
+    description: |
+      Path to a location where the charm service should write blockchain data.
+      For binary workloads this becomes the Polkadot `--base-path`.
+      For snap workloads this overrides the default snap common base path.
+      If left empty, the service default is used for binary workloads and the snap common path is used for snap workloads.
+      MUST BE SET AT DEPLOYMENT TIME!
   chain-spec-url:
     type: string
     default: ""

@@ -8,7 +8,7 @@ This repository is maintained by Dwellir, https://dwellir.com - Infrastructure p
 
 [Polkadot](https://polkadot.network/) is a web3 blockchain ecosystem. This charm can be deployed as a validator, collator, bootnode, or RPC on any Polkadot derived blockchain, also known as parachains. The deployment config differs depending on the chain that is being deployed.
 
-The charm starts the Polkadot client as a service, which takes its arguments from `/etc/default/polkadot` which in turn are set by the Juju config *service-args*. The Polkadot client itself is downloaded and installed from the config *binary-url*.
+The charm starts the Polkadot client as a service, which takes its arguments from `/etc/default/polkadot` which in turn are set by the Juju config *service-args*. The Polkadot client itself is downloaded and installed from the config *binary-url*. Blockchain data is stored in the default client path unless the Juju config `data-dir` is set at deployment time.
 
 ## Building
 
@@ -51,6 +51,7 @@ However, there are some configs which are required by the charm to correctly ins
 - `binary-url=...` or `docker-tag=...`
     - Note: from Polkadot release 1.1.0, the binary is split into three separate parts which means three separate URL:s will need to be set to the `binary-url` config, in a space separated list.
 - `service-args="... ..."` with the tags `--chain=...` and `--rpc-port=...` set
+- Optional: `data-dir=/mnt/blockchaindata0/polkadot` to override the Polkadot `--base-path` for either binary or snap workloads. This must be set at deployment time.
 
 With those configs included, a standard deployment of the Polkadot node could look like:
 
