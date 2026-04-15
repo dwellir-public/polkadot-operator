@@ -64,6 +64,10 @@ class PolkadotSnapManager(WorkloadManager):
         self._endure = kwargs.get("endure") if kwargs.get("endure") else None
         self._type = kwargs.get("chain-type")
         self._snap_config = c.SNAP_CONFIG[self._snap_name]
+        self._data_dir = Path(kwargs.get("data_dir")) if kwargs.get("data_dir") else None
+        self._base_path = self._data_dir or self._snap_config.get("base_path")
+        self._chain_db_dir = Path(self._base_path, 'chains')
+        self._relay_db_dir = Path(self._base_path, 'polkadot')
 
         try:
             cache = snap.SnapCache()
@@ -75,6 +79,8 @@ class PolkadotSnapManager(WorkloadManager):
     def install(self):
         if self._polkadot_snap.present:
             sp.run(['snap', 'enable', self._snap_config.get("snap_name")], check=False)
+        if self._data_dir and not general_util.setup_data_dir(self._base_path, c.SNAP_USER):
+            raise InstallError(f"Failed to set up data-dir {self._base_path}")
         self.ensure_and_connect()
         self.stop_service()
 
@@ -202,7 +208,7 @@ class PolkadotSnapManager(WorkloadManager):
         try:
             logger.info(f"Setting service args to: {value}")
             if not "--base-path" in value:
-                value = f"--base-path {self._snap_config.get('base_path')} {value}"
+                value = f"--base-path {self._base_path} {value}"
             self._polkadot_snap.set({"service-args": value})
             logger.info("Service args set successfully")
         except Exception as e:
@@ -270,10 +276,10 @@ class PolkadotSnapManager(WorkloadManager):
         return self.is_service_running(iterations)
     
     def get_chain_disk_usage(self) -> str:
-        return general_util.get_disk_usage(self._snap_config.get("chain_db_dir"))
+        return general_util.get_disk_usage(self._chain_db_dir)
 
     def get_relay_disk_usage(self) -> str:
-        return general_util.get_disk_usage(self._snap_config.get("relay_db_dir"))
+        return general_util.get_disk_usage(self._relay_db_dir)
 
     def is_service_installed(self) -> bool:
         return self._polkadot_snap.present
@@ -281,7 +287,7 @@ class PolkadotSnapManager(WorkloadManager):
     def service_args_differ_from_disk(self, argument_string):
         current_args = self.get_service_args()
         if not '--base-path' in argument_string:
-            argument_string = f"--base-path {self._snap_config.get('base_path')} {current_args}"
+            argument_string = f"--base-path {self._base_path} {argument_string}"
         return current_args != argument_string
 
     def generate_node_key(self) -> str:
@@ -315,7 +321,7 @@ class PolkadotSnapManager(WorkloadManager):
         return not self.is_parachain_node()
 
     def is_parachain_node(self) -> bool:
-        if self._snap_config.get("chain_db_dir").exists() and self._snap_config.get("relay_db_dir").exists():
+        if self._chain_db_dir.exists() and self._relay_db_dir.exists():
             return True
         if self.is_service_installed():
             command = f'snap run {self._snap_config.get("cli_command")} --help | grep -i "\-\-collator"'
@@ -331,7 +337,7 @@ class PolkadotSnapManager(WorkloadManager):
     def get_relay_for_parachain(self):
         if not self.is_parachain_node():
             return 'Error, this is not a parachain'
-        return general_util.get_relay_for_parachain(self._snap_config.get("relay_db_dir"))
+        return general_util.get_relay_for_parachain(self._relay_db_dir)
     
     def get_binary_path(self) -> str:
         return str(self._snap_config.get("snap_binary_path"))

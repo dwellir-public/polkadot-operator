@@ -161,6 +161,19 @@ def write_node_key_file(key_path: Union[Path, str], key: str, owner: str) -> Non
     sp.run(['chmod', '0600', key_path], check=False)
 
 
+def setup_data_dir(data_dir: Union[Path, str], owner: str) -> bool:
+    data_dir = data_dir if isinstance(data_dir, Path) else Path(data_dir)
+    try:
+        data_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+        sp.run(['chown', '-R', f'{owner}:{owner}', str(data_dir)], check=True)
+        sp.run(['chmod', '700', str(data_dir)], check=True)
+    except (OSError, sp.CalledProcessError):
+        logger.exception("Failed to setup data-dir: %s", data_dir)
+        return False
+
+    return True
+
+
 def get_relay_for_parachain(relay_db_dir: Path) -> str:
     try:
         chains_dir = Path(relay_db_dir, 'chains')

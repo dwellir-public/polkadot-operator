@@ -8,8 +8,6 @@ import logging
 from requests.exceptions import ConnectionError as RequestsConnectionError
 from urllib3.exceptions import NewConnectionError, MaxRetryError
 from core.managers import WorkloadType, WorkloadFactory, PolkadotSnapManager
-from lib_dwellir_blockchain import metadata_manager, rpcrequest
-from pathlib import Path
 import time
 import re
 import json
@@ -28,6 +26,7 @@ from core.utils import user_group_util
 from migrators import data_migrator
 
 from charms.grafana_agent.v0.cos_agent import COSAgentProvider
+from polkadot_metadata import collect_upload_metadata
 
 logger = logging.getLogger(__name__)
 
@@ -79,6 +78,7 @@ class PolkadotCharm(ops.CharmBase):
         self._stored.set_default(binary_url=self.config.get('binary-url'),
                                  docker_tag=self.config.get('docker-tag'),
                                  service_args=self.config.get('service-args'),
+                                 data_dir=self.config.get('data-dir'),
                                  chain_spec_url=self.config.get('chain-spec-url'),
                                  local_relaychain_spec_url=self.config.get('local-relaychain-spec-url'),
                                  wasm_runtime_url=self.config.get('wasm-runtime-url'),
@@ -99,6 +99,7 @@ class PolkadotCharm(ops.CharmBase):
                 docker_tag=self._stored.docker_tag,
                 binary_sha256_url=self.config.get('binary-sha256-url'),
                 chain_name=ServiceArgs(self.config, self.rpc_urls()).chain_name,
+                data_dir=self._stored.data_dir,
             )
         else:
             self._workload = WorkloadFactory.SNAP_MANAGER
@@ -108,6 +109,7 @@ class PolkadotCharm(ops.CharmBase):
                 hold=self._stored.snap_hold,
                 endure=self._stored.snap_endure,
                 snap_name=self._stored.snap_name,
+                data_dir=self._stored.data_dir,
             )
 
     def rpc_urls(self):
@@ -157,6 +159,11 @@ class PolkadotCharm(ops.CharmBase):
             self.unit.status = ops.BlockedStatus("Only one of 'binary-url', 'docker-tag' or 'snap-name' can be set at a time.")
             event.defer()
             return
+
+        if self._stored.data_dir != self.config.get('data-dir'):
+            self.unit.status = ops.BlockedStatus("data-dir must not be changed after deployment.")
+            event.defer()
+            return
         
         try:
             service_args_obj = ServiceArgs(self.config, self.rpc_urls())
@@ -197,6 +204,7 @@ class PolkadotCharm(ops.CharmBase):
                             charm_base_dir=self.charm_dir,
                             binary_sha256_url=self.config.get('binary-sha256-url'),
                             chain_name=service_args_obj.chain_name,
+                            data_dir=self._stored.data_dir,
                         )
                 # If neither binary-url nor docker-tag is set, switch to snap manager
                 # and configure it with the current settings
@@ -213,6 +221,7 @@ class PolkadotCharm(ops.CharmBase):
                         hold=self.config.get('snap-hold'),
                         endure=self.config.get('snap-endure'),
                         snap_name=self.config.get('snap-name'),
+                        data_dir=self._stored.data_dir,
                     )
                 
                 self._workload.install()
@@ -231,6 +240,7 @@ class PolkadotCharm(ops.CharmBase):
                         hold=self.config.get('snap-hold'),
                         endure=self.config.get('snap-endure'),
                         snap_name=self.config.get('snap-name'),
+                        data_dir=self._stored.data_dir,
                     )
                     self._workload.install()
                 else:
@@ -324,6 +334,7 @@ class PolkadotCharm(ops.CharmBase):
                         hold=self.config.get('snap-hold'),
                         endure=self.config.get('snap-endure'),
                         snap_name=self.config.get('snap-name'),
+                        data_dir=self._stored.data_dir,
                     )
                     self._workload.install()
                     self._stored.snap_name = self.config.get('snap-name')
@@ -647,98 +658,7 @@ class PolkadotCharm(ops.CharmBase):
         Build a metadata payload and upload it to S3 if credentials are provided.
         Mirrors the behaviour implemented in the reth charm.
         """
-        logger.info("collectUploadMetadata invoked")
-
-        credentials_blob = None
-        credentials_id = self.config.get("collector-s3-credentials")
-        if credentials_id:
-            secret = self.model.get_secret(id=credentials_id).get_content()
-            # Juju does not allow underscore in secret keys
-            # Transform hyphenated keys to underscored keys
-            credetials = {key.replace('-', '_'): value for key, value in secret.items()}
-            credentials_blob = json.dumps(credetials)
-        
-        creds = None
-        if credentials_blob:
-            try:
-                creds = metadata_manager.parse_credentials(credentials_blob)
-            except ValueError as exc:
-                msg = f"invalid collector-s3-credentials: {exc}"
-                logger.error(msg)
-                return
-        else:
-            logger.info("collector-s3-credentials not set; will write payload locally without upload.")
-
-
-        rpc_port = ServiceArgs(self.config, self.rpc_urls()).rpc_port
-        rpc_wrapper = PolkadotRpcWrapper(rpc_port)
-
-        netname = None
-        try:
-            netname = rpc_wrapper.get_chain_name()
-        except Exception as e:
-            logger.warning(f"system_chain RPC failed: {e}")
-
-        genesis_hash = None
-        try:
-            genesis_hash = rpc_wrapper.get_genesis_hash()
-        except Exception as e:
-            logger.warning(f"genesis_hash RPC failed: {e}")
-
-        binary_path_value = self._workload.get_binary_path()
-        binver = self._get_workload_version()
-        cname_local = Path(self._workload.get_binary_path()).name
-        logger.debug(f"Local clientname: {cname_local}")
-
-        my_blockchain = metadata_manager.SubstrateBlockchainMetadata(
-            blockchain_ecosystem="substrate",
-            blockchain_network_name=netname or "unknown",
-            client_name=cname_local,
-            client_version=binver,
-            cmdline=self._workload.get_proc_cmdline() or "",
-            binary_path=binary_path_value,
-            genesis_hash=genesis_hash
-        )
-
-        try:
-            upload_base = Path("/tmp/dwellir-metadata-uploader")
-            extra_sections = {"blockchain": my_blockchain}
-            no_upload = creds is None
-            logger.debug(
-                "invoking collect_and_upload with credentials=%s, model=%s, "
-                "app=%s, unit=%s, meta=%s, base_dir=%s, extra_sections=%s, "
-                "no_upload=%s",
-                creds,
-                self.model,
-                self.app,
-                self.unit,
-                self.meta,
-                upload_base,
-                extra_sections,
-                no_upload,
-            )
-            metadata_manager.collect_and_upload(
-                credentials=creds,
-                model=self.model,
-                app=self.app,
-                unit=self.unit,
-                meta=self.meta,
-                base_dir=upload_base,
-                extra_sections=extra_sections,
-                no_upload=no_upload,
-            )
-        except ValueError as exc:
-            msg = f"invalid blockchain metadata: {exc}"
-            logger.error(msg)
-            return
-        except metadata_manager.UploadError as exc:
-            msg = f"upload failed: {exc}"
-            logger.error(msg)
-            return
-        except Exception as exc:  # noqa: BLE001 - surface unexpected issues
-            msg = f"unexpected error during update-status: {exc}"
-            logger.exception(msg)
-            return
+        collect_upload_metadata(self)
 
 if __name__ == "__main__":
     ops.main(PolkadotCharm)
