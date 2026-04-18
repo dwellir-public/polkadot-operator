@@ -1,18 +1,37 @@
 # Copyright 2021 dwellir
 # See LICENSE file for licensing details.
 
-import unittest
-# from unittest.mock import Mock
+import sys
+import types
+from types import SimpleNamespace
 
-from ops.testing import Harness
+substrateinterface = types.ModuleType("substrateinterface")
+substrateinterface.SubstrateInterface = object
+substrateinterface.Keypair = object
+sys.modules.setdefault("substrateinterface", substrateinterface)
+
 from charm import PolkadotCharm
 
 
-class TestCharm(unittest.TestCase):
-    def test_config_changed(self):
-        harness = Harness(Polkadot  Charm)
-        self.addCleanup(harness.cleanup)
-        harness.begin()
-        self.assertEqual(harness.charm._stored.validator_name, "Dwellir")
-        harness.update_config({"validator-name": "NameChanged"})
-        self.assertEqual(harness.charm._stored.validator_name, "NameChanged")
+def test_has_valid_client_config_allows_single_source():
+    charm = SimpleNamespace(
+        config={
+            "binary-url": "",
+            "docker-tag": "",
+            "snap-name": "polkadot",
+        }
+    )
+
+    assert PolkadotCharm._has_valid_client_config(charm) is True
+
+
+def test_has_valid_client_config_rejects_multiple_sources():
+    charm = SimpleNamespace(
+        config={
+            "binary-url": "https://example.invalid/polkadot",
+            "docker-tag": "v1.0.0",
+            "snap-name": "",
+        }
+    )
+
+    assert PolkadotCharm._has_valid_client_config(charm) is False
