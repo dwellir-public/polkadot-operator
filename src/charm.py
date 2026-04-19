@@ -15,6 +15,10 @@ import json
 import ops
 
 from interface_prometheus import PrometheusProvider
+from interface_machine_observability_provider import (
+    MachineObservabilityProvider,
+    build_machine_observability_payload,
+)
 from interface_rpc_url_provider import RpcUrlProvider
 from interface_rpc_url_requirer import RpcUrlRequirer
 from migrators import node_key_migrator
@@ -41,6 +45,10 @@ class PolkadotCharm(ops.CharmBase):
         self.prometheus_polkadot_provider = PrometheusProvider(self, 'polkadot-prometheus', 9615, '/metrics')
         self.rpc_url_provider = RpcUrlProvider(self, 'rpc_url'),
         self.rpc_url_requirer = RpcUrlRequirer(self, 'relay_rpc_url'),
+        self.machine_observability_provider = MachineObservabilityProvider(
+            self,
+            "machine-observability",
+        )
 
         self.cos_agent_provider = COSAgentProvider(
             self,
@@ -145,6 +153,7 @@ class PolkadotCharm(ops.CharmBase):
 
         self._workload.generate_node_key()
         self._workload.set_service_args(service_args_obj.service_args_string)
+        self._publish_machine_observability()
         self.unit.status = ops.MaintenanceStatus("Charm install complete")
     
 
@@ -351,9 +360,11 @@ class PolkadotCharm(ops.CharmBase):
         elif self._stored.service_init:
             self._workload.start_service()
 
+        self._publish_machine_observability()
         self.update_status_simple()
 
     def _on_update_status(self, event: ops.UpdateStatusEvent) -> None:
+        self._publish_machine_observability()
         self.update_status(validator_check=True)
 
     def update_status(self, connection_attempts: int = 4, validator_check: bool = False) -> None:
@@ -404,6 +415,7 @@ class PolkadotCharm(ops.CharmBase):
 
     def _on_start(self, event: ops.StartEvent) -> None:
         self._workload.start_service()
+        self._publish_machine_observability()
         self.update_status_simple()
 
     def _on_stop(self, event: ops.StopEvent) -> None:
@@ -659,6 +671,21 @@ class PolkadotCharm(ops.CharmBase):
         Mirrors the behaviour implemented in the reth charm.
         """
         collect_upload_metadata(self)
+
+    def _publish_machine_observability(self) -> None:
+        """Publish observability metadata for attached subordinates."""
+
+        try:
+            chain_name = ServiceArgs(self.config, self.rpc_urls()).chain_name
+        except Exception:
+            chain_name = "unknown"
+        snap_name = self.config.get("snap-name") or self._stored.snap_name or "polkadot"
+        service_name = f"snap.{snap_name}.{snap_name}.service"
+        payload = build_machine_observability_payload(
+            service_name=service_name,
+            chain_name=chain_name,
+        )
+        self.machine_observability_provider.publish(payload)
 
 if __name__ == "__main__":
     ops.main(PolkadotCharm)
