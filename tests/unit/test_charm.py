@@ -44,6 +44,7 @@ def test_machine_observability_payload_contains_polkadot_unit_and_metrics():
         chain_name="polkadot",
     )
 
+    assert payload["charm_name"] == "polkadot"
     assert payload["systemd_units"] == ["snap.polkadot.polkadot.service"]
     assert payload["metrics_jobs"][0]["static_configs"][0]["targets"] == ["localhost:9615"]
     assert payload["workload_labels"]["chain_name"] == "polkadot"

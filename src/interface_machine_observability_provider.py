@@ -9,6 +9,7 @@ def build_machine_observability_payload(*, service_name: str, chain_name: str) -
     """Build the principal observability payload consumed by alloy-sub."""
 
     return {
+        "charm_name": "polkadot",
         "systemd_units": [service_name],
         "journal_match_expressions": [],
         "metrics_jobs": [
