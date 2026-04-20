@@ -14,11 +14,12 @@ import json
 
 import ops
 
-from interface_prometheus import PrometheusProvider
-from interface_machine_observability_provider import (
+from charms.dwellir_observability.v0.machine_observability import (
+    MachineObservabilityPayload,
     MachineObservabilityProvider,
     build_machine_observability_payload,
 )
+from interface_prometheus import PrometheusProvider
 from interface_rpc_url_provider import RpcUrlProvider
 from interface_rpc_url_requirer import RpcUrlRequirer
 from migrators import node_key_migrator
@@ -48,6 +49,7 @@ class PolkadotCharm(ops.CharmBase):
         self.machine_observability_provider = MachineObservabilityProvider(
             self,
             "machine-observability",
+            payload_factory=self._build_machine_observability_payload,
         )
 
         self.cos_agent_provider = COSAgentProvider(
@@ -674,16 +676,21 @@ class PolkadotCharm(ops.CharmBase):
 
     def _publish_machine_observability(self) -> None:
         """Publish observability metadata for attached subordinates."""
+        payload = self._build_machine_observability_payload()
+        self.machine_observability_provider.publish(payload)
+
+    def _build_machine_observability_payload(self) -> MachineObservabilityPayload:
+        """Build observability metadata for publication to attached subordinates."""
+
         snap_name = self.config.get("snap-name") or self._stored.snap_name
         if snap_name:
             service_name = f"snap.{snap_name}.{snap_name}.service"
         else:
             service_name = "polkadot.service"
-        payload = build_machine_observability_payload(
+        return build_machine_observability_payload(
             service_name=service_name,
             charm_name=self.meta.name,
         )
-        self.machine_observability_provider.publish(payload)
 
 if __name__ == "__main__":
     ops.main(PolkadotCharm)

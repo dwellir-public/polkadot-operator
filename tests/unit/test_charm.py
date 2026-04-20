@@ -11,8 +11,11 @@ substrateinterface.Keypair = object
 sys.modules.setdefault("substrateinterface", substrateinterface)
 
 from charm import PolkadotCharm
-from interface_machine_observability_provider import build_machine_observability_payload
-from machine_observability import MACHINE_OBSERVABILITY_SCHEMA_VERSION, MachineObservabilityPayload
+from charms.dwellir_observability.v0.machine_observability import (
+    MACHINE_OBSERVABILITY_SCHEMA_VERSION,
+    MachineObservabilityPayload,
+    build_machine_observability_payload,
+)
 
 
 def test_has_valid_client_config_allows_single_source():
@@ -99,6 +102,9 @@ def test_publish_machine_observability_uses_charm_metadata_and_runtime_service_n
             publish=lambda payload: published.update(payload)
         ),
     )
+    charm._build_machine_observability_payload = (
+        lambda: PolkadotCharm._build_machine_observability_payload(charm)
+    )
 
     PolkadotCharm._publish_machine_observability(charm)
 
@@ -119,7 +125,23 @@ def test_publish_machine_observability_uses_snap_service_name_when_snap_configur
             publish=lambda payload: published.update(payload)
         ),
     )
+    charm._build_machine_observability_payload = (
+        lambda: PolkadotCharm._build_machine_observability_payload(charm)
+    )
 
     PolkadotCharm._publish_machine_observability(charm)
 
     assert published["systemd_units"] == ["snap.polkadot.polkadot.service"]
+
+
+def test_build_machine_observability_payload_uses_snap_service_name_when_configured():
+    charm = SimpleNamespace(
+        config={"snap-name": "polkadot"},
+        _stored=SimpleNamespace(snap_name=None),
+        meta=SimpleNamespace(name="polkadot"),
+    )
+
+    payload = PolkadotCharm._build_machine_observability_payload(charm)
+
+    assert payload.charm_name == "polkadot"
+    assert payload.systemd_units == ["snap.polkadot.polkadot.service"]
