@@ -5,28 +5,25 @@ import json
 from ops.framework import Object
 
 
-def build_machine_observability_payload(*, service_name: str, chain_name: str) -> dict:
-    """Build the principal observability payload consumed by alloy-sub."""
+def build_machine_observability_payload(*, service_name: str, charm_name: str) -> dict:
+    """Build the source-only observability payload consumed by alloy-sub."""
 
     return {
-        "charm_name": "polkadot",
+        "schema_version": 1,
+        "charm_name": charm_name,
         "systemd_units": [service_name],
         "journal_match_expressions": [],
-        "metrics_jobs": [
+        "metrics_endpoints": [
             {
-                "job_name": "polkadot",
-                "metrics_path": "/metrics",
-                "static_configs": [{"targets": ["localhost:9615"]}],
+                "targets": ["localhost:9615"],
+                "path": "/metrics",
+                "scheme": "http",
+                "interval": "",
+                "timeout": "",
+                "tls": {},
             }
         ],
-        "log_files_include": [],
-        "log_files_exclude": [],
-        "log_attributes": {},
-        "workload_labels": {
-            "chain_name": chain_name,
-            "chain_family": "substrate",
-            "client_name": "polkadot",
-        },
+        "log_files": [],
     }
 
 

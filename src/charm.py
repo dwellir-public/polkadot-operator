@@ -674,16 +674,11 @@ class PolkadotCharm(ops.CharmBase):
 
     def _publish_machine_observability(self) -> None:
         """Publish observability metadata for attached subordinates."""
-
-        try:
-            chain_name = ServiceArgs(self.config, self.rpc_urls()).chain_name
-        except Exception:
-            chain_name = "unknown"
         snap_name = self.config.get("snap-name") or self._stored.snap_name or "polkadot"
         service_name = f"snap.{snap_name}.{snap_name}.service"
         payload = build_machine_observability_payload(
             service_name=service_name,
-            chain_name=chain_name,
+            charm_name="polkadot",
         )
         self.machine_observability_provider.publish(payload)
 

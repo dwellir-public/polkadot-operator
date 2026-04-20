@@ -38,13 +38,24 @@ def test_has_valid_client_config_rejects_multiple_sources():
     assert PolkadotCharm._has_valid_client_config(charm) is False
 
 
-def test_machine_observability_payload_contains_polkadot_unit_and_metrics():
+def test_machine_observability_payload_contains_generic_sources():
     payload = build_machine_observability_payload(
         service_name="snap.polkadot.polkadot.service",
-        chain_name="polkadot",
+        charm_name="polkadot",
     )
 
+    assert payload["schema_version"] == 1
     assert payload["charm_name"] == "polkadot"
     assert payload["systemd_units"] == ["snap.polkadot.polkadot.service"]
-    assert payload["metrics_jobs"][0]["static_configs"][0]["targets"] == ["localhost:9615"]
-    assert payload["workload_labels"]["chain_name"] == "polkadot"
+    assert payload["journal_match_expressions"] == []
+    assert payload["metrics_endpoints"] == [
+        {
+            "targets": ["localhost:9615"],
+            "path": "/metrics",
+            "scheme": "http",
+            "interval": "",
+            "timeout": "",
+            "tls": {},
+        }
+    ]
+    assert payload["log_files"] == []
