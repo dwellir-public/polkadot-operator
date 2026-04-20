@@ -59,3 +59,42 @@ def test_machine_observability_payload_contains_generic_sources():
         }
     ]
     assert payload["log_files"] == []
+
+
+def test_publish_machine_observability_uses_charm_metadata_and_runtime_service_name():
+    published = {}
+
+    charm = SimpleNamespace(
+        config={
+            "snap-name": "",
+        },
+        _stored=SimpleNamespace(snap_name=None),
+        meta=SimpleNamespace(name="polkadot"),
+        machine_observability_provider=SimpleNamespace(
+            publish=lambda payload: published.update(payload)
+        ),
+    )
+
+    PolkadotCharm._publish_machine_observability(charm)
+
+    assert published["charm_name"] == "polkadot"
+    assert published["systemd_units"] == ["polkadot.service"]
+
+
+def test_publish_machine_observability_uses_snap_service_name_when_snap_configured():
+    published = {}
+
+    charm = SimpleNamespace(
+        config={
+            "snap-name": "polkadot",
+        },
+        _stored=SimpleNamespace(snap_name=None),
+        meta=SimpleNamespace(name="polkadot"),
+        machine_observability_provider=SimpleNamespace(
+            publish=lambda payload: published.update(payload)
+        ),
+    )
+
+    PolkadotCharm._publish_machine_observability(charm)
+
+    assert published["systemd_units"] == ["snap.polkadot.polkadot.service"]

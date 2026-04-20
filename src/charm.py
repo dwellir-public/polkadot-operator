@@ -674,11 +674,14 @@ class PolkadotCharm(ops.CharmBase):
 
     def _publish_machine_observability(self) -> None:
         """Publish observability metadata for attached subordinates."""
-        snap_name = self.config.get("snap-name") or self._stored.snap_name or "polkadot"
-        service_name = f"snap.{snap_name}.{snap_name}.service"
+        snap_name = self.config.get("snap-name") or self._stored.snap_name
+        if snap_name:
+            service_name = f"snap.{snap_name}.{snap_name}.service"
+        else:
+            service_name = "polkadot.service"
         payload = build_machine_observability_payload(
             service_name=service_name,
-            charm_name="polkadot",
+            charm_name=self.meta.name,
         )
         self.machine_observability_provider.publish(payload)
 
