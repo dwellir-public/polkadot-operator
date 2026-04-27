@@ -11,6 +11,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 class RpcUrlProvider(Object):
     """
     RPC URL provider interface.
@@ -30,6 +31,14 @@ class RpcUrlProvider(Object):
         """This event is used to broadcast the rpc url to the parachain clients."""
 
         service_args_obj = ServiceArgs(self._charm.config, "")
+        bind_address = getattr(
+            self.model.get_binding(self._relation_name).network,
+            "bind_address",
+            None,
+        )
+        if not bind_address:
+            event.defer()
+            return
 
         ws_port = service_args_obj.ws_port
         rpc_port = service_args_obj.rpc_port
@@ -47,8 +56,7 @@ class RpcUrlProvider(Object):
             logger.info(f'Using same RPC port ({rpc_port}) for websocket and http due to newer version of Polkadot.')
             ws_port = rpc_port
         
-        ingress_address = event.relation.data.get(self.model.unit)['ingress-address']
         if rpc_port:
-            event.relation.data[self.model.unit]['rpc_url'] = f'http://{ingress_address}:{rpc_port}'
+            event.relation.data[self.model.unit]['rpc_url'] = f'http://{bind_address}:{rpc_port}'
         if ws_port:
-            event.relation.data[self.model.unit]['ws_url'] = f'ws://{ingress_address}:{ws_port}'
+            event.relation.data[self.model.unit]['ws_url'] = f'ws://{bind_address}:{ws_port}'

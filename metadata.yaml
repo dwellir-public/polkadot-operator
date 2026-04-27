@@ -26,6 +26,8 @@ provides:
     interface: prometheus-manual
   polkadot-prometheus:
     interface: prometheus-manual
+  machine-observability:
+    interface: machine_observability
   grafana-agent:
     interface: cos_agent
   rpc-url:
