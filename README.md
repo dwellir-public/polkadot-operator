@@ -133,6 +133,27 @@ The `cos_agent` interface is already supported by this Polkadot operator charm s
 
 Find more details on how to deploy and use COS [here](https://charmhub.io/topics/canonical-observability-stack/tutorials/instrumenting-machine-charms).
 
+#### Machine observability relation
+
+The charm also provides `machine-observability` for machine-local collectors
+such as `alloy-sub` and `alloy-vm`.
+
+The published payload now uses the v2 `machine_observability` schema and
+includes:
+
+- `schema_version: 2`
+- `charm_name: polkadot`
+- `source_topology` with the unit's Juju model, application, unit, and charm
+  identity
+- a metrics endpoint at `localhost:9615`
+- the runtime systemd unit name, for example:
+  - `polkadot.service` for binary deployments
+  - `snap.<snap-name>.<snap-name>.service` for snap deployments
+
+This is backward-compatible with the updated `alloy-sub` consumer, which still
+derives subordinate attachment context from `juju-info` while accepting the v2
+payload.
+
 #### Using an external relaychain node
 
 A parachain node can use an external relaychain node instead of the internal one. It's useful for scaling where multiple parachain nodes can share a relaychain node. It's also useful to get faster in sync since the parachain node does not have to sync a relaychain node by itself. This can be set with the service argument `--relay-chain-rpc-urls`, which takes one or more weboscket URLs to relaychain nodes to use. Setting multiple URLs is for fallback where the parachain node will try accessing the URLs in a round-robin fashion. Instead of setting this manually, the interface `rpc-url` can be used:
@@ -172,3 +193,7 @@ You can verify that this node will be validating next era:
 - [Polkadot node on Charmhub](https://charmhub.io/polkadot)
 - [polkadot-operator repo on GitHub](https://github.com/dwellir-public/polkadot-operator)
 - [Dwellir](https://dwellir.com/)
+
+For a validated local build, deploy, and refresh flow against the model
+`alloy-sub-e2e-20260419`, see
+[docs/build-test-deploy.md](docs/build-test-deploy.md).

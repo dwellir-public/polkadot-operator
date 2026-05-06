@@ -33,10 +33,11 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 2
+LIBPATCH = 3
 
 DEFAULT_RELATION_NAME = "machine-observability"
-MACHINE_OBSERVABILITY_SCHEMA_VERSION = 1
+MACHINE_OBSERVABILITY_SCHEMA_VERSION_V1 = 1
+MACHINE_OBSERVABILITY_SCHEMA_VERSION_V2 = 2
 
 
 class MetricsEndpoint(BaseModel):
@@ -62,15 +63,31 @@ class LogFileSource(BaseModel):
     attributes: dict[str, str] = Field(default_factory=dict)
 
 
+class SourceTopology(BaseModel):
+    """Explicit Juju topology for the workload that owns the declared sources."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    model: str = ""
+    model_uuid: str = ""
+    application: str
+    unit: str
+    charm_name: str = ""
+
+
 class MachineObservabilityPayload(BaseModel):
     """Neutral source declarations from a principal charm."""
 
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: Literal[MACHINE_OBSERVABILITY_SCHEMA_VERSION] = (
-        MACHINE_OBSERVABILITY_SCHEMA_VERSION
+    schema_version: Literal[
+        MACHINE_OBSERVABILITY_SCHEMA_VERSION_V1,
+        MACHINE_OBSERVABILITY_SCHEMA_VERSION_V2,
+    ] = (
+        MACHINE_OBSERVABILITY_SCHEMA_VERSION_V1
     )
     charm_name: str = ""
+    source_topology: SourceTopology | None = None
     metrics_endpoints: list[MetricsEndpoint] = Field(default_factory=list)
     systemd_units: list[str] = Field(default_factory=list)
     journal_match_expressions: list[str] = Field(default_factory=list)
@@ -95,12 +112,21 @@ class MachineObservabilityProviderAppData(BaseModel):
 
 
 def build_machine_observability_payload(
-    *, service_name: str, charm_name: str
+    *,
+    service_name: str,
+    charm_name: str,
+    source_topology: SourceTopology | None = None,
 ) -> MachineObservabilityPayload:
     """Build a typed source-only observability payload for publication."""
 
     return MachineObservabilityPayload(
+        schema_version=(
+            MACHINE_OBSERVABILITY_SCHEMA_VERSION_V2
+            if source_topology is not None
+            else MACHINE_OBSERVABILITY_SCHEMA_VERSION_V1
+        ),
         charm_name=charm_name,
+        source_topology=source_topology,
         systemd_units=[service_name],
         journal_match_expressions=[],
         metrics_endpoints=[

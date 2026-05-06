@@ -17,6 +17,7 @@ import ops
 from charms.dwellir_observability.v0.machine_observability import (
     MachineObservabilityPayload,
     MachineObservabilityProvider,
+    SourceTopology,
     build_machine_observability_payload,
 )
 from interface_prometheus import PrometheusProvider
@@ -689,6 +690,17 @@ class PolkadotCharm(ops.CharmBase):
             service_name = "polkadot.service"
         return build_machine_observability_payload(
             service_name=service_name,
+            charm_name=self.meta.name,
+            source_topology=self._source_topology(),
+        )
+
+    def _source_topology(self) -> SourceTopology:
+        """Build explicit Juju topology for the published workload sources."""
+        return SourceTopology(
+            model=self.model.name or "",
+            model_uuid=self.model.uuid or "",
+            application=self.app.name,
+            unit=self.unit.name,
             charm_name=self.meta.name,
         )
 

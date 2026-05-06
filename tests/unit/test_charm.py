@@ -12,8 +12,10 @@ sys.modules.setdefault("substrateinterface", substrateinterface)
 
 from charm import PolkadotCharm
 from charms.dwellir_observability.v0.machine_observability import (
-    MACHINE_OBSERVABILITY_SCHEMA_VERSION,
+    MACHINE_OBSERVABILITY_SCHEMA_VERSION_V1,
+    MACHINE_OBSERVABILITY_SCHEMA_VERSION_V2,
     MachineObservabilityPayload,
+    SourceTopology,
     build_machine_observability_payload,
 )
 
@@ -49,7 +51,7 @@ def test_machine_observability_payload_contains_generic_sources():
     )
 
     assert isinstance(payload, MachineObservabilityPayload)
-    assert payload.schema_version == MACHINE_OBSERVABILITY_SCHEMA_VERSION
+    assert payload.schema_version == MACHINE_OBSERVABILITY_SCHEMA_VERSION_V1
     assert payload.charm_name == "polkadot"
     assert payload.systemd_units == ["snap.polkadot.polkadot.service"]
     assert payload.journal_match_expressions == []
@@ -73,6 +75,46 @@ def test_machine_observability_payload_serializes_to_relation_shape():
     assert payload.model_dump(mode="json") == {
         "schema_version": 1,
         "charm_name": "polkadot",
+        "source_topology": None,
+        "systemd_units": ["snap.polkadot.polkadot.service"],
+        "journal_match_expressions": [],
+        "metrics_endpoints": [
+            {
+                "targets": ["localhost:9615"],
+                "path": "/metrics",
+                "scheme": "http",
+                "interval": "",
+                "timeout": "",
+                "tls": {},
+            }
+        ],
+        "log_files": [],
+    }
+
+
+def test_machine_observability_payload_serializes_to_v2_relation_shape():
+    payload = build_machine_observability_payload(
+        service_name="snap.polkadot.polkadot.service",
+        charm_name="polkadot",
+        source_topology=SourceTopology(
+            model="alloy-sub-e2e-20260419",
+            model_uuid="uuid-1",
+            application="polkadot",
+            unit="polkadot/0",
+            charm_name="polkadot",
+        ),
+    )
+
+    assert payload.model_dump(mode="json") == {
+        "schema_version": MACHINE_OBSERVABILITY_SCHEMA_VERSION_V2,
+        "charm_name": "polkadot",
+        "source_topology": {
+            "model": "alloy-sub-e2e-20260419",
+            "model_uuid": "uuid-1",
+            "application": "polkadot",
+            "unit": "polkadot/0",
+            "charm_name": "polkadot",
+        },
         "systemd_units": ["snap.polkadot.polkadot.service"],
         "journal_match_expressions": [],
         "metrics_endpoints": [
@@ -98,10 +140,14 @@ def test_publish_machine_observability_uses_charm_metadata_and_runtime_service_n
         },
         _stored=SimpleNamespace(snap_name=None),
         meta=SimpleNamespace(name="polkadot"),
+        app=SimpleNamespace(name="polkadot"),
+        unit=SimpleNamespace(name="polkadot/0"),
+        model=SimpleNamespace(name="alloy-sub-e2e-20260419", uuid="uuid-1"),
         machine_observability_provider=SimpleNamespace(
             publish=lambda payload: published.update(payload)
         ),
     )
+    charm._source_topology = lambda: PolkadotCharm._source_topology(charm)
     charm._build_machine_observability_payload = (
         lambda: PolkadotCharm._build_machine_observability_payload(charm)
     )
@@ -109,6 +155,7 @@ def test_publish_machine_observability_uses_charm_metadata_and_runtime_service_n
     PolkadotCharm._publish_machine_observability(charm)
 
     assert published["charm_name"] == "polkadot"
+    assert published["source_topology"].application == "polkadot"
     assert published["systemd_units"] == ["polkadot.service"]
 
 
@@ -121,10 +168,14 @@ def test_publish_machine_observability_uses_snap_service_name_when_snap_configur
         },
         _stored=SimpleNamespace(snap_name=None),
         meta=SimpleNamespace(name="polkadot"),
+        app=SimpleNamespace(name="polkadot"),
+        unit=SimpleNamespace(name="polkadot/0"),
+        model=SimpleNamespace(name="alloy-sub-e2e-20260419", uuid="uuid-1"),
         machine_observability_provider=SimpleNamespace(
             publish=lambda payload: published.update(payload)
         ),
     )
+    charm._source_topology = lambda: PolkadotCharm._source_topology(charm)
     charm._build_machine_observability_payload = (
         lambda: PolkadotCharm._build_machine_observability_payload(charm)
     )
@@ -139,9 +190,17 @@ def test_build_machine_observability_payload_uses_snap_service_name_when_configu
         config={"snap-name": "polkadot"},
         _stored=SimpleNamespace(snap_name=None),
         meta=SimpleNamespace(name="polkadot"),
+        app=SimpleNamespace(name="polkadot"),
+        unit=SimpleNamespace(name="polkadot/0"),
+        model=SimpleNamespace(name="alloy-sub-e2e-20260419", uuid="uuid-1"),
     )
+    charm._source_topology = lambda: PolkadotCharm._source_topology(charm)
 
     payload = PolkadotCharm._build_machine_observability_payload(charm)
 
     assert payload.charm_name == "polkadot"
+    assert payload.schema_version == MACHINE_OBSERVABILITY_SCHEMA_VERSION_V2
+    assert payload.source_topology is not None
+    assert payload.source_topology.application == "polkadot"
+    assert payload.source_topology.unit == "polkadot/0"
     assert payload.systemd_units == ["snap.polkadot.polkadot.service"]
