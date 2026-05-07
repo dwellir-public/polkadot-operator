@@ -33,7 +33,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 3
+LIBPATCH = 4
 
 DEFAULT_RELATION_NAME = "machine-observability"
 MACHINE_OBSERVABILITY_SCHEMA_VERSION_V1 = 1
@@ -171,7 +171,10 @@ class MachineObservabilityProvider(Object):
         self._charm = charm
         self._relation_name = relation_name
         self._payload_factory = payload_factory
-        self._refresh_events = refresh_events or []
+        self._refresh_events = refresh_events or [
+            self._charm.on.config_changed,
+            self._charm.on.upgrade_charm,
+        ]
 
         events = self._charm.on[relation_name]
         self.framework.observe(events.relation_joined, self._on_refresh)
