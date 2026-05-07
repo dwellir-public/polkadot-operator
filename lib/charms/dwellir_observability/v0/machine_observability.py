@@ -25,14 +25,8 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 logger = logging.getLogger(__name__)
 
-# The unique Charmhub library identifier, never change it
 LIBID = "0b7d5c45f19b4b4b9876db265b31af48"
-
-# Increment this major API version when introducing breaking changes
 LIBAPI = 0
-
-# Increment this PATCH version before using `charmcraft publish-lib` or reset
-# to 0 if you are raising the major API version
 LIBPATCH = 4
 
 DEFAULT_RELATION_NAME = "machine-observability"
@@ -290,6 +284,10 @@ class MachineObservabilityConsumer(Object):
         try:
             return load_machine_observability_payload(relation)
         except (ValidationError, json.JSONDecodeError) as exc:
-            logger.warning("Invalid machine-observability payload on relation %s: %s", relation.id, exc)
+            logger.warning(
+                "Invalid machine-observability payload on relation %s: %s",
+                relation.id,
+                exc,
+            )
             self.on.validation_error.emit(message=str(exc))  # pyright: ignore
             return None
