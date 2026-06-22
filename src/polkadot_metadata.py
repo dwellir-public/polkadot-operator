@@ -7,26 +7,25 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 from typing import Any
-from polkadot_rpc_wrapper import PolkadotRpcWrapper
-from core.service_args import ServiceArgs
 
 import ops
 from charms.dwellir.blockchain_common.v1 import (
-    SubstrateBlockchainMetadata,
     MetadataUploadError,
     MetadataValidationError,
+    SubstrateBlockchainMetadata,
     collect_and_upload,
     parse_credentials_secret_id,
 )
-from charms.dwellir.blockchain_common.v1 import jsonrpc as rpcrequest
-from charms.dwellir.blockchain_common.v1.evm_chains import registry as evm_registry
+
+from core.service_args import ServiceArgs
+from polkadot_rpc_wrapper import PolkadotRpcWrapper
 
 logger = logging.getLogger(__name__)
 
 
 def collect_upload_metadata(charm: Any) -> None:
     """Build metadata payloads and optionally upload them to S3."""
-    logger.info("collectUploadMetadata invoked")
+    logger.info("collect_upload_metadata invoked")
     credentials_secret_id = charm.model.config.get("collector-s3-credentials")
     creds = None
     if credentials_secret_id:
@@ -67,16 +66,14 @@ def collect_upload_metadata(charm: Any) -> None:
         client_version=binver,
         cmdline=charm._workload.get_proc_cmdline() or "",
         binary_path=binary_path_value,
-        genesis_hash=genesis_hash
+        genesis_hash=genesis_hash,
     )
 
     try:
         upload_base = Path("/tmp/dwellir-metadata-uploader")
         no_upload = creds is None
         logger.info(
-            "invoking collect_and_upload with credentials=%s, model=%s, "
-            "app=%s, unit=%s, meta=%s, base_dir=%s, blockchain=%s, "
-            "no_upload=%s",
+            "invoking collect_and_upload with credentials=%s, model=%s, app=%s, unit=%s, meta=%s, base_dir=%s, blockchain=%s, no_upload=%s",
             creds,
             charm.model,
             charm.app,

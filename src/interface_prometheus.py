@@ -26,13 +26,9 @@ class PrometheusProvider(Object):
         self._path = path
         self._port = str(port)
         self._job_data = job_data
-        self._request_id = hashlib.sha1(
-            f"{self.model.uuid}:{relation_name}:{self.model.unit.name}".encode()
-        ).hexdigest()[:8]
+        self._request_id = hashlib.sha1(f"{self.model.uuid}:{relation_name}:{self.model.unit.name}".encode()).hexdigest()[:8]
 
-        self.framework.observe(
-            charm.on[relation_name].relation_joined, self._on_relation_joined
-        )
+        self.framework.observe(charm.on[relation_name].relation_joined, self._on_relation_joined)
 
     def _on_relation_joined(self, event):
         """Publish the manual scrape job when related."""

@@ -19,7 +19,7 @@ Though this charm is published on Charmhub there is also the alternative to buil
 
 ## System requirements
 
-*Disclaimer: the system requriements to run a node in the Polkadot ecosystem varies, both depending on which chain is being run and which type of node it is. The example below should therefore be vetted against updated and reliable resources depending on your deployment specifications.*
+*Disclaimer: the system requirements to run a node in the Polkadot ecosystem varies, both depending on which chain is being run and which type of node it is. The example below should therefore be vetted against updated and reliable resources depending on your deployment specifications.*
 
 This list of reference hardware is from [the official Polkadot docs](https://wiki.polkadot.network/docs/maintain-guides-how-to-validate-polkadot) and is an example of good practice for a validator node:
 
@@ -73,19 +73,19 @@ There are a number of different node types in the Polkadot ecosystem, all which 
 
     juju deploy polkadot --config binary-url=... --config service-args="--validator --chain=... --rpc-port=..."
 
-Once a validator has been deployed, use the Juju action `get-session-key` to generate and return a new session key, which then can be used as a paramater in the extrinsic call on [polkadot.js](https://polkadot.js.org/).
+Once a validator has been deployed, use the Juju action `get-session-key` to generate and return a new session key, which then can be used as a parameter in the extrinsic call on [polkadot.js](https://polkadot.js.org/).
 
 #### Deploying a collator
 
     juju deploy polkadot --config binary-url=... --config service-args="--collator --chain=... --rpc-port=..."
 
-Running a collator also requries setting a node key, which can be done by running the Juju action `set-node-key`. The node key itself can be generated using the [subkey tool](https://github.com/paritytech/substrate/tree/master/bin/utils/subkey).
+Running a collator also requires setting a node key, which can be done by running the Juju action `set-node-key`. The node key itself can be generated using the [subkey tool](https://github.com/paritytech/substrate/tree/master/bin/utils/subkey).
 
 #### Deploying a bootnode
 
     juju deploy polkadot --config binary-url=... --config service-args="--chain=... --rpc-port=... --listen-addr=/ip4/0.0.0.0/tcp/<port> --listen-addr=/ip4/0.0.0.0/tcp/<port>/ws"
 
-Running a bootnode also requries setting a node key, which can be done by running the Juju action `set-node-key`. The node key itself can be generated using the [subkey tool](https://github.com/paritytech/substrate/tree/master/bin/utils/subkey).
+Running a bootnode also requires setting a node key, which can be done by running the Juju action `set-node-key`. The node key itself can be generated using the [subkey tool](https://github.com/paritytech/substrate/tree/master/bin/utils/subkey).
 
 #### Deploying an RPC node
 

@@ -10,14 +10,15 @@ substrateinterface.SubstrateInterface = object
 substrateinterface.Keypair = object
 sys.modules.setdefault("substrateinterface", substrateinterface)
 
-from charm import PolkadotCharm
-from charms.dwellir_observability.v0.machine_observability import (
+from charms.dwellir_observability.v0.machine_observability import (  # noqa: E402
     MACHINE_OBSERVABILITY_SCHEMA_VERSION_V1,
     MACHINE_OBSERVABILITY_SCHEMA_VERSION_V2,
     MachineObservabilityPayload,
     SourceTopology,
     build_machine_observability_payload,
 )
+
+from charm import PolkadotCharm  # noqa: E402
 
 
 def test_has_valid_client_config_allows_single_source():
@@ -143,14 +144,10 @@ def test_publish_machine_observability_uses_charm_metadata_and_runtime_service_n
         app=SimpleNamespace(name="polkadot"),
         unit=SimpleNamespace(name="polkadot/0"),
         model=SimpleNamespace(name="alloy-sub-e2e-20260419", uuid="uuid-1"),
-        machine_observability_provider=SimpleNamespace(
-            publish=lambda payload: published.update(payload)
-        ),
+        machine_observability_provider=SimpleNamespace(publish=lambda payload: published.update(payload)),
     )
     charm._source_topology = lambda: PolkadotCharm._source_topology(charm)
-    charm._build_machine_observability_payload = (
-        lambda: PolkadotCharm._build_machine_observability_payload(charm)
-    )
+    charm._build_machine_observability_payload = lambda: PolkadotCharm._build_machine_observability_payload(charm)
 
     PolkadotCharm._publish_machine_observability(charm)
 
@@ -171,14 +168,10 @@ def test_publish_machine_observability_uses_snap_service_name_when_snap_configur
         app=SimpleNamespace(name="polkadot"),
         unit=SimpleNamespace(name="polkadot/0"),
         model=SimpleNamespace(name="alloy-sub-e2e-20260419", uuid="uuid-1"),
-        machine_observability_provider=SimpleNamespace(
-            publish=lambda payload: published.update(payload)
-        ),
+        machine_observability_provider=SimpleNamespace(publish=lambda payload: published.update(payload)),
     )
     charm._source_topology = lambda: PolkadotCharm._source_topology(charm)
-    charm._build_machine_observability_payload = (
-        lambda: PolkadotCharm._build_machine_observability_payload(charm)
-    )
+    charm._build_machine_observability_payload = lambda: PolkadotCharm._build_machine_observability_payload(charm)
 
     PolkadotCharm._publish_machine_observability(charm)
 

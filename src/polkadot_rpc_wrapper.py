@@ -1,18 +1,20 @@
 #!/usr/bin/env python3
 
-import requests
 import json
 import re
 from typing import Tuple
-from substrateinterface import SubstrateInterface, Keypair
+
+import requests
+from substrateinterface import Keypair, SubstrateInterface
+
 from core.utils import general_util
 
-class PolkadotRpcWrapper():
 
+class PolkadotRpcWrapper:
     def __init__(self, port):
-        self.__server_address = f'http://localhost:{port}'
-        self.__server_address_ws = f'ws://localhost:{port}'
-        self.__headers = {'Content-Type': 'application/json'}
+        self.__server_address = f"http://localhost:{port}"
+        self.__server_address_ws = f"ws://localhost:{port}"
+        self.__headers = {"Content-Type": "application/json"}
 
     def get_session_key(self):
         """
@@ -22,7 +24,7 @@ class PolkadotRpcWrapper():
         data = '{"id":1, "jsonrpc":"2.0", "method": "author_rotateKeys", "params": []}'
         response = requests.post(url=self.__server_address, headers=self.__headers, data=data)
         response_json = json.loads(response.text)
-        return response_json['result']
+        return response_json["result"]
 
     def is_syncing(self) -> str:
         """
@@ -34,7 +36,7 @@ class PolkadotRpcWrapper():
         data = '{"id":1, "jsonrpc":"2.0", "method": "system_health", "params": []}'
         response = requests.post(url=self.__server_address, headers=self.__headers, data=data)
         response_json = json.loads(response.text)
-        return response_json['result']['isSyncing']
+        return response_json["result"]["isSyncing"]
 
     def get_version(self) -> str:
         """
@@ -44,8 +46,8 @@ class PolkadotRpcWrapper():
         data = '{"id":1, "jsonrpc":"2.0", "method": "system_version", "params": []}'
         response = requests.post(url=self.__server_address, headers=self.__headers, data=data, timeout=None)
         response_json = json.loads(response.text)
-        result = response_json['result']
-        version_number = re.search(r'([\d.]+)', result).group(1)
+        result = response_json["result"]
+        version_number = re.search(r"([\d.]+)", result).group(1)
         return version_number
 
     def get_block_height(self) -> int:
@@ -56,7 +58,7 @@ class PolkadotRpcWrapper():
         data = '{"id": 1, "jsonrpc": "2.0", "method": "chain_getHeader", "params": []}'
         response = requests.post(url=self.__server_address, headers=self.__headers, data=data, timeout=None)
         response_json = json.loads(response.text)
-        block_height = int(response_json['result']['number'], 16)
+        block_height = int(response_json["result"]["number"], 16)
         return block_height
 
     def get_genesis_hash(self) -> str:
@@ -67,7 +69,7 @@ class PolkadotRpcWrapper():
         data = '{"jsonrpc": "2.0", "id": 1, "method": "chain_getBlockHash", "params": [0]}'
         response = requests.post(url=self.__server_address, headers=self.__headers, data=data, timeout=None)
         response_json = json.loads(response.text)
-        return response_json['result']
+        return response_json["result"]
 
     def get_system_peers(self) -> Tuple[list, bool]:
         """
@@ -80,9 +82,9 @@ class PolkadotRpcWrapper():
         data = '{"id": 1, "jsonrpc": "2.0", "method": "system_peers", "params": []}'
         response = requests.post(url=self.__server_address, headers=self.__headers, data=data, timeout=None)
         response_json = json.loads(response.text)
-        if 'error' in response_json.keys():
-            return [response_json['error']['message']], False
-        peer_list = response_json['result']
+        if "error" in response_json.keys():
+            return [response_json["error"]["message"]], False
+        peer_list = response_json["result"]
         return peer_list, True
 
     def get_chain_name(self) -> str:
@@ -93,7 +95,7 @@ class PolkadotRpcWrapper():
         data = '{"id":1, "jsonrpc":"2.0", "method": "system_chain", "params": []}'
         response = requests.post(url=self.__server_address, headers=self.__headers, data=data)
         response_json = json.loads(response.text)
-        return response_json['result']
+        return response_json["result"]
 
     def has_session_key(self, session_key):
         """
@@ -104,7 +106,7 @@ class PolkadotRpcWrapper():
         data = '{"id": 1, "jsonrpc":"2.0", "method": "author_hasSessionKeys", "params":["' + session_key + '"]}'
         response = requests.post(url=self.__server_address, headers=self.__headers, data=data)
         response_json = json.loads(response.text)
-        result = response_json['result']
+        result = response_json["result"]
         return result
 
     def insert_key(self, mnemonic, address):
@@ -127,7 +129,7 @@ class PolkadotRpcWrapper():
         result = substrate.query("Session", "QueuedKeys").value_serialized
         for validator in result:
             keys = validator[1]
-            session_key = '0x'
+            session_key = "0x"
             for k in keys.values():
                 # Some chains uses multiple keys. Before checking if it exist on the node they need to be concatenated removing preceding '0x'.
                 session_key += k[2:]
@@ -145,7 +147,7 @@ class PolkadotRpcWrapper():
         substrate = SubstrateInterface(url=self.__server_address)
         result = substrate.query("Session", "NextKeys", [address]).value_serialized
         if result:
-            session_key = '0x'
+            session_key = "0x"
             for k in result.values():
                 session_key += k[2:]
             if self.has_session_key(session_key):
@@ -174,10 +176,12 @@ class PolkadotRpcWrapper():
         keypair = Keypair.create_from_mnemonic(mnemonic)
         # Set the new session key on-chain for the validator/collator
         call = substrate.compose_call(
-            'Session', 'set_keys', {
-                'keys': keys,
-                'proof': '0x00',
-            }
+            "Session",
+            "set_keys",
+            {
+                "keys": keys,
+                "proof": "0x00",
+            },
         )
         # If using proxy account, wrap the set_keys call in a proxy call
         if address and proxy_type:
@@ -188,14 +192,14 @@ class PolkadotRpcWrapper():
                     "real": address,
                     "force_proxy_type": proxy_type,
                     "call": call,
-                }
+                },
             )
         else:
             final_call = call
 
         # A work around to deal with this issue: https://github.com/JAMdotTech/py-polkadot-sdk/issues/412
         if "kilt" in self.get_chain_name().lower():
-            substrate.runtime_config.update_type_registry_types({'Index': 'U64'})
+            substrate.runtime_config.update_type_registry_types({"Index": "U64"})
 
         extrinsic = substrate.create_signed_extrinsic(call=final_call, keypair=keypair)
 

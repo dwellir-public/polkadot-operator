@@ -1,0 +1,62 @@
+[project]
+name = "polkadot-operator"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = [
+    "ops==2.9",
+    "boto3==1.37.38",
+    "charms-dwellir-blockchain-common==0.0.2",
+    "requests",
+    "pydantic",
+    "cosl",
+    "substrate-interface==1.8.1",
+]
+
+[dependency-groups]
+dev = [
+    "tox>=4.0.0",
+    "tox-uv>=1.29.0",
+]
+lint = [
+    "codespell",
+    "pyright",
+    "ruff",
+]
+unit = [
+    "coverage[toml]",
+    "pytest",
+]
+integration = [
+    "juju",
+    "pytest",
+    "pytest-operator",
+    "pyyaml",
+]
+
+# Testing tools configuration
+[tool.coverage.run]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+log_cli_level = "INFO"
+norecursedirs = ["parts"]
+
+# Linting tools configuration
+[tool.ruff]
+line-length = 200
+lint.select = ["E", "W", "F", "C", "N", "I001"]
+lint.ignore = ["E501"]
+extend-exclude = ["__pycache__", "*.egg_info"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.codespell]
+skip = "build,lib,venv,icon.svg,.tox,.git,.mypy_cache,.ruff_cache,.coverage"
+
+[tool.pyright]
+include = ["src", "tests"]

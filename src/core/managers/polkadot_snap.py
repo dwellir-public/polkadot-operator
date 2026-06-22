@@ -7,19 +7,23 @@
 This module provides functionality for managing the Polkadot snap package,
 including installation, service management, and configuration.
 """
-import re
+
 import logging
+import re
 import subprocess as sp
 from pathlib import Path
-from typing import Optional
-from core import constants as c
-from core.utils import download_util, general_util
 from subprocess import CalledProcessError
+from typing import Optional
+
 from charms.operator_libs_linux.v2 import snap
+
+from core import constants as c
+from core.exceptions import InstallError, PolkadotError, ServiceError
 from core.managers import WorkloadManager, WorkloadType
-from core.exceptions import PolkadotError, InstallError, ServiceError
+from core.utils import download_util, general_util
 
 logger = logging.getLogger(__name__)
+
 
 class PolkadotSnapManager(WorkloadManager):
     """Manages the Polkadot workload via snap package."""
@@ -30,16 +34,16 @@ class PolkadotSnapManager(WorkloadManager):
 
     def refresh(self, channel: str = None, revision: Optional[str] = None) -> None:
         """Refresh the Polkadot snap to a new channel or revision.
-        
+
         Args:
             channel: The snap channel to refresh to
             revision: Specific revision to install
-            
+
         Raises:
             InstallError: If refresh fails
         """
-        channel = channel or self._channel # change to self._channel if not provided
-        revision = revision or self._revision # change to self._revision if not provided
+        channel = channel or self._channel  # change to self._channel if not provided
+        revision = revision or self._revision  # change to self._revision if not provided
 
         try:
             self._polkadot_snap.ensure(
@@ -55,7 +59,7 @@ class PolkadotSnapManager(WorkloadManager):
         self._snap_name = kwargs.get("snap_name")
         if not self._snap_name:
             raise ValueError(f"No snap-name provided. Please specify one of {list(c.SNAP_CONFIG.keys())}.")
-        if not self._snap_name in c.SNAP_CONFIG:
+        if self._snap_name not in c.SNAP_CONFIG:
             raise ValueError(f"Invalid snap-name provided: {self._snap_name}. Must be one of {list(c.SNAP_CONFIG.keys())}.")
 
         self._channel = kwargs.get("channel") if kwargs.get("channel") else None
@@ -66,8 +70,8 @@ class PolkadotSnapManager(WorkloadManager):
         self._snap_config = c.SNAP_CONFIG[self._snap_name]
         self._data_dir = Path(kwargs.get("data_dir")) if kwargs.get("data_dir") else None
         self._base_path = self._data_dir or self._snap_config.get("base_path")
-        self._chain_db_dir = Path(self._base_path, 'chains')
-        self._relay_db_dir = Path(self._base_path, 'polkadot')
+        self._chain_db_dir = Path(self._base_path, "chains")
+        self._relay_db_dir = Path(self._base_path, "polkadot")
 
         try:
             cache = snap.SnapCache()
@@ -78,7 +82,7 @@ class PolkadotSnapManager(WorkloadManager):
 
     def install(self):
         if self._polkadot_snap.present:
-            sp.run(['snap', 'enable', self._snap_config.get("snap_name")], check=False)
+            sp.run(["snap", "enable", self._snap_config.get("snap_name")], check=False)
         if self._data_dir and not general_util.setup_data_dir(self._base_path, c.SNAP_USER):
             raise InstallError(f"Failed to set up data-dir {self._base_path}")
         self.ensure_and_connect()
@@ -88,15 +92,15 @@ class PolkadotSnapManager(WorkloadManager):
         if self.is_service_installed():
             if self.is_service_running():
                 self.stop_service()
-            sp.run(['snap', 'disable', self._snap_config.get("snap_name")], check=False)
+            sp.run(["snap", "disable", self._snap_config.get("snap_name")], check=False)
 
     def ensure_and_connect(self) -> None:
         """Install or update the Polkadot snap package.
-        
+
         Args:
             channel: The snap channel to install from (e.g., 'latest/stable')
             revision: Specific revision to install
-            
+
         Raises:
             InstallError: If installation fails
         """
@@ -110,9 +114,9 @@ class PolkadotSnapManager(WorkloadManager):
             logger.info(f"{self._snap_config.get('snap_name')} installed successfully")
 
             logger.info(f"Setting connection plugs for {self._snap_config.get('snap_name')}")
-            self._polkadot_snap.connect(plug='hardware-observe', service='polkadot')
-            self._polkadot_snap.connect(plug='system-observe', service='polkadot')
-            self._polkadot_snap.connect(plug='removable-media', service='polkadot')
+            self._polkadot_snap.connect(plug="hardware-observe", service="polkadot")
+            self._polkadot_snap.connect(plug="system-observe", service="polkadot")
+            self._polkadot_snap.connect(plug="removable-media", service="polkadot")
             logger.info(f"Connection plugs set successfully for {self._snap_config.get('snap_name')}")
 
         except Exception as e:
@@ -121,7 +125,7 @@ class PolkadotSnapManager(WorkloadManager):
 
     def start_service(self) -> None:
         """Start the Polkadot service.
-        
+
         Raises:
             ServiceError: If service start fails
         """
@@ -135,7 +139,7 @@ class PolkadotSnapManager(WorkloadManager):
 
     def stop_service(self) -> None:
         """Stop the Polkadot service.
-        
+
         Raises:
             ServiceError: If service stop fails
         """
@@ -149,7 +153,7 @@ class PolkadotSnapManager(WorkloadManager):
 
     def restart_service(self) -> None:
         """Restart the Polkadot service.
-        
+
         Raises:
             ServiceError: If service restart fails
         """
@@ -160,10 +164,10 @@ class PolkadotSnapManager(WorkloadManager):
         except Exception as e:
             logger.error(f"Failed to restart service: {e}")
             raise ServiceError(f"Service restart failed: {e}")
-    
+
     def is_service_running(self, iterations=1) -> bool:
         """Check if the Polkadot service is running.
-        
+
         Returns:
             True if running, False otherwise
         """
@@ -171,7 +175,7 @@ class PolkadotSnapManager(WorkloadManager):
             return self._polkadot_snap.services[self._snap_config.get("service_name")]["active"]
         except KeyError:
             return False
-        
+
     def upgrade_service(self):
         is_running = False
         if self.is_service_installed() and self.is_service_running():
@@ -183,10 +187,10 @@ class PolkadotSnapManager(WorkloadManager):
 
     def get_service_args(self) -> str:
         """Get the snap service arguments.
-        
+
         Returns:
             Current service arguments as a string
-            
+
         Raises:
             ServiceError: If getting service args fails
         """
@@ -198,16 +202,16 @@ class PolkadotSnapManager(WorkloadManager):
 
     def set_service_args(self, value: str) -> None:
         """Set the snap service arguments.
-        
+
         Args:
             value: Service arguments string
-            
+
         Raises:
             ServiceError: If setting service args fails
         """
         try:
             logger.info(f"Setting service args to: {value}")
-            if not "--base-path" in value:
+            if "--base-path" not in value:
                 value = f"--base-path {self._base_path} {value}"
             self._polkadot_snap.set({"service-args": value})
             logger.info("Service args set successfully")
@@ -243,23 +247,23 @@ class PolkadotSnapManager(WorkloadManager):
 
     def get_binary_version(self) -> str:
         """Get the current installed version of Polkadot.
-        
+
         Returns:
             Version string if available, empty string if not installed,
             or 'unknown' if version check fails
         """
         if not self._polkadot_snap.present:
             return ""
-        
+
         try:
             command = ["snap", "run", self._snap_config.get("cli_command"), "--version"]
-            output = sp.run(command, stdout=sp.PIPE, check=False).stdout.decode('utf-8').strip()
-            version = re.search(r'([\d.]+)', output).group(1)
+            output = sp.run(command, stdout=sp.PIPE, check=False).stdout.decode("utf-8").strip()
+            version = re.search(r"([\d.]+)", output).group(1)
             return version
         except CalledProcessError as e:
             logger.error(f"Failed to get version: {e}")
             return "unknown"
-    
+
     def get_service_version(self) -> str:
         return self.get_binary_version()
 
@@ -274,7 +278,7 @@ class PolkadotSnapManager(WorkloadManager):
 
     def is_service_started(self, iterations: int) -> bool:
         return self.is_service_running(iterations)
-    
+
     def get_chain_disk_usage(self) -> str:
         return general_util.get_disk_usage(self._chain_db_dir)
 
@@ -283,34 +287,34 @@ class PolkadotSnapManager(WorkloadManager):
 
     def is_service_installed(self) -> bool:
         return self._polkadot_snap.present
-    
+
     def service_args_differ_from_disk(self, argument_string):
         current_args = self.get_service_args()
-        if not '--base-path' in argument_string:
+        if "--base-path" not in argument_string:
             argument_string = f"--base-path {self._base_path} {argument_string}"
         return current_args != argument_string
 
     def generate_node_key(self) -> str:
         if self.is_service_installed():
             node_key_file = self._snap_config.get("node_key_file").as_posix()
-            command = [self._snap_config.get("cli_command"), 'key', 'generate-node-key', '--file', node_key_file]
+            command = [self._snap_config.get("cli_command"), "key", "generate-node-key", "--file", node_key_file]
 
             # This is to make it work on Enjin relay deployments
             logger.debug("Getting binary version from client binary to check if it is Enjin.")
             get_version_command = [self._snap_config.get("cli_command"), "--version"]
-            output = sp.run(get_version_command, stdout=sp.PIPE, check=False).stdout.decode('utf-8').strip().lower()
+            output = sp.run(get_version_command, stdout=sp.PIPE, check=False).stdout.decode("utf-8").strip().lower()
             if "enjin" in output:
-                command += ['--chain', 'enjin']
+                command += ["--chain", "enjin"]
 
             sp.run(command, check=False)
-            sp.run(['chown', f'{c.SNAP_USER}:{c.SNAP_USER}', node_key_file], check=False)
-            sp.run(['chmod', '0600', node_key_file], check=False)
+            sp.run(["chown", f"{c.SNAP_USER}:{c.SNAP_USER}", node_key_file], check=False)
+            sp.run(["chmod", "0600", node_key_file], check=False)
         else:
             raise ValueError("No binary file found to generate node key. Please check your configuration.")
 
     def get_binary_last_changed(self) -> str:
         return general_util.get_binary_last_changed(self._snap_config.get("snap_binary_path"))
-    
+
     def get_binary_md5sum(self) -> str:
         return general_util.get_binary_md5sum(self._snap_config.get("snap_binary_path"))
 
@@ -324,20 +328,20 @@ class PolkadotSnapManager(WorkloadManager):
         if self._chain_db_dir.exists() and self._relay_db_dir.exists():
             return True
         if self.is_service_installed():
-            command = f'snap run {self._snap_config.get("cli_command")} --help | grep -i "\-\-collator"'
-            output = sp.run(command, stdout=sp.PIPE, cwd='/', shell=True, check=False)
+            command = rf'snap run {self._snap_config.get("cli_command")} --help | grep -i "\-\-collator"'
+            output = sp.run(command, stdout=sp.PIPE, cwd="/", shell=True, check=False)
             if output.returncode == 0:
                 return True
         return False
-    
+
     def write_node_key_file(self, key) -> None:
         node_key_file = self._snap_config.get("node_key_file")
         general_util.write_node_key_file(node_key_file, key, c.SNAP_USER)
 
     def get_relay_for_parachain(self):
         if not self.is_parachain_node():
-            return 'Error, this is not a parachain'
+            return "Error, this is not a parachain"
         return general_util.get_relay_for_parachain(self._relay_db_dir)
-    
+
     def get_binary_path(self) -> str:
         return str(self._snap_config.get("snap_binary_path"))
