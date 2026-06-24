@@ -5,7 +5,7 @@ requires-python = ">=3.10"
 dependencies = [
     "ops==2.9",
     "boto3==1.37.38",
-    "charms-dwellir-blockchain-common==0.0.2",
+    "charms-dwellir-blockchain-common==0.2.3",
     "requests",
     "pydantic",
     "cosl",
