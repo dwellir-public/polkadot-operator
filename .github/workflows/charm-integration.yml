@@ -1,0 +1,45 @@
+name: Charm Integration Tests
+
+on:
+  workflow_dispatch:
+
+jobs:
+  charm-integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Set up LXD
+        uses: canonical/setup-lxd@v1
+
+      - name: Install Juju and Charmcraft
+        run: |
+          sudo snap install juju --channel=3.6/stable --classic
+          sudo snap install charmcraft --classic
+          # Pre-install the uv snap because charmcraft's uv plugin requests
+          # the astral-uv build snap during pack.
+          sudo snap install astral-uv --channel=latest/stable --classic
+
+      - name: Bootstrap Juju
+        run: juju bootstrap localhost
+
+      - name: Run integration tests
+        run: |
+          uv run --group dev tox -e integration -- --charmcraft-args=--platform=ubuntu@24.04:amd64 -v
+
+      - name: Dump Juju status
+        if: always()
+        run: |
+          juju controllers || true
+          juju models || true
+          juju status --relations || true

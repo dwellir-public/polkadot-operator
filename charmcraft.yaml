@@ -7,7 +7,13 @@ platforms:
 
 parts:
   charm:
+    plugin: uv
     source: .
-    plugin: charm
-    charm-binary-python-packages:
-      - substrate-interface==1.8.1
+    build-snaps:
+      - astral-uv
+  root-files:
+    plugin: dump
+    source: .
+    stage:
+      - README.md
+      - templates/**

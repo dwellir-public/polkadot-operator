@@ -1,27 +1,191 @@
-name: Release Polkadot to Charmhub
+name: Release Charm to Charmhub and GitHub
 
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
 
 jobs:
-  build:
-    name: Build Polkadot charm
-    uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v32.0.0
-    with:
-      charmcraft-snap-revision: 6672
-      cache: false
+  unit-tests:
+    name: Run unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Run unit tests
+        run: make unit-test
+
+  build-ubuntu-22:
+    name: Build charm on ubuntu-22.04
+    needs:
+      - unit-tests
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Charmcraft
+        run: sudo snap install charmcraft --classic --channel latest/stable
+
+      - name: Build charm for ubuntu@22.04:amd64
+        run: sudo charmcraft pack --quiet --destructive-mode --platform ubuntu@22.04:amd64
+
+      - name: Upload charm artifact (ubuntu@22.04:amd64)
+        uses: actions/upload-artifact@v4
+        with:
+          name: charm-ubuntu-22-amd64
+          path: ./polkadot_ubuntu@22.04-amd64.charm
+          if-no-files-found: error
+
+  build-ubuntu-24:
+    name: Build charm on ubuntu-24.04
+    needs:
+      - unit-tests
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Charmcraft
+        run: sudo snap install charmcraft --classic --channel latest/stable
+
+      - name: Build charm for ubuntu@24.04:amd64
+        run: sudo charmcraft pack --quiet --destructive-mode --platform ubuntu@24.04:amd64
+
+      - name: Upload charm artifact (ubuntu@24.04:amd64)
+        uses: actions/upload-artifact@v4
+        with:
+          name: charm-ubuntu-24-amd64
+          path: ./polkadot_ubuntu@24.04-amd64.charm
+          if-no-files-found: error
 
   release:
-    name: Release charm
+    name: Release to CharmHub
     needs:
-      - build
-    uses: canonical/data-platform-workflows/.github/workflows/release_charm_edge.yaml@v32.0.0
-    with:
-      track: latest
-      artifact-prefix: ${{ needs.build.outputs.artifact-prefix }}
-    secrets:
-      charmhub-token: ${{ secrets.CHARMHUB_TOKEN }}
+      - build-ubuntu-22
+      - build-ubuntu-24
+    runs-on: ubuntu-latest
+    outputs:
+      rev_ubuntu_22: ${{ steps.upload_ubuntu_22.outputs.revision }}
+      rev_ubuntu_24: ${{ steps.upload_ubuntu_24.outputs.revision }}
+      release_channel: latest/edge
     permissions:
-      contents: write  # Needed to create GitHub release
+      actions: read
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download built charm artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: charm-ubuntu-*-amd64
+          merge-multiple: true
+          path: .
+
+      - name: Install Charmcraft
+        run: sudo snap install charmcraft --classic --channel latest/stable
+
+      - name: Upload ubuntu@22.04 charm to Charmhub edge
+        id: upload_ubuntu_22
+        env:
+          CHARMCRAFT_AUTH: "${{ secrets.CHARMHUB_TOKEN }}"
+        run: |
+          set -euo pipefail
+
+          output="$(charmcraft upload --format json --release latest/edge ./polkadot_ubuntu@22.04-amd64.charm)"
+          echo "$output"
+
+          revision="$(python3 -c 'import json, sys; print(json.loads(sys.stdin.read())["revision"])' <<< "$output")"
+          if [[ -z "$revision" ]]; then
+            echo "Failed to parse uploaded revision for ubuntu@22.04 charm" >&2
+            exit 1
+          fi
+
+          echo "revision=$revision" >> "$GITHUB_OUTPUT"
+
+      - name: Upload ubuntu@24.04 charm to Charmhub edge
+        id: upload_ubuntu_24
+        env:
+          CHARMCRAFT_AUTH: "${{ secrets.CHARMHUB_TOKEN }}"
+        run: |
+          set -euo pipefail
+
+          output="$(charmcraft upload --format json --release latest/edge ./polkadot_ubuntu@24.04-amd64.charm)"
+          echo "$output"
+
+          revision="$(python3 -c 'import json, sys; print(json.loads(sys.stdin.read())["revision"])' <<< "$output")"
+          if [[ -z "$revision" ]]; then
+            echo "Failed to parse uploaded revision for ubuntu@24.04 charm" >&2
+            exit 1
+          fi
+
+          echo "revision=$revision" >> "$GITHUB_OUTPUT"
+
+  github-release:
+    name: Create GitHub release
+    needs:
+      - release
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download built charm artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: charm-ubuntu-*-amd64
+          merge-multiple: true
+          path: .
+
+      - name: Build release metadata from Charmhub revisions
+        id: release_meta
+        run: |
+          set -euo pipefail
+
+          channel='${{ needs.release.outputs.release_channel }}'
+          rev22='${{ needs.release.outputs.rev_ubuntu_22 }}'
+          rev24='${{ needs.release.outputs.rev_ubuntu_24 }}'
+
+          if [[ -z "$rev22" || -z "$rev24" ]]; then
+            echo "Missing Charmhub revision outputs from release job" >&2
+            exit 1
+          fi
+
+          tag="${channel//\//-}-r${rev22}-r${rev24}"
+          name="Charm release ${tag}"
+
+          {
+            echo "tag=$tag"
+            echo "name=$name"
+            echo "body<<EOF"
+            echo "Published to Charmhub channel \`${channel}\`."
+            echo
+            echo "- ubuntu@22.04:amd64 revision: \`${rev22}\`"
+            echo "- ubuntu@24.04:amd64 revision: \`${rev24}\`"
+            echo
+            echo "Source commit: \`${GITHUB_SHA}\`."
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub release and upload charm artifacts
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.release_meta.outputs.tag }}
+          name: ${{ steps.release_meta.outputs.name }}
+          target_commitish: ${{ github.sha }}
+          body: ${{ steps.release_meta.outputs.body }}
+          generate_release_notes: true
+          files: |
+            ./polkadot_ubuntu@22.04-amd64.charm
+            ./polkadot_ubuntu@24.04-amd64.charm

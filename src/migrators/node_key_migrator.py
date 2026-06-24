@@ -1,6 +1,6 @@
-import shutil
 import logging
-from pathlib import Path
+import shutil
+
 import core.constants as c
 
 logger = logging.getLogger(__name__)
@@ -18,7 +18,7 @@ def migrate_node_key(snap_name: str, dry_run: bool = False, reverse: bool = Fals
 
     # Normal migration from legacy to snap
     src_path = c.NODE_KEY_FILE
-    dest_path = c.SNAP_CONFIG.get(snap_name).get('node_key_file')
+    dest_path = c.SNAP_CONFIG.get(snap_name).get("node_key_file")
     owner = c.SNAP_USER
 
     if reverse:

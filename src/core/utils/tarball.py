@@ -10,19 +10,19 @@ class Tarball:
         self.tarball_path = tarball_path
 
     def extract_resources_from_tarball(self):
-        tarball = open_tarfile(self.tarball_path, mode='r')
+        tarball = open_tarfile(self.tarball_path, mode="r")
 
-        if self.chain_name == 'goldberg':  # Avail
-            if 'data-avail' in tarball.getnames():
-                member = tarball.getmember('data-avail')
+        if self.chain_name == "goldberg":  # Avail
+            if "data-avail" in tarball.getnames():
+                member = tarball.getmember("data-avail")
                 if member.isfile():
                     tarball.extract(member, path=c.HOME_DIR)
-                    sp.run(['mv', c.HOME_DIR/'data-avail', c.BINARY_FILE, '--force'])
-                    sp.run(['rm', self.tarball_path])
-                    sp.run(['chown', f'{c.USER}:{c.USER}', c.BINARY_FILE])
+                    sp.run(["mv", c.HOME_DIR / "data-avail", c.BINARY_FILE, "--force"])
+                    sp.run(["rm", self.tarball_path])
+                    sp.run(["chown", f"{c.USER}:{c.USER}", c.BINARY_FILE])
                 else:
                     raise ValueError("Expected client binary 'data-avail' in tarball is not a file.")
             else:
                 raise ValueError("Expected client binary 'data-avail' not found in tarball!")
         else:
-            raise ValueError(f'Could not extract tarball since {self.chain_name} lacks a tarball handler!')
+            raise ValueError(f"Could not extract tarball since {self.chain_name} lacks a tarball handler!")
