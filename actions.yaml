@@ -47,7 +47,7 @@ insert-key:
   required: [ mnemonic, address ]
 set-node-key:
   description: |
-    Sets a new private key in '/home/polkadot/node-key' and restarts the node service.
+    Sets a new private key in the node key file for this Juju application and restarts the node service.
     A node key can be generated with the external tool subkey (not provided by the charm) E.g. `subkey generate-node-key --file node-key`.
     The content of node-key is the private key and what should be used for the 'key' parameter.
   params:

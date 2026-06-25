@@ -73,6 +73,15 @@ class ServiceArgs:
         """Check if the node is running as a binary or snap."""
         return self._is_binary
 
+    @property
+    def prometheus_port(self) -> str:
+        """Get the Prometheus port used by the node."""
+        try:
+            i = self.service_args_list.index("--prometheus-port")
+            return self.service_args_list[i + 1]
+        except ValueError:
+            return c.DEFAULT_PROMETHEUS_PORT
+
     def __check_service_args(self, service_args: str | list):
         msg = ""
         # Check for service arguments that must be set.
@@ -82,8 +91,6 @@ class ServiceArgs:
             msg += "'--rpc-port' must be set in 'service-args'.\n"
 
         # Check for service arguments that must NOT be set.
-        if "--prometheus-port" in service_args:
-            msg += "'--prometheus-port' may not be set! Charm assumes default port 9615.\n"
         if "--node-key-file" in service_args:
             msg += f"'--node-key-file' may not be set! Path is hardcoded to {c.NODE_KEY_FILE}\n"
         if "--base-path" in service_args:

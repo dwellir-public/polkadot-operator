@@ -19,6 +19,7 @@ from charms.dwellir_observability.v0.machine_observability import (  # noqa: E40
 )
 
 from charm import PolkadotCharm  # noqa: E402
+from core.service_args import ServiceArgs  # noqa: E402
 
 
 def test_has_valid_client_config_allows_single_source():
@@ -93,6 +94,16 @@ def test_machine_observability_payload_serializes_to_relation_shape():
     }
 
 
+def test_machine_observability_payload_serializes_custom_metrics_port():
+    payload = build_machine_observability_payload(
+        service_name="snap.polkadot.polkadot.service",
+        charm_name="polkadot",
+        metrics_port="19615",
+    )
+
+    assert payload.metrics_endpoints[0].targets == ["localhost:19615"]
+
+
 def test_machine_observability_payload_serializes_to_v2_relation_shape():
     payload = build_machine_observability_payload(
         service_name="snap.polkadot.polkadot.service",
@@ -137,6 +148,7 @@ def test_publish_machine_observability_uses_charm_metadata_and_runtime_service_n
 
     charm = SimpleNamespace(
         config={
+            "service-args": "",
             "snap-name": "",
         },
         _stored=SimpleNamespace(snap_name=None),
@@ -161,6 +173,7 @@ def test_publish_machine_observability_uses_snap_service_name_when_snap_configur
 
     charm = SimpleNamespace(
         config={
+            "service-args": "",
             "snap-name": "polkadot",
         },
         _stored=SimpleNamespace(snap_name=None),
@@ -180,7 +193,7 @@ def test_publish_machine_observability_uses_snap_service_name_when_snap_configur
 
 def test_build_machine_observability_payload_uses_snap_service_name_when_configured():
     charm = SimpleNamespace(
-        config={"snap-name": "polkadot"},
+        config={"service-args": "", "snap-name": "polkadot"},
         _stored=SimpleNamespace(snap_name=None),
         meta=SimpleNamespace(name="polkadot"),
         app=SimpleNamespace(name="polkadot"),
@@ -197,3 +210,45 @@ def test_build_machine_observability_payload_uses_snap_service_name_when_configu
     assert payload.source_topology.application == "polkadot"
     assert payload.source_topology.unit == "polkadot/0"
     assert payload.systemd_units == ["snap.polkadot.polkadot.service"]
+
+
+def test_build_machine_observability_payload_uses_snap_instance_name_when_configured():
+    charm = SimpleNamespace(
+        app=SimpleNamespace(name="foo-bar"),
+        config={
+            "service-args": "--chain polkadot --rpc-port 9933 --prometheus-port 19615",
+            "snap-name": "polkadot",
+        },
+        _stored=SimpleNamespace(snap_name=None),
+        meta=SimpleNamespace(name="polkadot"),
+        model=SimpleNamespace(name="test-model", uuid="test-uuid"),
+        unit=SimpleNamespace(name="foo-bar/0"),
+    )
+    charm._source_topology = lambda: PolkadotCharm._source_topology(charm)
+
+    payload = PolkadotCharm._build_machine_observability_payload(charm)
+
+    assert payload.systemd_units == ["snap.polkadot_db7329d5a3.polkadot.service"]
+    assert payload.source_topology.application == "foo-bar"
+    assert payload.metrics_endpoints[0].targets == ["localhost:19615"]
+
+
+def test_prometheus_port():
+    cases = [
+        ("--chain polkadot --rpc-port 9933", "9615"),
+        ("--chain polkadot --rpc-port 9933 --prometheus-port 19615", "19615"),
+        ("--chain=polkadot --rpc-port=9933 --prometheus-port=19616", "19616"),
+    ]
+
+    for service_args, expected in cases:
+        config = {
+            "service-args": service_args,
+            "data-dir": "",
+            "chain-spec-url": "",
+            "local-relaychain-spec-url": "",
+            "wasm-runtime-url": "",
+            "docker-tag": "",
+            "binary-url": "",
+            "snap-name": "polkadot",
+        }
+        assert ServiceArgs(config, {}).prometheus_port == expected

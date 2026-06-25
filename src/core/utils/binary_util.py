@@ -2,10 +2,10 @@ import hashlib
 import logging
 import os
 import re
-import shutil
 import subprocess as sp
 import time
 from pathlib import Path
+from string import Template
 
 import requests
 
@@ -219,17 +219,24 @@ def get_sha256_response(sha256_url: str) -> requests.Response:
 
 def create_env_file_for_service():
     with open(f"/etc/default/{c.USER}", "w", encoding="utf-8") as f:
-        f.write(f"{c.USER.upper()}_CLI_ARGS=''")
+        f.write("POLKADOT_CLI_ARGS=''")
 
 
 def install_service_file(source_path):
     target_path = Path(f"/etc/systemd/system/{c.USER}.service")
-    shutil.copyfile(source_path, target_path)
+    service_template = Template(Path(source_path).read_text(encoding="utf-8"))
+    service_file = service_template.safe_substitute(
+        service_name=c.SERVICE_NAME,
+        binary_file=c.BINARY_FILE,
+        user=c.USER,
+        group=c.USER,
+    )
+    target_path.write_text(service_file, encoding="utf-8")
     sp.run(["systemctl", "daemon-reload"], check=False)
 
 
 def render_service_argument_file(service_args):
-    return f"{c.USER.upper()}_CLI_ARGS='{service_args}'\n"
+    return f"POLKADOT_CLI_ARGS='{service_args}'\n"
 
 
 def arguments_differ_from_disk(service_args):

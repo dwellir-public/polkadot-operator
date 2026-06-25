@@ -2,6 +2,8 @@
 
 from pathlib import Path
 
+DEFAULT_APP_NAME = "polkadot"
+DEFAULT_PROMETHEUS_PORT = "9615"
 USER = "polkadot"
 SERVICE_NAME = USER
 HOME_DIR = Path("/home/polkadot")
@@ -16,10 +18,25 @@ DB_RELAY_DIR = Path(BASE_PATH, "polkadot")
 WASM_DIR = Path(HOME_DIR, "wasm")
 
 SNAP_USER = "root"
-SNAP_CONFIG = {
+SNAP_INSTANCE_KEY = ""
+DEFAULT_SNAP_CONFIG = {
     "polkadot": {
         "snap_name": "polkadot",
         "service_name": "polkadot",
+        "cli_app": "polkadot-cli",
+        "binary_name": "polkadot",
+    },
+    "polkadot-parachain": {
+        "snap_name": "polkadot-parachain",
+        "service_name": "polkadot-parachain",
+        "cli_app": "cli",
+        "binary_name": "polkadot-parachain",
+    },
+}
+SNAP_CONFIG = {
+    "polkadot": {
+        **DEFAULT_SNAP_CONFIG["polkadot"],
+        "base_snap_name": "polkadot",
         "cli_command": "polkadot.polkadot-cli",
         "base_path": Path("/var/snap/polkadot/common/polkadot_base"),
         "snap_binary_path": Path("/snap/polkadot/current/bin/polkadot"),
@@ -28,10 +45,11 @@ SNAP_CONFIG = {
         "relay_db_dir": Path("/var/snap/polkadot/common/polkadot_base/polkadot"),
         "wasm_dir": Path("/var/snap/polkadot/common/polkadot_base/wasm"),
         "node_key_file": Path("/var/snap/polkadot/common/node-key"),
+        "systemd_service": "snap.polkadot.polkadot.service",
     },
     "polkadot-parachain": {
-        "snap_name": "polkadot-parachain",
-        "service_name": "polkadot-parachain",
+        **DEFAULT_SNAP_CONFIG["polkadot-parachain"],
+        "base_snap_name": "polkadot-parachain",
         "cli_command": "polkadot-parachain.cli",
         "base_path": Path("/var/snap/polkadot-parachain/common/polkadot_base"),
         "snap_binary_path": Path("/snap/polkadot-parachain/current/bin/polkadot-parachain"),
@@ -40,9 +58,11 @@ SNAP_CONFIG = {
         "relay_db_dir": Path("/var/snap/polkadot-parachain/common/polkadot_base/polkadot"),
         "wasm_dir": Path("/var/snap/polkadot-parachain/common/polkadot_base/wasm"),
         "node_key_file": Path("/var/snap/polkadot-parachain/common/node-key"),
+        "systemd_service": "snap.polkadot-parachain.polkadot-parachain.service",
     },
 }
 
+DOCKER_CONTAINER_NAME = "polkadot-install-tmp"
 DOCKER_DEAMON_CONFIG_PATH = Path("/etc/docker/daemon.json")
 DOCKER_DEAMON_JSON_CONFIG = """{
   "storage-driver": "fuse-overlayfs"

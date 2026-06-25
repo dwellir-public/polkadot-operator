@@ -13,7 +13,6 @@ from pathlib import Path
 from typing import Tuple
 
 from core import constants as c
-from core.constants import SNAP_CONFIG
 
 logger = logging.getLogger(__name__)
 
@@ -27,9 +26,6 @@ class DataMigrationError(Exception):
 class DataMigrator:
     """Handles migration of Polkadot data from legacy location to snap common directory."""
 
-    # Default paths
-    LEGACY_DATA_DIR = Path("/home/polkadot/.local/share/polkadot")
-
     def __init__(self, snap_name: str = None, reverse: bool = False):
         """Initialize the data migrator.
 
@@ -37,12 +33,12 @@ class DataMigrator:
             snap_name: Name of the snap (optional)
         """
 
-        if snap_name not in SNAP_CONFIG:
-            raise ValueError(f"Invalid snap_name '{snap_name}'. Valid options are: {list(SNAP_CONFIG.keys())}")
+        if snap_name not in c.SNAP_CONFIG:
+            raise ValueError(f"Invalid snap_name '{snap_name}'. Valid options are: {list(c.SNAP_CONFIG.keys())}")
 
         # Normal migration from legacy to snap
-        self.src_path = self.LEGACY_DATA_DIR
-        self.dest_path = Path(SNAP_CONFIG.get(snap_name).get("base_path"))
+        self.src_path = c.BASE_PATH
+        self.dest_path = Path(c.SNAP_CONFIG.get(snap_name).get("base_path"))
 
         if reverse:
             # If reverse is True, swap the paths
@@ -408,8 +404,8 @@ def migrate_data(snap_name: str, dry_run: bool, reverse: bool) -> None:
     If src is None, the data is not migrated.
     If dest is None, the data is not migrated.
     """
-    if not snap_name or snap_name not in SNAP_CONFIG:
-        message = f"Invalid or missing 'snap-name' parameter for migration operation. The snap-name must be one of the supported applications: {', '.join(SNAP_CONFIG.keys())}. Please specify a valid snap name to proceed with the migration."
+    if not snap_name or snap_name not in c.SNAP_CONFIG:
+        message = f"Invalid or missing 'snap-name' parameter for migration operation. The snap-name must be one of the supported applications: {', '.join(c.SNAP_CONFIG.keys())}. Please specify a valid snap name to proceed with the migration."
         logger.error(message)
         raise ValueError(message)
 

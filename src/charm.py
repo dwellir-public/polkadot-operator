@@ -20,6 +20,8 @@ from charms.grafana_agent.v0.cos_agent import COSAgentProvider
 from requests.exceptions import ConnectionError as RequestsConnectionError
 from urllib3.exceptions import MaxRetryError, NewConnectionError
 
+from core import constants as c
+from core import runtime_identity
 from core.managers import PolkadotSnapManager, WorkloadFactory, WorkloadType
 from core.service_args import ServiceArgs
 from core.utils import general_util, user_group_util
@@ -40,7 +42,12 @@ class PolkadotCharm(ops.CharmBase):
 
     def __init__(self, *args):
         super().__init__(*args)
-        self.prometheus_polkadot_provider = PrometheusProvider(self, "polkadot-prometheus", 9615, "/metrics")
+        runtime_identity.configure_runtime_identity(self.app.name)
+        try:
+            metrics_port = ServiceArgs(self.config, []).prometheus_port
+        except ValueError:
+            metrics_port = c.DEFAULT_PROMETHEUS_PORT
+        self.prometheus_polkadot_provider = PrometheusProvider(self, "polkadot-prometheus", metrics_port, "/metrics")
         self.rpc_url_provider = RpcUrlProvider(self, "rpc-url")
         self.rpc_url_requirer = RpcUrlRequirer(self, "relay-rpc-url")
         self.machine_observability_provider = MachineObservabilityProvider(
@@ -52,7 +59,7 @@ class PolkadotCharm(ops.CharmBase):
         self.cos_agent_provider = COSAgentProvider(
             self,
             relation_name="grafana-agent",
-            metrics_endpoints=[{"port": 9615, "path": "/metrics"}],
+            metrics_endpoints=[{"port": int(metrics_port), "path": "/metrics"}],
             refresh_events=[self.on.update_status, self.on.upgrade_charm],
             metrics_rules_dir="./src/alert_rules/prometheus",
             logs_rules_dir="./src/alert_rules/loki",
@@ -269,6 +276,7 @@ class PolkadotCharm(ops.CharmBase):
             self.unit.status = ops.MaintenanceStatus("Updating service args")
             self._workload.set_service_args(service_args_obj.service_args_string)
             self._stored.service_args = self.config.get("service-args")
+            self._refresh_advertised_ports(service_args_obj.prometheus_port)
 
         if self._stored.chain_spec_url != self.config.get("chain-spec-url"):
             try:
@@ -357,6 +365,13 @@ class PolkadotCharm(ops.CharmBase):
 
         self._publish_machine_observability()
         self.update_status_simple()
+
+    def _refresh_advertised_ports(self, metrics_port: str) -> None:
+        """Refresh relation data that depends on service-args ports."""
+        self.prometheus_polkadot_provider.set_port(metrics_port)
+        self.cos_agent_provider._metrics_endpoints = [{"port": int(metrics_port), "path": "/metrics"}]
+        self.cos_agent_provider._on_refresh(None)
+        self._publish_machine_observability()
 
     def _on_update_status(self, event: ops.UpdateStatusEvent) -> None:
         self._publish_machine_observability()
@@ -673,13 +688,20 @@ class PolkadotCharm(ops.CharmBase):
 
         snap_name = self.config.get("snap-name") or self._stored.snap_name
         if snap_name:
-            service_name = f"snap.{snap_name}.{snap_name}.service"
+            app_name = getattr(getattr(self, "app", None), "name", c.DEFAULT_APP_NAME)
+            service_name = runtime_identity.snap_config_for_app(app_name)[snap_name]["systemd_service"]
         else:
-            service_name = "polkadot.service"
+            app_name = getattr(getattr(self, "app", None), "name", c.USER)
+            service_name = f"{app_name}.service"
+        try:
+            metrics_port = ServiceArgs(self.config, []).prometheus_port
+        except ValueError:
+            metrics_port = c.DEFAULT_PROMETHEUS_PORT
         return build_machine_observability_payload(
             service_name=service_name,
             charm_name=self.meta.name,
             source_topology=self._source_topology(),
+            metrics_port=metrics_port,
         )
 
     def _source_topology(self) -> SourceTopology:

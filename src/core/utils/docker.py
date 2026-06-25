@@ -88,13 +88,13 @@ class Docker:
         except sp.CalledProcessError as err:
             raise ValueError(f"Could not pull {docker_image_and_tag} check 'docker-tag'!") from err
 
-        sp.run(["docker", "create", "--name", "tmp", docker_image_and_tag], check=False)
+        sp.run(["docker", "create", "--name", c.DOCKER_CONTAINER_NAME, docker_image_and_tag], check=False)
         try:
-            sp.run(["docker", "cp", f"tmp:{docker_binary_path}", c.BINARY_FILE], check=True)
+            sp.run(["docker", "cp", f"{c.DOCKER_CONTAINER_NAME}:{docker_binary_path}", c.BINARY_FILE], check=True)
         except sp.CalledProcessError as err:
             raise ValueError(f"Could not find {docker_binary_path} in {docker_image_and_tag} check that it really exist in the image!") from err
         if docker_specs_path:
-            sp.run(["docker", "cp", f"tmp:{docker_specs_path}", c.HOME_DIR], check=True)
-            sp.run(["chown", "-R", "polkadot:polkadot", Path(c.HOME_DIR, Path(docker_specs_path).name)], check=True)
-        sp.run(["docker", "rm", "tmp"], check=True)
+            sp.run(["docker", "cp", f"{c.DOCKER_CONTAINER_NAME}:{docker_specs_path}", c.HOME_DIR], check=True)
+            sp.run(["chown", "-R", f"{c.USER}:{c.USER}", Path(c.HOME_DIR, Path(docker_specs_path).name)], check=True)
+        sp.run(["docker", "rm", c.DOCKER_CONTAINER_NAME], check=True)
         sp.run(["docker", "rmi", docker_image_and_tag], check=True)

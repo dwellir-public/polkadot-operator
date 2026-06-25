@@ -35,6 +35,7 @@ options:
     description: |
       Extra arguments that the service should run with.
       '--chain=... --rpc-port=...' are required to set for the charm to run.
+      Set '--prometheus-port=...' when multiple nodes run on the same machine.
   data-dir:
     type: string
     default: ""
@@ -65,7 +66,7 @@ options:
     description: |
       URL where one or more wasm runtime files can be found.
       The file can either be a .wasm file or a tar.gz archive containing one or more wasm runtime files.
-      If set, the downloaded files(s) will be in /home/polkadot/wasm and the service argument `--wasm-runtime-overrides=/home/polkadot/wasm` will be used.
+      If set, the downloaded file(s) will be in /home/<juju-app-name>/wasm for binary workloads and the service argument `--wasm-runtime-overrides=/home/<juju-app-name>/wasm` will be used.
   mnemonic-secret-id:
     type: secret
     description: |
