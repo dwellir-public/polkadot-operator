@@ -41,8 +41,8 @@ class PolkadotCharm(ops.CharmBase):
     def __init__(self, *args):
         super().__init__(*args)
         self.prometheus_polkadot_provider = PrometheusProvider(self, "polkadot-prometheus", 9615, "/metrics")
-        self.rpc_url_provider = (RpcUrlProvider(self, "rpc_url"),)
-        self.rpc_url_requirer = (RpcUrlRequirer(self, "relay_rpc_url"),)
+        self.rpc_url_provider = RpcUrlProvider(self, "rpc-url")
+        self.rpc_url_requirer = RpcUrlRequirer(self, "relay-rpc-url")
         self.machine_observability_provider = MachineObservabilityProvider(
             self,
             "machine-observability",
