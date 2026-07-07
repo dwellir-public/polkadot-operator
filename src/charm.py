@@ -45,7 +45,7 @@ class PolkadotCharm(ops.CharmBase):
         super().__init__(*args)
         runtime_identity.configure_runtime_identity(self.app.name)
         try:
-            metrics_port = ServiceArgs(self.config, []).prometheus_port
+            metrics_port = ServiceArgs(self.config, {}).prometheus_port
         except ValueError:
             metrics_port = c.DEFAULT_PROMETHEUS_PORT
         self.prometheus_polkadot_provider = PrometheusProvider(self, "polkadot-prometheus", metrics_port, "/metrics")
@@ -695,7 +695,7 @@ class PolkadotCharm(ops.CharmBase):
             app_name = getattr(getattr(self, "app", None), "name", r.user)
             service_name = f"{app_name}.service"
         try:
-            metrics_port = ServiceArgs(self.config, []).prometheus_port
+            metrics_port = ServiceArgs(self.config, {}).prometheus_port
         except ValueError:
             metrics_port = c.DEFAULT_PROMETHEUS_PORT
         return build_machine_observability_payload(
