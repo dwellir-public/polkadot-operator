@@ -255,7 +255,39 @@ def test_prometheus_port():
         assert ServiceArgs(config, {}).prometheus_port == expected
 
 
-def test_config_changed_noops_without_restarting_running_workload_when_config_unchanged():
+class _FakeWorkload:
+    def __init__(self, running=True):
+        self.running = running
+        self.restart_calls = 0
+        self.start_calls = 0
+        self.set_service_args_calls = 0
+
+    def get_type(self):
+        return WorkloadType.SNAP
+
+    def is_service_running(self, iterations=1):
+        return self.running
+
+    def is_service_started(self, iterations):
+        return self.running or self.start_calls > 0
+
+    def service_args_differ_from_disk(self, argument_string):
+        return False
+
+    def set_service_args(self, service_args):
+        self.set_service_args_calls += 1
+
+    def restart_service(self):
+        self.restart_calls += 1
+
+    def start_service(self):
+        self.start_calls += 1
+
+    def get_binary_version(self):
+        return "1.0.0"
+
+
+def _config_changed_charm(workload, stored):
     config = {
         "binary-url": "",
         "binary-sha256-url": "",
@@ -271,53 +303,6 @@ def test_config_changed_noops_without_restarting_running_workload_when_config_un
         "snap-endure": False,
         "snap-name": "polkadot",
     }
-
-    class FakeWorkload:
-        def __init__(self):
-            self.restart_calls = 0
-            self.start_calls = 0
-            self.set_service_args_calls = 0
-
-        def get_type(self):
-            return WorkloadType.SNAP
-
-        def is_service_running(self, iterations=1):
-            return True
-
-        def is_service_started(self, iterations):
-            return True
-
-        def service_args_differ_from_disk(self, argument_string):
-            return False
-
-        def set_service_args(self, service_args):
-            self.set_service_args_calls += 1
-
-        def restart_service(self):
-            self.restart_calls += 1
-
-        def start_service(self):
-            self.start_calls += 1
-
-        def get_binary_version(self):
-            return "1.0.0"
-
-    workload = FakeWorkload()
-    stored = SimpleNamespace(
-        binary_url=config["binary-url"],
-        docker_tag=config["docker-tag"],
-        service_args=config["service-args"],
-        data_dir=config["data-dir"],
-        chain_spec_url=config["chain-spec-url"],
-        local_relaychain_spec_url=config["local-relaychain-spec-url"],
-        wasm_runtime_url=config["wasm-runtime-url"],
-        snap_revision=config["snap-revision"],
-        snap_channel=config["snap-channel"],
-        snap_hold=config["snap-hold"],
-        snap_endure=config["snap-endure"],
-        snap_name=config["snap-name"],
-        service_init=False,
-    )
     unit = SimpleNamespace(
         status=None,
         set_workload_version=lambda version: None,
@@ -335,6 +320,30 @@ def test_config_changed_noops_without_restarting_running_workload_when_config_un
         _get_client_type=lambda: "snap",
         _get_workload_version=lambda: workload.get_binary_version(),
     )
+    return charm
+
+
+def _stored_state(initial_start_pending=False):
+    return SimpleNamespace(
+        binary_url="",
+        docker_tag="",
+        service_args="--chain polkadot --rpc-port 9933",
+        data_dir="",
+        chain_spec_url="",
+        local_relaychain_spec_url="",
+        wasm_runtime_url="",
+        snap_revision="123",
+        snap_channel="latest/stable",
+        snap_hold=False,
+        snap_endure=False,
+        snap_name="polkadot",
+        initial_start_pending=initial_start_pending,
+    )
+
+
+def test_config_changed_noops_without_restarting_running_workload_when_config_unchanged():
+    workload = _FakeWorkload(running=True)
+    charm = _config_changed_charm(workload, _stored_state(initial_start_pending=False))
     event = SimpleNamespace(deferred=False, defer=lambda: setattr(event, "deferred", True))
 
     PolkadotCharm._on_config_changed(charm, event)
@@ -343,3 +352,16 @@ def test_config_changed_noops_without_restarting_running_workload_when_config_un
     assert workload.set_service_args_calls == 0
     assert workload.restart_calls == 0
     assert workload.start_calls == 0
+
+
+def test_config_changed_consumes_initial_start_pending_after_starting_workload():
+    workload = _FakeWorkload(running=False)
+    stored = _stored_state(initial_start_pending=True)
+    charm = _config_changed_charm(workload, stored)
+    event = SimpleNamespace(deferred=False, defer=lambda: setattr(event, "deferred", True))
+
+    PolkadotCharm._on_config_changed(charm, event)
+
+    assert event.deferred is False
+    assert workload.start_calls == 1
+    assert stored.initial_start_pending is False

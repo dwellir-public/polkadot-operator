@@ -103,7 +103,7 @@ class PolkadotCharm(ops.CharmBase):
             snap_revision=self.config.get("snap-revision"),
             snap_channel=self.config.get("snap-channel"),
             snap_name=self.config.get("snap-name"),
-            service_init=True,
+            initial_start_pending=False,
         )
 
         # Configure the workload as it was the last time the charm was executed
@@ -161,12 +161,12 @@ class PolkadotCharm(ops.CharmBase):
 
         self._workload.generate_node_key()
         self._workload.set_service_args(service_args_obj.service_args_string)
+        self._stored.initial_start_pending = True
         self._publish_machine_observability()
         self.unit.status = ops.MaintenanceStatus("Charm install complete")
 
     def _on_upgrade_charm(self, event: ops.UpgradeCharmEvent) -> None:
-        # Charm upgrade should not automatically start the service
-        self._stored.service_init = False
+        logger.debug("Upgrade charm hook called")
 
     def _on_config_changed(self, event: ops.ConfigChangedEvent) -> None:  # noqa: C901
         # validate that the client configuration is correct
@@ -368,11 +368,12 @@ class PolkadotCharm(ops.CharmBase):
         if self._workload.service_args_differ_from_disk(service_args_obj.service_args_string):
             self._workload.set_service_args(service_args_obj.service_args_string)
             should_restart = was_running
-        # Restart the service if it was running before config changes, or start it if just initialized
+        # Restart the service if it was running before config changes, or start it after install.
         if should_restart:
             self._workload.restart_service()
-        elif self._stored.service_init:
+        elif self._stored.initial_start_pending:
             self._workload.start_service()
+            self._stored.initial_start_pending = False
 
         self._publish_machine_observability()
         self.update_status_simple()
