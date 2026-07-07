@@ -21,6 +21,7 @@ from requests.exceptions import ConnectionError as RequestsConnectionError
 from urllib3.exceptions import MaxRetryError, NewConnectionError
 
 from core import constants as c
+from core import runtime as r
 from core import runtime_identity
 from core.managers import PolkadotSnapManager, WorkloadFactory, WorkloadType
 from core.service_args import ServiceArgs
@@ -691,7 +692,7 @@ class PolkadotCharm(ops.CharmBase):
             app_name = getattr(getattr(self, "app", None), "name", c.DEFAULT_APP_NAME)
             service_name = runtime_identity.snap_config_for_app(app_name)[snap_name]["systemd_service"]
         else:
-            app_name = getattr(getattr(self, "app", None), "name", c.USER)
+            app_name = getattr(getattr(self, "app", None), "name", r.user)
             service_name = f"{app_name}.service"
         try:
             metrics_port = ServiceArgs(self.config, []).prometheus_port

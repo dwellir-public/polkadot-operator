@@ -5,6 +5,7 @@ from types import SimpleNamespace
 from charms.operator_libs_linux.v2 import snap
 
 from core import constants as c
+from core import runtime as r
 from core.utils import binary_util
 
 
@@ -12,6 +13,28 @@ def test_constants_module_contains_no_functions():
     functions = [name for name, value in inspect.getmembers(c, inspect.isfunction) if getattr(value, "__module__", "") == c.__name__]
 
     assert functions == []
+
+
+def test_constants_module_does_not_contain_runtime_identity_state():
+    runtime_state_names = {
+        "USER",
+        "SERVICE_NAME",
+        "HOME_DIR",
+        "BASE_PATH",
+        "BINARY_FILE",
+        "EXECUTE_WORKER_BINARY_FILE",
+        "PREPARE_WORKER_BINARY_FILE",
+        "CHAIN_SPEC_DIR",
+        "NODE_KEY_FILE",
+        "DB_CHAIN_DIR",
+        "DB_RELAY_DIR",
+        "WASM_DIR",
+        "SNAP_INSTANCE_KEY",
+        "SNAP_CONFIG",
+        "DOCKER_CONTAINER_NAME",
+    }
+
+    assert runtime_state_names.isdisjoint(dir(c))
 
 
 def test_runtime_identity_does_not_duplicate_base_snap_config():
@@ -46,14 +69,14 @@ Group=${group}
         )
         monkeypatch.setattr(binary_util.sp, "run", lambda *args, **kwargs: None)
 
-        assert c.USER == "foo-bar"
-        assert c.SERVICE_NAME == "foo-bar"
-        assert c.HOME_DIR.as_posix() == "/home/foo-bar"
-        assert c.BASE_PATH.as_posix() == "/home/foo-bar/.local/share/polkadot"
-        assert c.BINARY_FILE.as_posix() == "/home/foo-bar/polkadot"
-        assert c.NODE_KEY_FILE.as_posix() == "/home/foo-bar/node-key"
-        assert c.WASM_DIR.as_posix() == "/home/foo-bar/wasm"
-        assert c.DOCKER_CONTAINER_NAME == "foo-bar-install-tmp"
+        assert r.user == "foo-bar"
+        assert r.service_name == "foo-bar"
+        assert r.home_dir.as_posix() == "/home/foo-bar"
+        assert r.base_path.as_posix() == "/home/foo-bar/.local/share/polkadot"
+        assert r.binary_file.as_posix() == "/home/foo-bar/polkadot"
+        assert r.node_key_file.as_posix() == "/home/foo-bar/node-key"
+        assert r.wasm_dir.as_posix() == "/home/foo-bar/wasm"
+        assert r.docker_container_name == "foo-bar-install-tmp"
 
         binary_util.install_service_file(service_template_path)
         service_file = installed_service_path.read_text(encoding="utf-8")
@@ -74,11 +97,11 @@ def test_runtime_identity_uses_sha1_snap_instance_key():
     try:
         runtime_identity.configure_runtime_identity(app_name)
 
-        assert c.SNAP_INSTANCE_KEY == instance_key
-        assert c.SNAP_CONFIG["polkadot"]["snap_name"] == f"polkadot_{instance_key}"
-        assert c.SNAP_CONFIG["polkadot"]["base_path"].as_posix() == f"/var/snap/polkadot_{instance_key}/common/polkadot_base"
-        assert c.SNAP_CONFIG["polkadot"]["cli_command"] == f"polkadot_{instance_key}.polkadot-cli"
-        assert c.SNAP_CONFIG["polkadot"]["systemd_service"] == f"snap.polkadot_{instance_key}.polkadot.service"
+        assert r.snap_instance_key == instance_key
+        assert r.snap_config["polkadot"]["snap_name"] == f"polkadot_{instance_key}"
+        assert r.snap_config["polkadot"]["base_path"].as_posix() == f"/var/snap/polkadot_{instance_key}/common/polkadot_base"
+        assert r.snap_config["polkadot"]["cli_command"] == f"polkadot_{instance_key}.polkadot-cli"
+        assert r.snap_config["polkadot"]["systemd_service"] == f"snap.polkadot_{instance_key}.polkadot.service"
     finally:
         runtime_identity.configure_runtime_identity("polkadot")
 
@@ -89,10 +112,10 @@ def test_default_runtime_identity_keeps_non_parallel_snap_names():
     try:
         runtime_identity.configure_runtime_identity("polkadot")
 
-        assert c.SNAP_INSTANCE_KEY == ""
-        assert c.SNAP_CONFIG["polkadot"]["snap_name"] == "polkadot"
-        assert c.SNAP_CONFIG["polkadot"]["cli_command"] == "polkadot.polkadot-cli"
-        assert c.SNAP_CONFIG["polkadot"]["systemd_service"] == "snap.polkadot.polkadot.service"
+        assert r.snap_instance_key == ""
+        assert r.snap_config["polkadot"]["snap_name"] == "polkadot"
+        assert r.snap_config["polkadot"]["cli_command"] == "polkadot.polkadot-cli"
+        assert r.snap_config["polkadot"]["systemd_service"] == "snap.polkadot.polkadot.service"
     finally:
         runtime_identity.configure_runtime_identity("polkadot")
 

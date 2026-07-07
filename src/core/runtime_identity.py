@@ -4,6 +4,7 @@ import hashlib
 from pathlib import Path
 
 from core import constants as c
+from core import runtime as r
 
 
 def snap_instance_key(app_name: str) -> str:
@@ -13,59 +14,26 @@ def snap_instance_key(app_name: str) -> str:
     return hashlib.sha1(app_name.encode("utf-8")).hexdigest()[:10]
 
 
-def _snap_instance_name(base_snap_name: str, instance_key: str) -> str:
-    if not instance_key:
-        return base_snap_name
-    return f"{base_snap_name}_{instance_key}"
-
-
-def _build_snap_config(instance_key: str) -> dict:
-    snap_config = {}
-    for config_name, base_config in c.DEFAULT_SNAP_CONFIG.items():
-        base_snap_name = base_config["snap_name"]
-        snap_name = _snap_instance_name(base_snap_name, instance_key)
-        base_path = Path("/var/snap", snap_name, "common/polkadot_base")
-        snap_config[config_name] = {
-            **base_config,
-            "snap_name": snap_name,
-            "base_snap_name": base_snap_name,
-            "cli_command": f"{snap_name}.{base_config['cli_app']}",
-            "base_path": base_path,
-            "snap_binary_path": Path(
-                "/snap",
-                snap_name,
-                "current/bin",
-                base_config["binary_name"],
-            ),
-            "chain_spec_dir": Path("/var/snap", snap_name, "common/spec"),
-            "chain_db_dir": Path(base_path, "chains"),
-            "relay_db_dir": Path(base_path, "polkadot"),
-            "wasm_dir": Path(base_path, "wasm"),
-            "node_key_file": Path("/var/snap", snap_name, "common/node-key"),
-            "systemd_service": f"snap.{snap_name}.{base_config['service_name']}.service",
-        }
-    return snap_config
-
-
 def snap_config_for_app(app_name: str) -> dict:
     """Return snap configuration for an application name without mutating globals."""
-    return _build_snap_config(snap_instance_key(app_name))
+    return r.build_snap_config(snap_instance_key(app_name))
 
 
 def configure_runtime_identity(app_name: str) -> None:
     """Configure host-level resource names from the Juju application name."""
-    c.USER = app_name
-    c.SERVICE_NAME = c.USER
-    c.HOME_DIR = Path("/home", c.USER)
-    c.BASE_PATH = Path(c.HOME_DIR, ".local/share/polkadot")
-    c.BINARY_FILE = Path(c.HOME_DIR, "polkadot")
-    c.EXECUTE_WORKER_BINARY_FILE = {"default": Path(c.HOME_DIR, "polkadot-execute-worker"), "enjin": Path(c.HOME_DIR, "enjin-execute-worker"), "canary": Path(c.HOME_DIR, "enjin-execute-worker")}
-    c.PREPARE_WORKER_BINARY_FILE = {"default": Path(c.HOME_DIR, "polkadot-prepare-worker"), "enjin": Path(c.HOME_DIR, "enjin-prepare-worker"), "canary": Path(c.HOME_DIR, "enjin-prepare-worker")}
-    c.CHAIN_SPEC_DIR = Path(c.HOME_DIR, "spec")
-    c.NODE_KEY_FILE = Path(c.HOME_DIR, "node-key")
-    c.DB_CHAIN_DIR = Path(c.BASE_PATH, "chains")
-    c.DB_RELAY_DIR = Path(c.BASE_PATH, "polkadot")
-    c.WASM_DIR = Path(c.HOME_DIR, "wasm")
-    c.SNAP_INSTANCE_KEY = snap_instance_key(app_name)
-    c.SNAP_CONFIG = _build_snap_config(c.SNAP_INSTANCE_KEY)
-    c.DOCKER_CONTAINER_NAME = f"{c.USER}-install-tmp"
+    r.app_name = app_name
+    r.user = app_name
+    r.service_name = r.user
+    r.home_dir = Path("/home", r.user)
+    r.base_path = Path(r.home_dir, ".local/share/polkadot")
+    r.binary_file = Path(r.home_dir, "polkadot")
+    r.execute_worker_binary_file = {"default": Path(r.home_dir, "polkadot-execute-worker"), "enjin": Path(r.home_dir, "enjin-execute-worker"), "canary": Path(r.home_dir, "enjin-execute-worker")}
+    r.prepare_worker_binary_file = {"default": Path(r.home_dir, "polkadot-prepare-worker"), "enjin": Path(r.home_dir, "enjin-prepare-worker"), "canary": Path(r.home_dir, "enjin-prepare-worker")}
+    r.chain_spec_dir = Path(r.home_dir, "spec")
+    r.node_key_file = Path(r.home_dir, "node-key")
+    r.db_chain_dir = Path(r.base_path, "chains")
+    r.db_relay_dir = Path(r.base_path, "polkadot")
+    r.wasm_dir = Path(r.home_dir, "wasm")
+    r.snap_instance_key = snap_instance_key(app_name)
+    r.snap_config = r.build_snap_config(r.snap_instance_key)
+    r.docker_container_name = f"{r.user}-install-tmp"

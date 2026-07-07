@@ -5,6 +5,7 @@ import re
 from ops.model import ConfigData
 
 import core.constants as c
+from core import runtime as r
 from core.utils.download_util import download_chain_spec
 
 
@@ -23,7 +24,7 @@ class ServiceArgs:
 
         if not self._is_binary and not config.get("snap-name"):
             raise ValueError("Either 'docker-tag', 'binary-url' or 'snap-name' must be set.")
-        self._snap_config = c.SNAP_CONFIG.get(config.get("snap-name")) if config.get("snap-name") else None
+        self._snap_config = r.snap_config.get(config.get("snap-name")) if config.get("snap-name") else None
 
         self.service_args_list = self.__service_args_to_list(service_args)
         self.__check_service_args(self.service_args_list)
@@ -92,7 +93,7 @@ class ServiceArgs:
 
         # Check for service arguments that must NOT be set.
         if "--node-key-file" in service_args:
-            msg += f"'--node-key-file' may not be set! Path is hardcoded to {c.NODE_KEY_FILE}\n"
+            msg += f"'--node-key-file' may not be set! Path is hardcoded to {r.node_key_file}\n"
         if "--base-path" in service_args:
             msg += "'--base-path' may not be set! Charm handles this automatically.\n"
 
@@ -133,7 +134,7 @@ class ServiceArgs:
         self.service_args_list_customized = self.service_args_list_customized + args
 
     def __customize_service_args(self):  # noqa: C901
-        self.__add_firstchain_args(["--node-key-file", c.NODE_KEY_FILE if self._is_binary else self._snap_config.get("node_key_file")])
+        self.__add_firstchain_args(["--node-key-file", r.node_key_file if self._is_binary else self._snap_config.get("node_key_file")])
         if self._relay_rpc_urls:
             self.__add_firstchain_args(["--relay-chain-rpc-urls", *self._relay_rpc_urls])
 
@@ -146,8 +147,8 @@ class ServiceArgs:
             self.__sora()
 
         # The chain spec configs should be applied after hardcoded chain customizations above since this should override any hardcoded --chain overrides.
-        owner = c.USER if self._is_binary else c.SNAP_USER
-        spec_dir = c.CHAIN_SPEC_DIR if self._is_binary else self._snap_config.get("chain_spec_dir")
+        owner = r.user if self._is_binary else c.SNAP_USER
+        spec_dir = r.chain_spec_dir if self._is_binary else self._snap_config.get("chain_spec_dir")
         if self._chain_spec_url:
             chain_spec_path = download_chain_spec(self._chain_spec_url, "chain-spec.json", spec_dir, owner)
             self.__set_chain_name(str(chain_spec_path), 0)
@@ -155,7 +156,7 @@ class ServiceArgs:
             relay_chain_spec_path = download_chain_spec(self._local_relaychain_spec_url, "relaychain-spec.json", spec_dir, owner)
             self.__set_chain_name(str(relay_chain_spec_path), 1)
         if self._runtime_wasm_override:
-            self.__add_firstchain_args(["--wasm-runtime-overrides", c.WASM_DIR if self._is_binary else self._snap_config.get("wasm_dir")])
+            self.__add_firstchain_args(["--wasm-runtime-overrides", r.wasm_dir if self._is_binary else self._snap_config.get("wasm_dir")])
 
         # Apply --base-path whenever data-dir config parameter is set, or
         # use the snap default base path for snap workloads.

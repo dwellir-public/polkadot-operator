@@ -1,10 +1,10 @@
 import subprocess as sp
 
-from core import constants as c
+from core import runtime as r
 
 
 def setup_group_and_user():
-    sp.run(["addgroup", "--system", c.USER], check=False)
-    sp.run(["adduser", "--system", "--home", c.HOME_DIR, "--disabled-password", "--ingroup", c.USER, c.USER], check=False)
-    sp.run(["chown", f"{c.USER}:{c.USER}", c.HOME_DIR], check=False)
-    sp.run(["chmod", "700", c.HOME_DIR], check=False)
+    sp.run(["addgroup", "--system", r.user], check=False)
+    sp.run(["adduser", "--system", "--home", r.home_dir, "--disabled-password", "--ingroup", r.user, r.user], check=False)
+    sp.run(["chown", f"{r.user}:{r.user}", r.home_dir], check=False)
+    sp.run(["chmod", "700", r.home_dir], check=False)
