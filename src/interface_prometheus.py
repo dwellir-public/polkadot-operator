@@ -95,3 +95,8 @@ class PrometheusProvider(Object):
         job = json.dumps(self._job(str(bind_address)), sort_keys=True)
         for relation in self.model.relations[self._relation_name]:
             relation.data[self.model.unit][f"request_{self._request_id}"] = job
+
+    def set_port(self, port):
+        """Update the advertised scrape port and republish relation data."""
+        self._port = str(port)
+        self.set_job()

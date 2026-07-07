@@ -18,6 +18,7 @@ from typing import Optional
 from charms.operator_libs_linux.v2 import snap
 
 from core import constants as c
+from core import runtime as r
 from core.exceptions import InstallError, PolkadotError, ServiceError
 from core.managers import WorkloadManager, WorkloadType
 from core.utils import download_util, general_util
@@ -58,27 +59,51 @@ class PolkadotSnapManager(WorkloadManager):
     def configure(self, **kwargs):
         self._snap_name = kwargs.get("snap_name")
         if not self._snap_name:
-            raise ValueError(f"No snap-name provided. Please specify one of {list(c.SNAP_CONFIG.keys())}.")
-        if self._snap_name not in c.SNAP_CONFIG:
-            raise ValueError(f"Invalid snap-name provided: {self._snap_name}. Must be one of {list(c.SNAP_CONFIG.keys())}.")
+            raise ValueError(f"No snap-name provided. Please specify one of {list(r.snap_config.keys())}.")
+        if self._snap_name not in r.snap_config:
+            raise ValueError(f"Invalid snap-name provided: {self._snap_name}. Must be one of {list(r.snap_config.keys())}.")
 
         self._channel = kwargs.get("channel") if kwargs.get("channel") else None
         self._revision = kwargs.get("revision") if kwargs.get("revision") else None
         self._hold = kwargs.get("hold") if kwargs.get("hold") else None
         self._endure = kwargs.get("endure") if kwargs.get("endure") else None
         self._type = kwargs.get("chain-type")
-        self._snap_config = c.SNAP_CONFIG[self._snap_name]
+        self._snap_config = r.snap_config[self._snap_name]
         self._data_dir = Path(kwargs.get("data_dir")) if kwargs.get("data_dir") else None
         self._base_path = self._data_dir or self._snap_config.get("base_path")
         self._chain_db_dir = Path(self._base_path, "chains")
         self._relay_db_dir = Path(self._base_path, "polkadot")
 
         try:
+            if r.snap_instance_key:
+                self._enable_parallel_instances()
             cache = snap.SnapCache()
-            self._polkadot_snap = cache[self._snap_config.get("snap_name")]
+            self._polkadot_snap = self._load_snap(cache)
         except Exception as e:
             logger.error(f"Failed to initialize snap cache: {e}")
             raise PolkadotError(f"Failed to initialize: {e}")
+
+    def _load_snap(self, cache: snap.SnapCache) -> snap.Snap:
+        instance_snap_name = self._snap_config.get("snap_name")
+        try:
+            return cache[instance_snap_name]
+        except snap.SnapNotFoundError:
+            if not r.snap_instance_key:
+                raise
+            base_snap = cache[self._snap_config.get("base_snap_name")]
+            return snap.Snap(
+                name=instance_snap_name,
+                state=snap.SnapState.Available,
+                channel=base_snap.channel,
+                revision=base_snap.revision,
+                confinement=base_snap.confinement,
+            )
+
+    def _enable_parallel_instances(self) -> None:
+        sp.run(
+            ["snap", "set", "system", "experimental.parallel-instances=true"],
+            check=True,
+        )
 
     def install(self):
         if self._polkadot_snap.present:
@@ -114,9 +139,18 @@ class PolkadotSnapManager(WorkloadManager):
             logger.info(f"{self._snap_config.get('snap_name')} installed successfully")
 
             logger.info(f"Setting connection plugs for {self._snap_config.get('snap_name')}")
-            self._polkadot_snap.connect(plug="hardware-observe", service="polkadot")
-            self._polkadot_snap.connect(plug="system-observe", service="polkadot")
-            self._polkadot_snap.connect(plug="removable-media", service="polkadot")
+            self._polkadot_snap.connect(
+                plug="hardware-observe",
+                service=self._snap_config.get("snap_name"),
+            )
+            self._polkadot_snap.connect(
+                plug="system-observe",
+                service=self._snap_config.get("snap_name"),
+            )
+            self._polkadot_snap.connect(
+                plug="removable-media",
+                service=self._snap_config.get("snap_name"),
+            )
             logger.info(f"Connection plugs set successfully for {self._snap_config.get('snap_name')}")
 
         except Exception as e:

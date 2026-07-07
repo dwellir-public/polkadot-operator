@@ -110,6 +110,7 @@ def build_machine_observability_payload(
     service_name: str,
     charm_name: str,
     source_topology: SourceTopology | None = None,
+    metrics_port: str = "9615",
 ) -> MachineObservabilityPayload:
     """Build a typed source-only observability payload for publication."""
 
@@ -125,7 +126,7 @@ def build_machine_observability_payload(
         journal_match_expressions=[],
         metrics_endpoints=[
             MetricsEndpoint(
-                targets=["localhost:9615"],
+                targets=[f"localhost:{metrics_port}"],
                 path="/metrics",
                 scheme="http",
             )

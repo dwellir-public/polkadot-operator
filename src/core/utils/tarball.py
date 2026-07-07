@@ -1,7 +1,7 @@
 import subprocess as sp
 from tarfile import open as open_tarfile
 
-import core.constants as c
+from core import runtime as r
 
 
 class Tarball:
@@ -16,10 +16,10 @@ class Tarball:
             if "data-avail" in tarball.getnames():
                 member = tarball.getmember("data-avail")
                 if member.isfile():
-                    tarball.extract(member, path=c.HOME_DIR)
-                    sp.run(["mv", c.HOME_DIR / "data-avail", c.BINARY_FILE, "--force"])
+                    tarball.extract(member, path=r.home_dir)
+                    sp.run(["mv", r.home_dir / "data-avail", r.binary_file, "--force"])
                     sp.run(["rm", self.tarball_path])
-                    sp.run(["chown", f"{c.USER}:{c.USER}", c.BINARY_FILE])
+                    sp.run(["chown", f"{r.user}:{r.user}", r.binary_file])
                 else:
                     raise ValueError("Expected client binary 'data-avail' in tarball is not a file.")
             else:

@@ -4,7 +4,7 @@ import logging
 import subprocess as sp
 from pathlib import Path
 
-import core.constants as c
+from core import runtime as r
 
 logger = logging.getLogger(__name__)
 
@@ -88,13 +88,13 @@ class Docker:
         except sp.CalledProcessError as err:
             raise ValueError(f"Could not pull {docker_image_and_tag} check 'docker-tag'!") from err
 
-        sp.run(["docker", "create", "--name", "tmp", docker_image_and_tag], check=False)
+        sp.run(["docker", "create", "--name", r.docker_container_name, docker_image_and_tag], check=False)
         try:
-            sp.run(["docker", "cp", f"tmp:{docker_binary_path}", c.BINARY_FILE], check=True)
+            sp.run(["docker", "cp", f"{r.docker_container_name}:{docker_binary_path}", r.binary_file], check=True)
         except sp.CalledProcessError as err:
             raise ValueError(f"Could not find {docker_binary_path} in {docker_image_and_tag} check that it really exist in the image!") from err
         if docker_specs_path:
-            sp.run(["docker", "cp", f"tmp:{docker_specs_path}", c.HOME_DIR], check=True)
-            sp.run(["chown", "-R", "polkadot:polkadot", Path(c.HOME_DIR, Path(docker_specs_path).name)], check=True)
-        sp.run(["docker", "rm", "tmp"], check=True)
+            sp.run(["docker", "cp", f"{r.docker_container_name}:{docker_specs_path}", r.home_dir], check=True)
+            sp.run(["chown", "-R", f"{r.user}:{r.user}", Path(r.home_dir, Path(docker_specs_path).name)], check=True)
+        sp.run(["docker", "rm", r.docker_container_name], check=True)
         sp.run(["docker", "rmi", docker_image_and_tag], check=True)

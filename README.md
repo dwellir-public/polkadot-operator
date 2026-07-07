@@ -8,7 +8,7 @@ This repository is maintained by Dwellir, https://dwellir.com - Infrastructure p
 
 [Polkadot](https://polkadot.network/) is a web3 blockchain ecosystem. This charm can be deployed as a validator, collator, bootnode, or RPC on any Polkadot derived blockchain, also known as parachains. The deployment config differs depending on the chain that is being deployed.
 
-The charm starts the Polkadot client as a service, which takes its arguments from `/etc/default/polkadot` which in turn are set by the Juju config *service-args*. The Polkadot client itself is downloaded and installed from the config *binary-url*. Blockchain data is stored in the default client path unless the Juju config `data-dir` is set at deployment time.
+The charm starts the Polkadot client as a service, which takes its arguments from `/etc/default/<juju-app-name>` which in turn are set by the Juju config *service-args*. The Polkadot client itself is downloaded and installed from the config *binary-url*. Blockchain data is stored in the default client path unless the Juju config `data-dir` is set at deployment time.
 
 ## Building
 
@@ -52,6 +52,9 @@ However, there are some configs which are required by the charm to correctly ins
     - Note: from Polkadot release 1.1.0, the binary is split into three separate parts which means three separate URL:s will need to be set to the `binary-url` config, in a space separated list.
 - `service-args="... ..."` with the tags `--chain=...` and `--rpc-port=...` set
 - Optional: `data-dir=/mnt/blockchaindata0/polkadot` to override the Polkadot `--base-path` for either binary or snap workloads. This must be set at deployment time.
+- Optional: set `--prometheus-port=...` in `service-args` when multiple nodes run on the same machine. If omitted, the charm advertises the default Polkadot metrics port `9615`.
+
+When deploying multiple applications to the same machine, use a distinct Juju application name for each deployment, for example `juju deploy polkadot foo-bar`. Binary deployments use that application name for the Unix user, home directory, systemd service, and `/etc/default` file. Snap deployments use snap parallel instances; the snap instance key is the first 10 characters of the SHA1 hash of the Juju application name.
 
 With those configs included, a standard deployment of the Polkadot node could look like:
 
