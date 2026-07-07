@@ -103,7 +103,7 @@ class PolkadotCharm(ops.CharmBase):
             snap_revision=self.config.get("snap-revision"),
             snap_channel=self.config.get("snap-channel"),
             snap_name=self.config.get("snap-name"),
-            service_init=True,
+            initial_start_pending=False,
         )
 
         # Configure the workload as it was the last time the charm was executed
@@ -161,12 +161,12 @@ class PolkadotCharm(ops.CharmBase):
 
         self._workload.generate_node_key()
         self._workload.set_service_args(service_args_obj.service_args_string)
+        self._stored.initial_start_pending = True
         self._publish_machine_observability()
         self.unit.status = ops.MaintenanceStatus("Charm install complete")
 
     def _on_upgrade_charm(self, event: ops.UpgradeCharmEvent) -> None:
-        # Charm upgrade should not automatically start the service
-        self._stored.service_init = False
+        logger.debug("Upgrade charm hook called")
 
     def _on_config_changed(self, event: ops.ConfigChangedEvent) -> None:  # noqa: C901
         # validate that the client configuration is correct
@@ -188,8 +188,9 @@ class PolkadotCharm(ops.CharmBase):
             event.defer()
             return
 
-        # Get the service status to determine if a restart is needed
-        should_restart = self._workload.is_service_running()
+        # Only restart when this hook actually changes runtime inputs.
+        was_running = self._workload.is_service_running()
+        should_restart = False
 
         # NB: The install operation would stop the service if it's running.
         # The caller is responsible for restarting the service afterwards.
@@ -201,6 +202,7 @@ class PolkadotCharm(ops.CharmBase):
         try:
             # Update of polkadot binary requested
             if self._stored.binary_url != self.config.get("binary-url") or self._stored.docker_tag != self.config.get("docker-tag"):
+                restart_after_install = was_running
                 # If either binary-url or docker-tag is set, switch to binary manager
                 # and configure it with the current settings
                 if self.config.get("binary-url") or self.config.get("docker-tag"):
@@ -209,7 +211,7 @@ class PolkadotCharm(ops.CharmBase):
                         self._workload.uninstall()
                         self.unit.status = ops.MaintenanceStatus("Installing binary")
                         self._workload = WorkloadFactory.BINARY_MANAGER
-                        should_restart = False
+                        restart_after_install = False
                     else:
                         self.unit.status = ops.MaintenanceStatus("Updating binary")
                     self._workload.configure(
@@ -228,7 +230,7 @@ class PolkadotCharm(ops.CharmBase):
                         self._workload.uninstall()
                         self.unit.status = ops.MaintenanceStatus("Installing Snap")
                         self._workload = WorkloadFactory.SNAP_MANAGER
-                        should_restart = False
+                        restart_after_install = False
                     self._workload.configure(
                         channel=self.config.get("snap-channel"),
                         revision=self.config.get("snap-revision"),
@@ -239,6 +241,7 @@ class PolkadotCharm(ops.CharmBase):
                     )
 
                 self._workload.install()
+                should_restart = restart_after_install
 
             # Update of snap revision or channel is changed
             elif self._stored.snap_revision != self.config.get("snap-revision") or self._stored.snap_channel != self.config.get("snap-channel"):
@@ -255,6 +258,7 @@ class PolkadotCharm(ops.CharmBase):
                         data_dir=self._stored.data_dir,
                     )
                     self._workload.install()
+                    should_restart = was_running
                 else:
                     should_restart = False
                 # Update stored snap configurations
@@ -278,12 +282,14 @@ class PolkadotCharm(ops.CharmBase):
             self._workload.set_service_args(service_args_obj.service_args_string)
             self._stored.service_args = self.config.get("service-args")
             self._refresh_advertised_ports(service_args_obj.prometheus_port)
+            should_restart = was_running
 
         if self._stored.chain_spec_url != self.config.get("chain-spec-url"):
             try:
                 self.unit.status = ops.MaintenanceStatus("Updating chain spec")
                 self._workload.set_service_args(service_args_obj.service_args_string)
                 self._stored.chain_spec_url = self.config.get("chain-spec-url")
+                should_restart = was_running
             except ValueError as e:
                 self.unit.status = ops.BlockedStatus(str(e))
                 event.defer()
@@ -294,6 +300,7 @@ class PolkadotCharm(ops.CharmBase):
                 self.unit.status = ops.MaintenanceStatus("Updating relaychain spec")
                 self._workload.set_service_args(service_args_obj.service_args_string)
                 self._stored.local_relaychain_spec_url = self.config.get("local-relaychain-spec-url")
+                should_restart = was_running
             except ValueError as e:
                 self.unit.status = ops.BlockedStatus(str(e))
                 event.defer()
@@ -304,6 +311,7 @@ class PolkadotCharm(ops.CharmBase):
             self._workload.download_wasm_runtime(self.config.get("wasm-runtime-url"))
             self._workload.set_service_args(service_args_obj.service_args_string)
             self._stored.wasm_runtime_url = self.config.get("wasm-runtime-url")
+            should_restart = was_running
 
         if self._workload.get_type() == WorkloadType.SNAP:
             if self._stored.snap_hold != self.config.get("snap-hold"):
@@ -357,12 +365,15 @@ class PolkadotCharm(ops.CharmBase):
                     event.defer()
                     return
 
-        self._workload.set_service_args(service_args_obj.service_args_string)
-        # Restart the service if it was running before config changes, or start it if just initialized
+        if self._workload.service_args_differ_from_disk(service_args_obj.service_args_string):
+            self._workload.set_service_args(service_args_obj.service_args_string)
+            should_restart = was_running
+        # Restart the service if it was running before config changes, or start it after install.
         if should_restart:
             self._workload.restart_service()
-        elif self._stored.service_init:
+        elif self._stored.initial_start_pending:
             self._workload.start_service()
+            self._stored.initial_start_pending = False
 
         self._publish_machine_observability()
         self.update_status_simple()
