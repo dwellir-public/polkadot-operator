@@ -25,7 +25,7 @@ from core import runtime as r
 from core import runtime_identity
 from core.managers import PolkadotSnapManager, WorkloadFactory, WorkloadType
 from core.service_args import ServiceArgs
-from core.utils import general_util, user_group_util
+from core.utils import download_util, general_util, user_group_util
 from interface_prometheus import PrometheusProvider
 from interface_rpc_url_provider import RpcUrlProvider
 from interface_rpc_url_requirer import RpcUrlRequirer
@@ -159,6 +159,7 @@ class PolkadotCharm(ops.CharmBase):
         if self.config.get("wasm-runtime-url"):
             self._workload.download_wasm_runtime(self.config.get("wasm-runtime-url"))
 
+        self._download_configured_chain_specs()
         self._workload.generate_node_key()
         self._workload.set_service_args(service_args_obj.service_args_string)
         self._stored.initial_start_pending = True
@@ -191,6 +192,9 @@ class PolkadotCharm(ops.CharmBase):
         # Only restart when this hook actually changes runtime inputs.
         was_running = self._workload.is_service_running()
         should_restart = False
+        # Target changes cover rare binary/snap and snap-name moves where the same URL
+        # must be written to a new local path.
+        chain_spec_target_changed = False
 
         # NB: The install operation would stop the service if it's running.
         # The caller is responsible for restarting the service afterwards.
@@ -212,6 +216,7 @@ class PolkadotCharm(ops.CharmBase):
                         self.unit.status = ops.MaintenanceStatus("Installing binary")
                         self._workload = WorkloadFactory.BINARY_MANAGER
                         restart_after_install = False
+                        chain_spec_target_changed = True
                     else:
                         self.unit.status = ops.MaintenanceStatus("Updating binary")
                     self._workload.configure(
@@ -231,6 +236,7 @@ class PolkadotCharm(ops.CharmBase):
                         self.unit.status = ops.MaintenanceStatus("Installing Snap")
                         self._workload = WorkloadFactory.SNAP_MANAGER
                         restart_after_install = False
+                        chain_spec_target_changed = True
                     self._workload.configure(
                         channel=self.config.get("snap-channel"),
                         revision=self.config.get("snap-revision"),
@@ -287,6 +293,7 @@ class PolkadotCharm(ops.CharmBase):
         if self._stored.chain_spec_url != self.config.get("chain-spec-url"):
             try:
                 self.unit.status = ops.MaintenanceStatus("Updating chain spec")
+                self._download_configured_chain_specs(chain_spec=True, local_relaychain_spec=False)
                 self._workload.set_service_args(service_args_obj.service_args_string)
                 self._stored.chain_spec_url = self.config.get("chain-spec-url")
                 should_restart = was_running
@@ -298,6 +305,7 @@ class PolkadotCharm(ops.CharmBase):
         if self._stored.local_relaychain_spec_url != self.config.get("local-relaychain-spec-url"):
             try:
                 self.unit.status = ops.MaintenanceStatus("Updating relaychain spec")
+                self._download_configured_chain_specs(chain_spec=False, local_relaychain_spec=True)
                 self._workload.set_service_args(service_args_obj.service_args_string)
                 self._stored.local_relaychain_spec_url = self.config.get("local-relaychain-spec-url")
                 should_restart = was_running
@@ -359,11 +367,23 @@ class PolkadotCharm(ops.CharmBase):
                     )
                     self._workload.install()
                     self._stored.snap_name = self.config.get("snap-name")
+                    chain_spec_target_changed = True
                     logger.info(f"Snap name changed to {self.config.get('snap-name')} successfully")
                 except ValueError as e:
                     self.unit.status = ops.BlockedStatus(str(e))
                     event.defer()
                     return
+
+        if chain_spec_target_changed and (self.config.get("chain-spec-url") or self.config.get("local-relaychain-spec-url")):
+            try:
+                self.unit.status = ops.MaintenanceStatus("Updating chain spec")
+                self._download_configured_chain_specs()
+                self._workload.set_service_args(service_args_obj.service_args_string)
+                should_restart = was_running
+            except ValueError as e:
+                self.unit.status = ops.BlockedStatus(str(e))
+                event.defer()
+                return
 
         if self._workload.service_args_differ_from_disk(service_args_obj.service_args_string):
             self._workload.set_service_args(service_args_obj.service_args_string)
@@ -384,6 +404,20 @@ class PolkadotCharm(ops.CharmBase):
         self.cos_agent_provider._metrics_endpoints = [{"port": int(metrics_port), "path": "/metrics"}]
         self.cos_agent_provider._on_refresh(None)
         self._publish_machine_observability()
+
+    def _chain_spec_download_context(self):
+        if self._workload.get_type() == WorkloadType.BINARY:
+            return r.chain_spec_dir, r.user
+
+        snap_name = self.config.get("snap-name") or self._stored.snap_name
+        return r.snap_config[snap_name]["chain_spec_dir"], c.SNAP_USER
+
+    def _download_configured_chain_specs(self, chain_spec: bool = True, local_relaychain_spec: bool = True) -> None:
+        spec_dir, owner = self._chain_spec_download_context()
+        if chain_spec and self.config.get("chain-spec-url"):
+            download_util.download_chain_spec(self.config.get("chain-spec-url"), "chain-spec.json", spec_dir, owner)
+        if local_relaychain_spec and self.config.get("local-relaychain-spec-url"):
+            download_util.download_chain_spec(self.config.get("local-relaychain-spec-url"), "relaychain-spec.json", spec_dir, owner)
 
     def _on_update_status(self, event: ops.UpdateStatusEvent) -> None:
         self._publish_machine_observability()

@@ -3,7 +3,9 @@
 
 import sys
 import types
+from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import patch
 
 substrateinterface = types.ModuleType("substrateinterface")
 substrateinterface.SubstrateInterface = object
@@ -255,12 +257,35 @@ def test_prometheus_port():
         assert ServiceArgs(config, {}).prometheus_port == expected
 
 
+def test_service_args_with_chain_spec_url_does_not_download_chain_spec():
+    config = {
+        "service-args": "--chain polkadot --rpc-port 9933",
+        "data-dir": "",
+        "chain-spec-url": "https://example.invalid/chain-spec.json",
+        "local-relaychain-spec-url": "",
+        "wasm-runtime-url": "",
+        "docker-tag": "",
+        "binary-url": "",
+        "snap-name": "polkadot",
+    }
+
+    with patch("core.utils.download_util.download_chain_spec") as download_chain_spec:
+        service_args = ServiceArgs(config, {})
+
+    download_chain_spec.assert_not_called()
+    assert "--chain /var/snap/polkadot/common/spec/chain-spec.json" in service_args.service_args_string
+
+
 class _FakeWorkload:
     def __init__(self, running=True):
         self.running = running
         self.restart_calls = 0
         self.start_calls = 0
         self.set_service_args_calls = 0
+        self.configure_calls = 0
+        self.install_calls = 0
+        self.uninstall_calls = 0
+        self.stop_calls = 0
 
     def get_type(self):
         return WorkloadType.SNAP
@@ -282,6 +307,18 @@ class _FakeWorkload:
 
     def start_service(self):
         self.start_calls += 1
+
+    def stop_service(self):
+        self.stop_calls += 1
+
+    def configure(self, **kwargs):
+        self.configure_calls += 1
+
+    def install(self):
+        self.install_calls += 1
+
+    def uninstall(self):
+        self.uninstall_calls += 1
 
     def get_binary_version(self):
         return "1.0.0"
@@ -319,6 +356,12 @@ def _config_changed_charm(workload, stored):
         _has_valid_client_config=lambda: PolkadotCharm._has_valid_client_config(charm),
         _get_client_type=lambda: "snap",
         _get_workload_version=lambda: workload.get_binary_version(),
+    )
+    charm._chain_spec_download_context = lambda: PolkadotCharm._chain_spec_download_context(charm)
+    charm._download_configured_chain_specs = lambda chain_spec=True, local_relaychain_spec=True: PolkadotCharm._download_configured_chain_specs(
+        charm,
+        chain_spec=chain_spec,
+        local_relaychain_spec=local_relaychain_spec,
     )
     return charm
 
@@ -365,3 +408,40 @@ def test_config_changed_consumes_initial_start_pending_after_starting_workload()
     assert event.deferred is False
     assert workload.start_calls == 1
     assert stored.initial_start_pending is False
+
+
+def test_config_changed_downloads_chain_spec_when_url_changes():
+    workload = _FakeWorkload(running=True)
+    stored = _stored_state(initial_start_pending=False)
+    charm = _config_changed_charm(workload, stored)
+    charm.config["chain-spec-url"] = "https://example.invalid/chain-spec.json"
+    event = SimpleNamespace(deferred=False, defer=lambda: setattr(event, "deferred", True))
+
+    with patch("core.utils.download_util.download_chain_spec") as download_chain_spec:
+        PolkadotCharm._on_config_changed(charm, event)
+
+    download_chain_spec.assert_called_once_with(
+        "https://example.invalid/chain-spec.json",
+        "chain-spec.json",
+        Path("/var/snap/polkadot/common/spec"),
+        "root",
+    )
+    assert event.deferred is False
+    assert stored.chain_spec_url == "https://example.invalid/chain-spec.json"
+    assert workload.set_service_args_calls >= 1
+
+
+def test_config_changed_downloads_chain_spec_for_url_and_target_changes():
+    workload = _FakeWorkload(running=False)
+    stored = _stored_state(initial_start_pending=False)
+    stored.snap_name = "polkadot-parachain"
+    charm = _config_changed_charm(workload, stored)
+    charm.config["chain-spec-url"] = "https://example.invalid/chain-spec.json"
+    event = SimpleNamespace(deferred=False, defer=lambda: setattr(event, "deferred", True))
+
+    with patch("core.utils.download_util.download_chain_spec") as download_chain_spec:
+        PolkadotCharm._on_config_changed(charm, event)
+
+    assert download_chain_spec.call_count == 2
+    download_chain_spec.assert_any_call("https://example.invalid/chain-spec.json", "chain-spec.json", Path("/var/snap/polkadot/common/spec"), "root")
+    assert event.deferred is False

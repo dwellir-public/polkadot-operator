@@ -6,7 +6,6 @@ from ops.model import ConfigData
 
 import core.constants as c
 from core import runtime as r
-from core.utils.download_util import download_chain_spec
 
 
 class ServiceArgs:
@@ -147,13 +146,12 @@ class ServiceArgs:
             self.__sora()
 
         # The chain spec configs should be applied after hardcoded chain customizations above since this should override any hardcoded --chain overrides.
-        owner = r.user if self._is_binary else c.SNAP_USER
         spec_dir = r.chain_spec_dir if self._is_binary else self._snap_config.get("chain_spec_dir")
         if self._chain_spec_url:
-            chain_spec_path = download_chain_spec(self._chain_spec_url, "chain-spec.json", spec_dir, owner)
+            chain_spec_path = spec_dir / "chain-spec.json"
             self.__set_chain_name(str(chain_spec_path), 0)
         if self._local_relaychain_spec_url:
-            relay_chain_spec_path = download_chain_spec(self._local_relaychain_spec_url, "relaychain-spec.json", spec_dir, owner)
+            relay_chain_spec_path = spec_dir / "relaychain-spec.json"
             self.__set_chain_name(str(relay_chain_spec_path), 1)
         if self._runtime_wasm_override:
             self.__add_firstchain_args(["--wasm-runtime-overrides", r.wasm_dir if self._is_binary else self._snap_config.get("wasm_dir")])
