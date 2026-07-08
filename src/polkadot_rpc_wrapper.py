@@ -2,10 +2,13 @@
 
 import json
 import re
+from hashlib import blake2b
 from typing import Tuple
 
 import requests
+from scalecodec.base import ScaleBytes
 from substrateinterface import Keypair, SubstrateInterface
+from substrateinterface.exceptions import SubstrateRequestException
 
 from core.utils import general_util
 
@@ -154,6 +157,83 @@ class PolkadotRpcWrapper:
                 return session_key
         return False
 
+    @staticmethod
+    def _create_enjin_signed_extrinsic(substrate, call, keypair):
+        substrate.init_runtime()
+        signed_extensions = substrate.metadata.get_signed_extensions()
+
+        substrate.runtime_config.update_type_registry_types(
+            {
+                "ExtrinsicV4": {
+                    "type": "struct",
+                    "type_mapping": [
+                        ["address", "Address"],
+                        ["signature", "ExtrinsicSignature"],
+                        ["era", signed_extensions["CheckMortality"]["extrinsic"]],
+                        ["mode", signed_extensions["CheckMetadataHash"]["extrinsic"]],
+                        ["nonce", signed_extensions["CheckNonce"]["extrinsic"]],
+                        ["tip", signed_extensions["ChargeTransactionPayment"]["extrinsic"]],
+                        ["call", "Call"],
+                    ],
+                }
+            }
+        )
+
+        nonce = substrate.get_account_nonce(keypair.ss58_address) or 0
+        era = "00"
+        genesis_hash = substrate.get_block_hash(0)
+        block_hash = genesis_hash
+
+        signature_payload = substrate.runtime_config.create_scale_object("ExtrinsicPayloadValue")
+        signature_payload.type_mapping = [
+            ["call", "CallBytes"],
+            ["era", signed_extensions["CheckMortality"]["extrinsic"]],
+            ["mode", signed_extensions["CheckMetadataHash"]["extrinsic"]],
+            ["nonce", signed_extensions["CheckNonce"]["extrinsic"]],
+            ["tip", signed_extensions["ChargeTransactionPayment"]["extrinsic"]],
+            ["spec_version", signed_extensions["CheckSpecVersion"]["additional_signed"]],
+            ["transaction_version", signed_extensions["CheckTxVersion"]["additional_signed"]],
+            ["genesis_hash", signed_extensions["CheckGenesis"]["additional_signed"]],
+            ["block_hash", signed_extensions["CheckMortality"]["additional_signed"]],
+            ["metadata_hash", signed_extensions["CheckMetadataHash"]["additional_signed"]],
+        ]
+        signature_payload.encode(
+            {
+                "call": str(call.data),
+                "era": era,
+                "mode": "Disabled",
+                "nonce": nonce,
+                "tip": 0,
+                "spec_version": substrate.runtime_version,
+                "transaction_version": substrate.transaction_version,
+                "genesis_hash": genesis_hash,
+                "block_hash": block_hash,
+                "metadata_hash": None,
+            }
+        )
+
+        payload_data = signature_payload.data
+        if payload_data.length > 256:
+            payload_data = ScaleBytes(data=blake2b(payload_data.data, digest_size=32).digest())
+        signature = keypair.sign(payload_data)
+
+        extrinsic = substrate.runtime_config.create_scale_object("Extrinsic", metadata=substrate.metadata)
+        extrinsic.encode(
+            {
+                "account_id": f"0x{keypair.public_key.hex()}",
+                "signature": f"0x{signature.hex()}",
+                "signature_version": keypair.crypto_type,
+                "call_function": call.value["call_function"],
+                "call_module": call.value["call_module"],
+                "call_args": call.value["call_args"],
+                "nonce": nonce,
+                "era": era,
+                "tip": 0,
+                "mode": "Disabled",
+            }
+        )
+        return extrinsic
+
     def set_session_key_on_chain(self, mnemonic, proxy_type, address):
         """
         Sets a session key on-chain for a validator/collator.
@@ -197,13 +277,19 @@ class PolkadotRpcWrapper:
         else:
             final_call = call
 
+        if "enjin" in chain_name.lower():
+            extrinsic = self._create_enjin_signed_extrinsic(substrate, final_call, keypair)
         # A work around to deal with this issue: https://github.com/JAMdotTech/py-polkadot-sdk/issues/412
-        if "kilt" in self.get_chain_name().lower():
+        elif "kilt" in chain_name.lower():
             substrate.runtime_config.update_type_registry_types({"Index": "U64"})
+            extrinsic = substrate.create_signed_extrinsic(call=final_call, keypair=keypair)
+        else:
+            extrinsic = substrate.create_signed_extrinsic(call=final_call, keypair=keypair)
 
-        extrinsic = substrate.create_signed_extrinsic(call=final_call, keypair=keypair)
-
-        result = substrate.submit_extrinsic(extrinsic, wait_for_inclusion=True)
+        try:
+            result = substrate.submit_extrinsic(extrinsic, wait_for_inclusion=True)
+        except SubstrateRequestException as e:
+            raise ValueError(str(e)) from e
         if not result.is_success:
             raise ValueError(result.error_message)
         return result.get_extrinsic_identifier()

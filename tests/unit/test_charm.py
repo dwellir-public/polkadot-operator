@@ -8,9 +8,12 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 substrateinterface = types.ModuleType("substrateinterface")
+substrateinterface_exceptions = types.ModuleType("substrateinterface.exceptions")
 substrateinterface.SubstrateInterface = object
 substrateinterface.Keypair = object
+substrateinterface_exceptions.SubstrateRequestException = Exception
 sys.modules.setdefault("substrateinterface", substrateinterface)
+sys.modules.setdefault("substrateinterface.exceptions", substrateinterface_exceptions)
 
 from charms.dwellir_observability.v0.machine_observability import (  # noqa: E402
     MACHINE_OBSERVABILITY_SCHEMA_VERSION_V1,
