@@ -275,7 +275,7 @@ def is_parachain_node(chain_db_dir: Path | None = None, relay_db_dir: Path | Non
     if chain_db_dir.exists() and relay_db_dir.exists():
         return True
     if r.binary_file.exists():
-        command = rf'.{r.binary_file} --help | grep -i "\-\-collator"'
+        command = rf'.{r.binary_file} --help | grep -Ei "(^|[[:space:]])\-\-collator([[:space:]]|$)"'
         output = sp.run(command, stdout=sp.PIPE, cwd="/", shell=True, check=False)
         if output.returncode == 0:
             return True
