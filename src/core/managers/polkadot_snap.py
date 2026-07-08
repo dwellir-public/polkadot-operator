@@ -353,7 +353,7 @@ class PolkadotSnapManager(WorkloadManager):
         return general_util.get_binary_md5sum(self._snap_config.get("snap_binary_path"))
 
     def get_proc_cmdline(self) -> str:
-        return general_util.get_process_cmdline(self._snap_config.get("service_name")[:15])
+        return general_util.get_process_cmdline(self._snap_config.get("service_name")[:15], self._snap_config.get("snap_binary_path"))
 
     def is_relay_chain_node(self) -> bool:
         return not self.is_parachain_node()

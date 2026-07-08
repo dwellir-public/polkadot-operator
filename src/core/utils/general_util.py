@@ -52,14 +52,18 @@ def get_binary_last_changed(binary_path: Union[Path, str]) -> str:
     return ""
 
 
-def get_process_id(process_name: str) -> str:
-    command = ["pgrep", "-x", f"{process_name}"]
-    pgrep_output = sp.run(command, stdout=sp.PIPE, check=False).stdout.decode("utf-8").strip()
-    return pgrep_output
+def get_process_id(process_name: str | None = None, process_path: Union[Path, str, None] = None) -> str:
+    pgrep_output = ""
+    if process_path:
+        pgrep_output = sp.run(["pgrep", "-f", str(process_path)], stdout=sp.PIPE, check=False).stdout.decode("utf-8").strip()
+    if not pgrep_output and process_name:
+        command = ["pgrep", "-x", f"{process_name}"]
+        pgrep_output = sp.run(command, stdout=sp.PIPE, check=False).stdout.decode("utf-8").strip()
+    return pgrep_output.splitlines()[0] if pgrep_output else ""
 
 
-def get_process_cmdline(process_name: str) -> str:
-    proc_id = get_process_id(process_name)
+def get_process_cmdline(process_name: str | None = None, process_path: Union[Path, str, None] = None) -> str:
+    proc_id = get_process_id(process_name, process_path)
     if proc_id:
         command = f"cat /proc/{proc_id}/cmdline"  # Uses NUL bytes as delimiter
         cat_output = sp.run(command, stdout=sp.PIPE, shell=True, check=False).stdout.decode().split("\x00")
