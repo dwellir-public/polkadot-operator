@@ -9,6 +9,7 @@ import requests
 from scalecodec.base import ScaleBytes
 from substrateinterface import Keypair, SubstrateInterface
 from substrateinterface.exceptions import SubstrateRequestException
+from substrateinterface.utils.ss58 import ss58_decode
 
 from core.utils import general_util
 
@@ -28,6 +29,32 @@ class PolkadotRpcWrapper:
         response = requests.post(url=self.__server_address, headers=self.__headers, data=data)
         response_json = json.loads(response.text)
         return response_json["result"]
+
+    def rpc_method_exists(self, method):
+        data = '{"id":1, "jsonrpc":"2.0", "method": "rpc_methods", "params": []}'
+        response = requests.post(url=self.__server_address, headers=self.__headers, data=data)
+        response_json = json.loads(response.text)
+        methods = response_json.get("result", {}).get("methods", [])
+        return method in methods
+
+    def get_session_key_with_owner(self, owner_public_key):
+        """
+        Get a new session key and ownership proof from node.
+        :param owner_public_key: owner account id as hex string.
+        :return: tuple of session key and proof.
+        """
+        data = json.dumps(
+            {
+                "id": 1,
+                "jsonrpc": "2.0",
+                "method": "author_rotateKeysWithOwner",
+                "params": [owner_public_key],
+            }
+        )
+        response = requests.post(url=self.__server_address, headers=self.__headers, data=data)
+        response_json = json.loads(response.text)
+        result = response_json["result"]
+        return result["keys"], result["proof"]
 
     def is_syncing(self) -> str:
         """
@@ -241,8 +268,14 @@ class PolkadotRpcWrapper:
         :return: the receipt of the extrinsic.
         """
 
-        # Generate a new session key
-        session_key = self.get_session_key()
+        keypair = Keypair.create_from_mnemonic(mnemonic)
+        if self.rpc_method_exists("author_rotateKeysWithOwner"):
+            owner_public_key = f"0x{ss58_decode(address)}" if address else f"0x{keypair.public_key.hex()}"
+            session_key, proof = self.get_session_key_with_owner(owner_public_key)
+        else:
+            # Generate a new session key
+            session_key = self.get_session_key()
+            proof = "0x00"
         if not session_key:
             raise ValueError("Failed to generate a new session key")
 
@@ -253,14 +286,13 @@ class PolkadotRpcWrapper:
         keys = general_util.name_session_keys(chain_name, session_key_split)
 
         substrate = SubstrateInterface(url=self.__server_address_ws)
-        keypair = Keypair.create_from_mnemonic(mnemonic)
         # Set the new session key on-chain for the validator/collator
         call = substrate.compose_call(
             "Session",
             "set_keys",
             {
                 "keys": keys,
-                "proof": "0x00",
+                "proof": proof,
             },
         )
         # If using proxy account, wrap the set_keys call in a proxy call

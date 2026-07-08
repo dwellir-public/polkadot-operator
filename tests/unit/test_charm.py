@@ -9,11 +9,16 @@ from unittest.mock import patch
 
 substrateinterface = types.ModuleType("substrateinterface")
 substrateinterface_exceptions = types.ModuleType("substrateinterface.exceptions")
+substrateinterface_utils = types.ModuleType("substrateinterface.utils")
+substrateinterface_utils_ss58 = types.ModuleType("substrateinterface.utils.ss58")
 substrateinterface.SubstrateInterface = object
 substrateinterface.Keypair = object
 substrateinterface_exceptions.SubstrateRequestException = Exception
+substrateinterface_utils_ss58.ss58_decode = lambda address: address
 sys.modules.setdefault("substrateinterface", substrateinterface)
 sys.modules.setdefault("substrateinterface.exceptions", substrateinterface_exceptions)
+sys.modules.setdefault("substrateinterface.utils", substrateinterface_utils)
+sys.modules.setdefault("substrateinterface.utils.ss58", substrateinterface_utils_ss58)
 
 from charms.dwellir_observability.v0.machine_observability import (  # noqa: E402
     MACHINE_OBSERVABILITY_SCHEMA_VERSION_V1,
