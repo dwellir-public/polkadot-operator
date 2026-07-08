@@ -96,7 +96,7 @@ def name_session_keys(chain_name: str, keys: list) -> dict:
     """
     if "enjin" in chain_name.lower():
         # Enjin ecosystem
-        if len(keys) == 5:
+        if len(keys) == 8:
             # Enjin relay chain
             return {
                 "grandpa": keys[0],
@@ -104,6 +104,9 @@ def name_session_keys(chain_name: str, keys: list) -> dict:
                 "para_validator": keys[2],
                 "para_assignment": keys[3],
                 "authority_discovery": keys[4],
+                "nomination_pools": keys[5],
+                "fuel_tanks": keys[6],
+                "marketplace": keys[7],
             }
         elif len(keys) == 1:
             # Enjin parachain
