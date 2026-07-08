@@ -103,7 +103,7 @@ class PolkadotBinaryManager(WorkloadManager):
         return binary_util.get_binary_last_changed()
 
     def get_proc_cmdline(self) -> str:
-        return general_util.get_process_cmdline(r.user)
+        return general_util.get_process_cmdline(process_path=r.binary_file)
 
     def is_relay_chain_node(self) -> bool:
         return binary_util.is_relay_chain_node(self._chain_db_dir, self._relay_db_dir)
