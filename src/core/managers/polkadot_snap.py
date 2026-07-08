@@ -362,7 +362,7 @@ class PolkadotSnapManager(WorkloadManager):
         if self._chain_db_dir.exists() and self._relay_db_dir.exists():
             return True
         if self.is_service_installed():
-            command = rf'snap run {self._snap_config.get("cli_command")} --help | grep -i "\-\-collator"'
+            command = rf'snap run {self._snap_config.get("cli_command")} --help | grep -Ei "(^|[[:space:]])\-\-collator([[:space:]]|$)"'
             output = sp.run(command, stdout=sp.PIPE, cwd="/", shell=True, check=False)
             if output.returncode == 0:
                 return True
