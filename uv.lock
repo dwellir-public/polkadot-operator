@@ -276,16 +276,16 @@ wheels = [
 
 [[package]]
 name = "charms-dwellir-blockchain-common"
-version = "0.0.2"
+version = "0.2.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "docker" },
     { name = "ops" },
     { name = "requests" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a5/62/f0ae624448f0897dc2f54c3caee8a93a8680821d9615f5058c4effc26715/charms_dwellir_blockchain_common-0.0.2.tar.gz", hash = "sha256:4541d235d77d8c5c358ecfa0c23d3cb7ba240ccd805a0df96650fe8c0bf12b14", size = 142329, upload-time = "2026-03-02T15:18:21.958Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/24/f1/4b0e44e6d3535c264f7a1a3a8ca90f8a3f37ccd80a0119e98361f60aac6f/charms_dwellir_blockchain_common-0.2.3.tar.gz", hash = "sha256:b730a31b310c816bef4b0890b485352ad5cba084b1be5160b167a8549f055356", size = 144103, upload-time = "2026-05-19T11:42:09.5Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/28/ec/a62d90d5b688f687a6cbf36ca2ed073c70ce9ab42f4c7eebee6919fd96a8/charms_dwellir_blockchain_common-0.0.2-py3-none-any.whl", hash = "sha256:3b0544d1e8bcbc7cf644c17b2c392ba5df1d8b060fcc5219aab68ae8b4b630a3", size = 151056, upload-time = "2026-03-02T15:18:19.93Z" },
+    { url = "https://files.pythonhosted.org/packages/45/30/7d1dc08b3ee1920e5f0b67018a02c69ee9de333dc87ce782f696913457d9/charms_dwellir_blockchain_common-0.2.3-py3-none-any.whl", hash = "sha256:7897f541803e1bcad9923889d9e21936d7872f0debf7b8214ee8691d3c0a4501", size = 153455, upload-time = "2026-05-19T11:42:07.943Z" },
 ]
 
 [[package]]
@@ -1346,7 +1346,7 @@ unit = [
 [package.metadata]
 requires-dist = [
     { name = "boto3", specifier = "==1.37.38" },
-    { name = "charms-dwellir-blockchain-common", specifier = "==0.0.2" },
+    { name = "charms-dwellir-blockchain-common", specifier = "==0.2.3" },
     { name = "cosl" },
     { name = "ops", specifier = "==2.9" },
     { name = "pydantic" },
