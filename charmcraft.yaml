@@ -1,13 +1,18 @@
 type: charm
 
 platforms:
-  ubuntu@20.04:amd64:
   ubuntu@22.04:amd64:
   ubuntu@24.04:amd64:
 
 parts:
   charm:
+    plugin: uv
     source: .
-    plugin: charm
-    charm-binary-python-packages:
-      - substrate-interface==1.8.1
+    build-snaps:
+      - astral-uv
+  root-files:
+    plugin: dump
+    source: .
+    stage:
+      - README.md
+      - templates/**

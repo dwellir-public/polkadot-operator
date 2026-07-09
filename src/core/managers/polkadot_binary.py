@@ -1,29 +1,30 @@
 from pathlib import Path
+
+from core import runtime as r
+from core.utils import binary_util, download_util, general_util
+
 from .workload import WorkloadManager, WorkloadType
-from core.utils import binary_util, download_util
-from core.utils import general_util
-from core import constants as c
+
 
 class PolkadotBinaryManager(WorkloadManager):
-
     def __init__(self):
         super().__init__(WorkloadType.BINARY)
 
     def configure(self, **kwargs):
-        self._chain_name = kwargs.get('chain_name')
-        self._binary_url = kwargs.get('binary_url')
-        self._binary_sha256_url = kwargs.get('binary_sha256_url')
-        self._docker_tag = kwargs.get('docker_tag')
-        self._data_dir = Path(kwargs.get('data_dir')) if kwargs.get('data_dir') else None
-        self._base_path = self._data_dir or c.BASE_PATH
-        self._chain_db_dir = Path(self._base_path, 'chains')
-        self._relay_db_dir = Path(self._base_path, 'polkadot')
-        self._service_template_path = Path(kwargs.get('charm_base_dir'), 'templates/etc/systemd/system/polkadot.service')
+        self._chain_name = kwargs.get("chain_name")
+        self._binary_url = kwargs.get("binary_url")
+        self._binary_sha256_url = kwargs.get("binary_sha256_url")
+        self._docker_tag = kwargs.get("docker_tag")
+        self._data_dir = Path(kwargs.get("data_dir")) if kwargs.get("data_dir") else None
+        self._base_path = self._data_dir or r.base_path
+        self._chain_db_dir = Path(self._base_path, "chains")
+        self._relay_db_dir = Path(self._base_path, "polkadot")
+        self._service_template_path = Path(kwargs.get("charm_base_dir"), "templates/etc/systemd/system/polkadot.service")
 
     def install(self):
         if not self._binary_url and not self._docker_tag:
             raise ValueError("Either 'binary_url' or 'docker_tag' must be provided for binary installation.")
-        if self._data_dir and not general_util.setup_data_dir(self._base_path, c.USER):
+        if self._data_dir and not general_util.setup_data_dir(self._base_path, r.user):
             raise ValueError(f"Failed to set up data-dir {self._base_path}")
         if self._binary_url:
             binary_util.install_binary(self._chain_name, self._binary_url, self._binary_sha256_url)
@@ -31,7 +32,7 @@ class PolkadotBinaryManager(WorkloadManager):
             binary_util.install_binary_from_docker_container(self._chain_name, self._docker_tag)
         binary_util.create_env_file_for_service()
         binary_util.install_service_file(self._service_template_path)
-    
+
     def uninstall(self):
         binary_util.uninstall_binary()
 
@@ -49,7 +50,7 @@ class PolkadotBinaryManager(WorkloadManager):
 
     def is_service_installed(self) -> bool:
         return binary_util.is_installed()
-    
+
     def is_service_started(self, iterations):
         return binary_util.service_started(iterations)
 
@@ -72,7 +73,7 @@ class PolkadotBinaryManager(WorkloadManager):
         binary_util.generate_node_key()
 
     def download_wasm_runtime(self, url: str) -> None:
-        download_util.download_wasm_runtime(url, c.WASM_DIR, c.USER)
+        download_util.download_wasm_runtime(url, r.wasm_dir, r.user)
 
     def get_binary_version(self) -> str:
         return binary_util.get_binary_version()
@@ -82,12 +83,12 @@ class PolkadotBinaryManager(WorkloadManager):
 
     def get_relay_disk_usage(self) -> str:
         return binary_util.get_relay_disk_usage(self._relay_db_dir)
-    
+
     def get_service_args(self) -> str:
         return binary_util.get_service_args()
 
     def get_wasm_info(self):
-        return general_util.get_wasm_info(c.WASM_DIR)
+        return general_util.get_wasm_info(r.wasm_dir)
 
     def set_service_args(self, service_args: str) -> None:
         return binary_util.update_service_args(service_args)
@@ -102,19 +103,19 @@ class PolkadotBinaryManager(WorkloadManager):
         return binary_util.get_binary_last_changed()
 
     def get_proc_cmdline(self) -> str:
-        return general_util.get_process_cmdline(c.USER)
+        return general_util.get_process_cmdline(process_path=r.binary_file)
 
     def is_relay_chain_node(self) -> bool:
         return binary_util.is_relay_chain_node(self._chain_db_dir, self._relay_db_dir)
-    
+
     def is_parachain_node(self) -> bool:
         return binary_util.is_parachain_node(self._chain_db_dir, self._relay_db_dir)
-    
+
     def write_node_key_file(self, key) -> None:
-        general_util.write_node_key_file(c.NODE_KEY_FILE, key, c.USER)
+        general_util.write_node_key_file(r.node_key_file, key, r.user)
 
     def get_relay_for_parachain(self):
         return binary_util.get_relay_for_parachain(self._chain_db_dir, self._relay_db_dir)
-    
+
     def get_binary_path(self) -> str:
         return binary_util.get_binary_path()

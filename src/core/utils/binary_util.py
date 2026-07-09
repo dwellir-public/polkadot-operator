@@ -1,25 +1,30 @@
+import hashlib
+import logging
 import os
 import re
-import shutil
-import logging
-import hashlib
-import time
-import requests
 import subprocess as sp
+import time
 from pathlib import Path
+from string import Template
+
+import requests
+
+from core import constants as c
+from core import runtime as r
+from core.utils import general_util
 from core.utils.docker import Docker
 from core.utils.tarball import Tarball
-from core import constants as c
-from core.utils import general_util
 
 logger = logging.getLogger(__name__)
 
+
 def install_fuse_overlayfs() -> None:
     try:
-        sp.run(['sudo', 'apt', 'install', '-y', 'fuse-overlayfs'], check=True)
+        sp.run(["sudo", "apt", "install", "-y", "fuse-overlayfs"], check=True)
     except sp.CalledProcessError as e:
         logger.error(f"failed to install fuse-overlayfs: {e}")
         raise e
+
 
 def install_docker_runtime() -> None:
     try:
@@ -28,14 +33,15 @@ def install_docker_runtime() -> None:
         install_fuse_overlayfs()
         c.DOCKER_DEAMON_CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
         c.DOCKER_DEAMON_CONFIG_PATH.write_text(c.DOCKER_DEAMON_JSON_CONFIG)
-        sp.run(['curl', '-fsSL', 'https://get.docker.com', '-o', 'get-docker.sh'], check=False)
-        sp.run(['sh', 'get-docker.sh'], check=False)
-        sp.run(['usermod', '-aG', 'docker', c.USER], check=False)
+        sp.run(["curl", "-fsSL", "https://get.docker.com", "-o", "get-docker.sh"], check=False)
+        sp.run(["sh", "get-docker.sh"], check=False)
+        sp.run(["usermod", "-aG", "docker", r.user], check=False)
+
 
 def install_binary(chain_name: str, binary_url: str, binary_sha256_url: str | None = None) -> None:
-    if binary_url.endswith('.deb'):
+    if binary_url.endswith(".deb"):
         install_deb_from_url(binary_url)
-    elif binary_url.endswith('.tar.gz') or binary_url.endswith('.tgz'):
+    elif binary_url.endswith(".tar.gz") or binary_url.endswith(".tgz"):
         install_tarball_from_url(binary_url, chain_name)
     elif len(binary_url.split()) > 1:
         install_binaries_from_urls(binary_url, binary_sha256_url, chain_name)
@@ -44,50 +50,53 @@ def install_binary(chain_name: str, binary_url: str, binary_sha256_url: str | No
 
 
 def install_binary_from_docker_container(chain_name: str, docker_tag: str) -> None:
-        install_docker_runtime()
-        Docker(chain_name, docker_tag).extract_resources_from_docker()
+    install_docker_runtime()
+    Docker(chain_name, docker_tag).extract_resources_from_docker()
 
 
-def find_binary_installed_by_deb(package_name: str, ) -> str:
-    files = sp.check_output(['dpkg', '-L', package_name]).decode().split('\n')[:-1]
-    bin_files = [file for file in files if file.startswith('/bin/')]
-    logger.debug('Found files in /bin/ %s', str(bin_files))
+def find_binary_installed_by_deb(
+    package_name: str,
+) -> str:
+    files = sp.check_output(["dpkg", "-L", package_name]).decode().split("\n")[:-1]
+    bin_files = [file for file in files if file.startswith("/bin/")]
+    logger.debug("Found files in /bin/ %s", str(bin_files))
     if len(bin_files) > 1:
-        raise Exception(f'Found more than one file installed in /bin/ by package {package_name}. Cannot be sure which one to use.')
+        raise Exception(f"Found more than one file installed in /bin/ by package {package_name}. Cannot be sure which one to use.")
     return bin_files[0]
 
 
 def install_deb_from_url(url: str) -> None:
     deb_response = requests.get(url, allow_redirects=True, timeout=None)
-    deb_path = Path(c.HOME_DIR, url.split('/')[-1])
-    with open(deb_path, 'wb') as f:
+    deb_path = Path(r.home_dir, url.split("/")[-1])
+    with open(deb_path, "wb") as f:
         f.write(deb_response.content)
-    package_name = sp.check_output(['dpkg-deb', '-f', deb_path, 'Package']).decode('utf-8').strip()
-    logger.debug('Installing package %s from deb file %s', package_name, str(deb_path))
+    package_name = sp.check_output(["dpkg-deb", "-f", deb_path, "Package"]).decode("utf-8").strip()
+    logger.debug("Installing package %s from deb file %s", package_name, str(deb_path))
 
     stop_service()
-    sp.check_call(['dpkg', '--purge', package_name])
-    sp.check_call(['dpkg', '--install', deb_path])
+    sp.check_call(["dpkg", "--purge", package_name])
+    sp.check_call(["dpkg", "--install", deb_path])
     installed_binary = find_binary_installed_by_deb(package_name)
-    if os.path.exists(c.BINARY_FILE):
-        os.remove(c.BINARY_FILE)
-    os.symlink(installed_binary, c.BINARY_FILE)
+    if os.path.exists(r.binary_file):
+        os.remove(r.binary_file)
+    os.symlink(installed_binary, r.binary_file)
     os.remove(deb_path)
 
 
 def install_tarball_from_url(url, chain_name):
     tarball_response = requests.get(url, allow_redirects=True, timeout=None)
-    tarball_path = Path(c.HOME_DIR, url.split('/')[-1])
+    tarball_path = Path(r.home_dir, url.split("/")[-1])
     if tarball_response.status_code != 200:
         raise ValueError(f"Download binary failed with: {tarball_response.text}. Check 'binary-url'!")
 
     # TODO: Add sha256 checksum verification here in case some future chain provides them
-    with open(tarball_path, 'wb') as f:
+    with open(tarball_path, "wb") as f:
         f.write(tarball_response.content)
 
     stop_service()
     tarball = Tarball(tarball_path, chain_name)
     tarball.extract_resources_from_tarball()
+
 
 def parse_install_urls(binary_urls: str, sha256_urls: str) -> list:
     binary_url_list = binary_urls.split()
@@ -101,7 +110,7 @@ def parse_install_urls(binary_urls: str, sha256_urls: str) -> list:
 
 
 def install_binaries_from_urls(binary_urls: str, sha256_urls: str, chain_name: str) -> None:
-    logger.debug('Installing multiple binaries!')
+    logger.debug("Installing multiple binaries!")
     binary_sha256_pairs = parse_install_urls(binary_urls, sha256_urls)
     responses = []
     for binary_url, sha256_url in binary_sha256_pairs:
@@ -112,30 +121,30 @@ def install_binaries_from_urls(binary_urls: str, sha256_urls: str, chain_name: s
             raise ValueError(f"Download binary failed with: {response.text}. Check 'binary-url'!")
         binary_hash = hashlib.sha256(response.content).hexdigest()
         # Get correct execute worker binary name
-        if 'execute-worker' in binary_url.split('/')[-1]:
-            if chain_name in c.EXECUTE_WORKER_BINARY_FILE:
-                binary_name = c.EXECUTE_WORKER_BINARY_FILE[chain_name]
+        if "execute-worker" in binary_url.split("/")[-1]:
+            if chain_name in r.execute_worker_binary_file:
+                binary_name = r.execute_worker_binary_file[chain_name]
             else:
-                binary_name = c.EXECUTE_WORKER_BINARY_FILE['default']
+                binary_name = r.execute_worker_binary_file["default"]
         # Get correct prepare worker binary name
-        elif 'prepare-worker' in binary_url.split('/')[-1]:
-            if chain_name in c.PREPARE_WORKER_BINARY_FILE:
-                binary_name = c.PREPARE_WORKER_BINARY_FILE[chain_name]
+        elif "prepare-worker" in binary_url.split("/")[-1]:
+            if chain_name in r.prepare_worker_binary_file:
+                binary_name = r.prepare_worker_binary_file[chain_name]
             else:
-                binary_name = c.PREPARE_WORKER_BINARY_FILE['default']
+                binary_name = r.prepare_worker_binary_file["default"]
         else:
-            binary_name = c.BINARY_FILE
+            binary_name = r.binary_file
         responses += [(binary_url, sha256_url, response, binary_name, binary_hash)]
-    
+
     perform_sha256_checksums(responses, sha256_urls)
     stop_service()
     for binary_url, _, response, binary_name, _ in responses:
         logger.debug("Unpack binary downloaded from: %s", binary_url)
-        binary_path = c.HOME_DIR / binary_name
-        with open(binary_path, 'wb') as f:
+        binary_path = r.home_dir / binary_name
+        with open(binary_path, "wb") as f:
             f.write(response.content)
-            sp.run(['chown', f'{c.USER}:{c.USER}', binary_path], check=False)
-            sp.run(['chmod', '+x', binary_path], check=False)
+            sp.run(["chown", f"{r.user}:{r.user}", binary_path], check=False)
+            sp.run(["chmod", "+x", binary_path], check=False)
 
 
 def install_binary_from_url(url: str, sha256_url: str) -> None:
@@ -149,29 +158,32 @@ def install_binary_from_url(url: str, sha256_url: str) -> None:
         perform_sha256_checksum(binary_hash, sha256_url)
 
     stop_service()
-    with open(c.BINARY_FILE, 'wb') as f:
+    with open(r.binary_file, "wb") as f:
         f.write(binary_response.content)
-        sp.run(['chown', f'{c.USER}:{c.USER}', c.BINARY_FILE], check=False)
-        sp.run(['chmod', '+x', c.BINARY_FILE], check=False)
+        sp.run(["chown", f"{r.user}:{r.user}", r.binary_file], check=False)
+        sp.run(["chmod", "+x", r.binary_file], check=False)
+
 
 def uninstall_binary() -> None:
     if is_installed():
         if service_started():
             stop_service()
-        os.remove(c.BINARY_FILE)
-    service_file = Path(f'/etc/systemd/system/{c.SERVICE_NAME}.service')
+        os.remove(r.binary_file)
+    service_file = Path(f"/etc/systemd/system/{r.service_name}.service")
     if service_file.exists():
         os.remove(service_file)
-        sp.run(['systemctl', 'daemon-reload'], check=False)
+        sp.run(["systemctl", "daemon-reload"], check=False)
+
 
 def is_installed() -> bool:
-    return c.BINARY_FILE.exists()
+    return r.binary_file.exists()
+
 
 def perform_sha256_checksums(responses: list, sha256_urls: str) -> None:
     if len(sha256_urls.split()) == 1:
         sha256_response = get_sha256_response(sha256_urls)
         sha256_target_map = {}
-        for binary_hash_pair in sha256_response.text.split('\n'):
+        for binary_hash_pair in sha256_response.text.split("\n"):
             if binary_hash_pair:
                 binary_name = binary_hash_pair.split()[1]
                 sha256 = binary_hash_pair.split()[0]
@@ -193,9 +205,9 @@ def perform_sha256_checksums(responses: list, sha256_urls: str) -> None:
 def perform_sha256_checksum(binary_hash: str, sha256_url: str) -> None:
     sha256_response = get_sha256_response(sha256_url)
     data = sha256_response.text
-    target_hash = data.split(' ')[0]
+    target_hash = data.split(" ")[0]
     # Raise error if hash is incorrect
-    if (binary_hash != target_hash):
+    if binary_hash != target_hash:
         raise ValueError("Binary downloaded has wrong hash!")
 
 
@@ -205,24 +217,32 @@ def get_sha256_response(sha256_url: str) -> requests.Response:
         raise ValueError("Sha256 file is larger than 1KB. Was the correct sha256 url provided?")
     return sha256_response
 
+
 def create_env_file_for_service():
-    with open(f'/etc/default/{c.USER}', 'w', encoding='utf-8') as f:
-        f.write(f'{c.USER.upper()}_CLI_ARGS=\'\'')
+    with open(f"/etc/default/{r.user}", "w", encoding="utf-8") as f:
+        f.write("POLKADOT_CLI_ARGS=''")
 
 
 def install_service_file(source_path):
-    target_path = Path(f'/etc/systemd/system/{c.USER}.service')
-    shutil.copyfile(source_path, target_path)
-    sp.run(['systemctl', 'daemon-reload'], check=False)
+    target_path = Path(f"/etc/systemd/system/{r.user}.service")
+    service_template = Template(Path(source_path).read_text(encoding="utf-8"))
+    service_file = service_template.safe_substitute(
+        service_name=r.service_name,
+        binary_file=r.binary_file,
+        user=r.user,
+        group=r.user,
+    )
+    target_path.write_text(service_file, encoding="utf-8")
+    sp.run(["systemctl", "daemon-reload"], check=False)
 
 
 def render_service_argument_file(service_args):
-    return f"{c.USER.upper()}_CLI_ARGS='{service_args}'\n"
+    return f"POLKADOT_CLI_ARGS='{service_args}'\n"
 
 
 def arguments_differ_from_disk(service_args):
     try:
-        with open(f'/etc/default/{c.USER}', 'r', encoding='utf-8') as f:
+        with open(f"/etc/default/{r.user}", "r", encoding="utf-8") as f:
             args = f.read()
         return args != render_service_argument_file(service_args)
     except FileNotFoundError:
@@ -231,89 +251,93 @@ def arguments_differ_from_disk(service_args):
 
 def get_service_args() -> str:
     try:
-        command = ['cat', f'/etc/default/{c.USER}']
-        cat_output = sp.run(command, stdout=sp.PIPE, check=False).stdout.decode('utf-8').strip()
-        return cat_output.split('=')[1]  # cat:ed file includes the env variable name, which we skip including
+        command = ["cat", f"/etc/default/{r.user}"]
+        cat_output = sp.run(command, stdout=sp.PIPE, check=False).stdout.decode("utf-8").strip()
+        return cat_output.split("=")[1]  # cat:ed file includes the env variable name, which we skip including
     except Exception as e:
         logger.error("Couldn't get service args: %s", {e})
         return ""
 
 
 def update_service_args(service_args):
-    with open(f'/etc/default/{c.USER}', 'w', encoding='utf-8') as f:
+    with open(f"/etc/default/{r.user}", "w", encoding="utf-8") as f:
         f.write(render_service_argument_file(service_args))
 
 
-def is_relay_chain_node(chain_db_dir: Path = c.DB_CHAIN_DIR, relay_db_dir: Path = c.DB_RELAY_DIR) -> bool:
+def is_relay_chain_node(chain_db_dir: Path | None = None, relay_db_dir: Path | None = None) -> bool:
     return not is_parachain_node(chain_db_dir, relay_db_dir)
 
 
-def is_parachain_node(chain_db_dir: Path = c.DB_CHAIN_DIR, relay_db_dir: Path = c.DB_RELAY_DIR) -> bool:
+def is_parachain_node(chain_db_dir: Path | None = None, relay_db_dir: Path | None = None) -> bool:
+    chain_db_dir = chain_db_dir or r.db_chain_dir
+    relay_db_dir = relay_db_dir or r.db_relay_dir
     # TODO: should both of these be required to satisfy the node being a parachain, or is one enough?
     if chain_db_dir.exists() and relay_db_dir.exists():
         return True
-    if c.BINARY_FILE.exists():
-        command = f'.{c.BINARY_FILE} --help | grep -i "\-\-collator"'
-        output = sp.run(command, stdout=sp.PIPE, cwd='/', shell=True, check=False)
+    if r.binary_file.exists():
+        command = rf'.{r.binary_file} --help | grep -Ei "(^|[[:space:]])\-\-collator([[:space:]]|$)"'
+        output = sp.run(command, stdout=sp.PIPE, cwd="/", shell=True, check=False)
         if output.returncode == 0:
             return True
     return False
 
 
-def get_relay_for_parachain(chain_db_dir: Path = c.DB_CHAIN_DIR, relay_db_dir: Path = c.DB_RELAY_DIR) -> str:
+def get_relay_for_parachain(chain_db_dir: Path | None = None, relay_db_dir: Path | None = None) -> str:
+    chain_db_dir = chain_db_dir or r.db_chain_dir
+    relay_db_dir = relay_db_dir or r.db_relay_dir
     if not is_parachain_node(chain_db_dir, relay_db_dir):
-        return 'Error, this is not a parachain'
+        return "Error, this is not a parachain"
     return general_util.get_relay_for_parachain(relay_db_dir)
 
 
 def get_binary_version() -> str:
-    """ Returns the version of the binary client by checking the '--version' flag. """
+    """Returns the version of the binary client by checking the '--version' flag."""
     logger.debug("Getting binary version from client binary.")
     try:
-        command = [c.BINARY_FILE, "--version"]
-        output = sp.run(command, stdout=sp.PIPE, check=False).stdout.decode('utf-8').strip()
-        version = re.search(r'([\d.]+)', output).group(1)
+        command = [r.binary_file, "--version"]
+        output = sp.run(command, stdout=sp.PIPE, check=False).stdout.decode("utf-8").strip()
+        version = re.search(r"([\d.]+)", output).group(1)
         return version
     except (sp.SubprocessError, IndexError, AttributeError) as e:
         logger.error("Couldn't get binary version: %s", {e})
 
 
 def get_binary_md5sum() -> str:
-    return general_util.get_binary_md5sum(c.BINARY_FILE)
+    return general_util.get_binary_md5sum(r.binary_file)
 
 
 def get_binary_last_changed() -> str:
-    if c.BINARY_FILE.exists():
-        command = ['stat', c.BINARY_FILE]
-        stat_output = sp.run(command, stdout=sp.PIPE, check=False).stdout.decode('utf-8').strip()
-        stat_split = re.split('Change: ', stat_output)[1].split(' ')
+    if r.binary_file.exists():
+        command = ["stat", r.binary_file]
+        stat_output = sp.run(command, stdout=sp.PIPE, check=False).stdout.decode("utf-8").strip()
+        stat_split = re.split("Change: ", stat_output)[1].split(" ")
         date = stat_split[0]
-        timestamp = stat_split[1].split('.')[0]
-        return date + ' ' + timestamp  # TODO: make this check if system time is in UTC, and print that?
+        timestamp = stat_split[1].split(".")[0]
+        return date + " " + timestamp  # TODO: make this check if system time is in UTC, and print that?
     return ""
 
 
 def restart_service():
-    sp.run(['systemctl', 'restart', f'{c.SERVICE_NAME}.service'], check=False)
+    sp.run(["systemctl", "restart", f"{r.service_name}.service"], check=False)
 
 
 def start_service():
     # TODO: remove chown and chmod from here? Runs in the install hook already
-    sp.run(['chown', f'{c.USER}:{c.USER}', c.BINARY_FILE], check=False)
-    sp.run(['chmod', '+x', c.BINARY_FILE], check=False)
-    sp.run(['systemctl', 'start', f'{c.SERVICE_NAME}.service'], check=False)
-    sp.run(['systemctl', 'enable', f'{c.SERVICE_NAME}.service'], check=False)
+    sp.run(["chown", f"{r.user}:{r.user}", r.binary_file], check=False)
+    sp.run(["chmod", "+x", r.binary_file], check=False)
+    sp.run(["systemctl", "start", f"{r.service_name}.service"], check=False)
+    sp.run(["systemctl", "enable", f"{r.service_name}.service"], check=False)
 
 
 def stop_service():
-    sp.run(['systemctl', 'stop', f'{c.SERVICE_NAME}.service'], check=False)
-    sp.run(['systemctl', 'disable', f'{c.SERVICE_NAME}.service'], check=False)
+    sp.run(["systemctl", "stop", f"{r.service_name}.service"], check=False)
+    sp.run(["systemctl", "disable", f"{r.service_name}.service"], check=False)
 
 
 def service_started(iterations: int = 6) -> bool:
     """Checks if the service is running by running the the 'service status' command."""
     for _ in range(iterations):
-        service_status = os.system(f'service {c.SERVICE_NAME} status')
+        service_status = os.system(f"service {r.service_name} status")
         if service_status == 0:
             return True
         if iterations > 1:
@@ -322,43 +346,46 @@ def service_started(iterations: int = 6) -> bool:
 
 
 def generate_node_key():
-    if c.BINARY_FILE.exists():
-        command = [c.BINARY_FILE, 'key', 'generate-node-key', '--file', c.NODE_KEY_FILE]
+    if r.binary_file.exists():
+        command = [r.binary_file, "key", "generate-node-key", "--file", r.node_key_file]
 
         # This is to make it work on Enjin relay deployments
         logger.debug("Getting binary version from client binary to check if it is Enjin.")
-        get_version_command = [c.BINARY_FILE, "--version"]
-        output = sp.run(get_version_command, stdout=sp.PIPE, check=False).stdout.decode('utf-8').strip().lower()
+        get_version_command = [r.binary_file, "--version"]
+        output = sp.run(get_version_command, stdout=sp.PIPE, check=False).stdout.decode("utf-8").strip().lower()
         if "enjin" in output:
-            command += ['--chain', 'enjin']
+            command += ["--chain", "enjin"]
 
         sp.run(command, check=False)
-        sp.run(['chown', f'{c.USER}:{c.USER}', c.NODE_KEY_FILE], check=False)
-        sp.run(['chmod', '0600', c.NODE_KEY_FILE], check=False)
+        sp.run(["chown", f"{r.user}:{r.user}", r.node_key_file], check=False)
+        sp.run(["chmod", "0600", r.node_key_file], check=False)
     else:
         raise ValueError("No binary file found to generate node key. Please check your configuration.")
 
 
-def get_chain_disk_usage(chain_db_dir: Path = c.DB_CHAIN_DIR) -> str:
+def get_chain_disk_usage(chain_db_dir: Path | None = None) -> str:
+    chain_db_dir = chain_db_dir or r.db_chain_dir
     if chain_db_dir.exists():
         return general_util.get_disk_usage(chain_db_dir)
     return ""
 
 
-def get_relay_disk_usage(relay_db_dir: Path = c.DB_RELAY_DIR) -> str:
+def get_relay_disk_usage(relay_db_dir: Path | None = None) -> str:
+    relay_db_dir = relay_db_dir or r.db_relay_dir
     if relay_db_dir.exists():
         return general_util.get_disk_usage(relay_db_dir)
     return ""
 
+
 def get_client_binary_help_output() -> str:
-    if c.BINARY_FILE.exists():
-        command = f'.{c.BINARY_FILE} --help'
-        process = sp.run(command, stdout=sp.PIPE, cwd='/', shell=True, check=False)
+    if r.binary_file.exists():
+        command = f".{r.binary_file} --help"
+        process = sp.run(command, stdout=sp.PIPE, cwd="/", shell=True, check=False)
         if process.returncode == 0:
-            return process.stdout.decode('utf-8').strip()
+            return process.stdout.decode("utf-8").strip()
         return "Could not parse client binary '--help' command"
     return "Client binary not found"
 
 
 def get_binary_path() -> str:
-    return str(c.BINARY_FILE)
+    return str(r.binary_file)

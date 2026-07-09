@@ -26,13 +26,9 @@ class PrometheusProvider(Object):
         self._path = path
         self._port = str(port)
         self._job_data = job_data
-        self._request_id = hashlib.sha1(
-            f"{self.model.uuid}:{relation_name}:{self.model.unit.name}".encode()
-        ).hexdigest()[:8]
+        self._request_id = hashlib.sha1(f"{self.model.uuid}:{relation_name}:{self.model.unit.name}".encode()).hexdigest()[:8]
 
-        self.framework.observe(
-            charm.on[relation_name].relation_joined, self._on_relation_joined
-        )
+        self.framework.observe(charm.on[relation_name].relation_joined, self._on_relation_joined)
 
     def _on_relation_joined(self, event):
         """Publish the manual scrape job when related."""
@@ -99,3 +95,8 @@ class PrometheusProvider(Object):
         job = json.dumps(self._job(str(bind_address)), sort_keys=True)
         for relation in self.model.relations[self._relation_name]:
             relation.data[self.model.unit][f"request_{self._request_id}"] = job
+
+    def set_port(self, port):
+        """Update the advertised scrape port and republish relation data."""
+        self._port = str(port)
+        self.set_job()

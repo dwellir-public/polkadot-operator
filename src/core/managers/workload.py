@@ -1,11 +1,11 @@
+from abc import ABC, abstractmethod
 from enum import Enum
 
-from abc import ABC, abstractmethod
-from pathlib import Path
 
 class WorkloadType(Enum):
-    BINARY = 'binary'
-    SNAP = 'snap'
+    BINARY = "binary"
+    SNAP = "snap"
+
 
 class WorkloadManager(ABC):
     def __init__(self, type: WorkloadType):
@@ -108,7 +108,7 @@ class WorkloadManager(ABC):
     @abstractmethod
     def get_binary_md5sum(self) -> str:
         return None
-    
+
     @abstractmethod
     def get_proc_cmdline(self) -> str:
         return None

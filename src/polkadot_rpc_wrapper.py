@@ -1,18 +1,24 @@
 #!/usr/bin/env python3
 
-import requests
 import json
 import re
+from hashlib import blake2b
 from typing import Tuple
-from substrateinterface import SubstrateInterface, Keypair
+
+import requests
+from scalecodec.base import ScaleBytes
+from substrateinterface import Keypair, SubstrateInterface
+from substrateinterface.exceptions import SubstrateRequestException
+from substrateinterface.utils.ss58 import ss58_decode
+
 from core.utils import general_util
 
-class PolkadotRpcWrapper():
 
+class PolkadotRpcWrapper:
     def __init__(self, port):
-        self.__server_address = f'http://localhost:{port}'
-        self.__server_address_ws = f'ws://localhost:{port}'
-        self.__headers = {'Content-Type': 'application/json'}
+        self.__server_address = f"http://localhost:{port}"
+        self.__server_address_ws = f"ws://localhost:{port}"
+        self.__headers = {"Content-Type": "application/json"}
 
     def get_session_key(self):
         """
@@ -22,7 +28,33 @@ class PolkadotRpcWrapper():
         data = '{"id":1, "jsonrpc":"2.0", "method": "author_rotateKeys", "params": []}'
         response = requests.post(url=self.__server_address, headers=self.__headers, data=data)
         response_json = json.loads(response.text)
-        return response_json['result']
+        return response_json["result"]
+
+    def rpc_method_exists(self, method):
+        data = '{"id":1, "jsonrpc":"2.0", "method": "rpc_methods", "params": []}'
+        response = requests.post(url=self.__server_address, headers=self.__headers, data=data)
+        response_json = json.loads(response.text)
+        methods = response_json.get("result", {}).get("methods", [])
+        return method in methods
+
+    def get_session_key_with_owner(self, owner_public_key):
+        """
+        Get a new session key and ownership proof from node.
+        :param owner_public_key: owner account id as hex string.
+        :return: tuple of session key and proof.
+        """
+        data = json.dumps(
+            {
+                "id": 1,
+                "jsonrpc": "2.0",
+                "method": "author_rotateKeysWithOwner",
+                "params": [owner_public_key],
+            }
+        )
+        response = requests.post(url=self.__server_address, headers=self.__headers, data=data)
+        response_json = json.loads(response.text)
+        result = response_json["result"]
+        return result["keys"], result["proof"]
 
     def is_syncing(self) -> str:
         """
@@ -34,7 +66,7 @@ class PolkadotRpcWrapper():
         data = '{"id":1, "jsonrpc":"2.0", "method": "system_health", "params": []}'
         response = requests.post(url=self.__server_address, headers=self.__headers, data=data)
         response_json = json.loads(response.text)
-        return response_json['result']['isSyncing']
+        return response_json["result"]["isSyncing"]
 
     def get_version(self) -> str:
         """
@@ -44,8 +76,8 @@ class PolkadotRpcWrapper():
         data = '{"id":1, "jsonrpc":"2.0", "method": "system_version", "params": []}'
         response = requests.post(url=self.__server_address, headers=self.__headers, data=data, timeout=None)
         response_json = json.loads(response.text)
-        result = response_json['result']
-        version_number = re.search(r'([\d.]+)', result).group(1)
+        result = response_json["result"]
+        version_number = re.search(r"([\d.]+)", result).group(1)
         return version_number
 
     def get_block_height(self) -> int:
@@ -56,7 +88,7 @@ class PolkadotRpcWrapper():
         data = '{"id": 1, "jsonrpc": "2.0", "method": "chain_getHeader", "params": []}'
         response = requests.post(url=self.__server_address, headers=self.__headers, data=data, timeout=None)
         response_json = json.loads(response.text)
-        block_height = int(response_json['result']['number'], 16)
+        block_height = int(response_json["result"]["number"], 16)
         return block_height
 
     def get_genesis_hash(self) -> str:
@@ -67,7 +99,7 @@ class PolkadotRpcWrapper():
         data = '{"jsonrpc": "2.0", "id": 1, "method": "chain_getBlockHash", "params": [0]}'
         response = requests.post(url=self.__server_address, headers=self.__headers, data=data, timeout=None)
         response_json = json.loads(response.text)
-        return response_json['result']
+        return response_json["result"]
 
     def get_system_peers(self) -> Tuple[list, bool]:
         """
@@ -80,9 +112,9 @@ class PolkadotRpcWrapper():
         data = '{"id": 1, "jsonrpc": "2.0", "method": "system_peers", "params": []}'
         response = requests.post(url=self.__server_address, headers=self.__headers, data=data, timeout=None)
         response_json = json.loads(response.text)
-        if 'error' in response_json.keys():
-            return [response_json['error']['message']], False
-        peer_list = response_json['result']
+        if "error" in response_json.keys():
+            return [response_json["error"]["message"]], False
+        peer_list = response_json["result"]
         return peer_list, True
 
     def get_chain_name(self) -> str:
@@ -93,7 +125,7 @@ class PolkadotRpcWrapper():
         data = '{"id":1, "jsonrpc":"2.0", "method": "system_chain", "params": []}'
         response = requests.post(url=self.__server_address, headers=self.__headers, data=data)
         response_json = json.loads(response.text)
-        return response_json['result']
+        return response_json["result"]
 
     def has_session_key(self, session_key):
         """
@@ -104,7 +136,7 @@ class PolkadotRpcWrapper():
         data = '{"id": 1, "jsonrpc":"2.0", "method": "author_hasSessionKeys", "params":["' + session_key + '"]}'
         response = requests.post(url=self.__server_address, headers=self.__headers, data=data)
         response_json = json.loads(response.text)
-        result = response_json['result']
+        result = response_json["result"]
         return result
 
     def insert_key(self, mnemonic, address):
@@ -127,7 +159,7 @@ class PolkadotRpcWrapper():
         result = substrate.query("Session", "QueuedKeys").value_serialized
         for validator in result:
             keys = validator[1]
-            session_key = '0x'
+            session_key = "0x"
             for k in keys.values():
                 # Some chains uses multiple keys. Before checking if it exist on the node they need to be concatenated removing preceding '0x'.
                 session_key += k[2:]
@@ -145,12 +177,89 @@ class PolkadotRpcWrapper():
         substrate = SubstrateInterface(url=self.__server_address)
         result = substrate.query("Session", "NextKeys", [address]).value_serialized
         if result:
-            session_key = '0x'
+            session_key = "0x"
             for k in result.values():
                 session_key += k[2:]
             if self.has_session_key(session_key):
                 return session_key
         return False
+
+    @staticmethod
+    def _create_enjin_signed_extrinsic(substrate, call, keypair):
+        substrate.init_runtime()
+        signed_extensions = substrate.metadata.get_signed_extensions()
+
+        substrate.runtime_config.update_type_registry_types(
+            {
+                "ExtrinsicV4": {
+                    "type": "struct",
+                    "type_mapping": [
+                        ["address", "Address"],
+                        ["signature", "ExtrinsicSignature"],
+                        ["era", signed_extensions["CheckMortality"]["extrinsic"]],
+                        ["mode", signed_extensions["CheckMetadataHash"]["extrinsic"]],
+                        ["nonce", signed_extensions["CheckNonce"]["extrinsic"]],
+                        ["tip", signed_extensions["ChargeTransactionPayment"]["extrinsic"]],
+                        ["call", "Call"],
+                    ],
+                }
+            }
+        )
+
+        nonce = substrate.get_account_nonce(keypair.ss58_address) or 0
+        era = "00"
+        genesis_hash = substrate.get_block_hash(0)
+        block_hash = genesis_hash
+
+        signature_payload = substrate.runtime_config.create_scale_object("ExtrinsicPayloadValue")
+        signature_payload.type_mapping = [
+            ["call", "CallBytes"],
+            ["era", signed_extensions["CheckMortality"]["extrinsic"]],
+            ["mode", signed_extensions["CheckMetadataHash"]["extrinsic"]],
+            ["nonce", signed_extensions["CheckNonce"]["extrinsic"]],
+            ["tip", signed_extensions["ChargeTransactionPayment"]["extrinsic"]],
+            ["spec_version", signed_extensions["CheckSpecVersion"]["additional_signed"]],
+            ["transaction_version", signed_extensions["CheckTxVersion"]["additional_signed"]],
+            ["genesis_hash", signed_extensions["CheckGenesis"]["additional_signed"]],
+            ["block_hash", signed_extensions["CheckMortality"]["additional_signed"]],
+            ["metadata_hash", signed_extensions["CheckMetadataHash"]["additional_signed"]],
+        ]
+        signature_payload.encode(
+            {
+                "call": str(call.data),
+                "era": era,
+                "mode": "Disabled",
+                "nonce": nonce,
+                "tip": 0,
+                "spec_version": substrate.runtime_version,
+                "transaction_version": substrate.transaction_version,
+                "genesis_hash": genesis_hash,
+                "block_hash": block_hash,
+                "metadata_hash": None,
+            }
+        )
+
+        payload_data = signature_payload.data
+        if payload_data.length > 256:
+            payload_data = ScaleBytes(data=blake2b(payload_data.data, digest_size=32).digest())
+        signature = keypair.sign(payload_data)
+
+        extrinsic = substrate.runtime_config.create_scale_object("Extrinsic", metadata=substrate.metadata)
+        extrinsic.encode(
+            {
+                "account_id": f"0x{keypair.public_key.hex()}",
+                "signature": f"0x{signature.hex()}",
+                "signature_version": keypair.crypto_type,
+                "call_function": call.value["call_function"],
+                "call_module": call.value["call_module"],
+                "call_args": call.value["call_args"],
+                "nonce": nonce,
+                "era": era,
+                "tip": 0,
+                "mode": "Disabled",
+            }
+        )
+        return extrinsic
 
     def set_session_key_on_chain(self, mnemonic, proxy_type, address):
         """
@@ -159,8 +268,14 @@ class PolkadotRpcWrapper():
         :return: the receipt of the extrinsic.
         """
 
-        # Generate a new session key
-        session_key = self.get_session_key()
+        keypair = Keypair.create_from_mnemonic(mnemonic)
+        if self.rpc_method_exists("author_rotateKeysWithOwner"):
+            owner_public_key = f"0x{ss58_decode(address)}" if address else f"0x{keypair.public_key.hex()}"
+            session_key, proof = self.get_session_key_with_owner(owner_public_key)
+        else:
+            # Generate a new session key
+            session_key = self.get_session_key()
+            proof = "0x00"
         if not session_key:
             raise ValueError("Failed to generate a new session key")
 
@@ -171,13 +286,14 @@ class PolkadotRpcWrapper():
         keys = general_util.name_session_keys(chain_name, session_key_split)
 
         substrate = SubstrateInterface(url=self.__server_address_ws)
-        keypair = Keypair.create_from_mnemonic(mnemonic)
         # Set the new session key on-chain for the validator/collator
         call = substrate.compose_call(
-            'Session', 'set_keys', {
-                'keys': keys,
-                'proof': '0x00',
-            }
+            "Session",
+            "set_keys",
+            {
+                "keys": keys,
+                "proof": proof,
+            },
         )
         # If using proxy account, wrap the set_keys call in a proxy call
         if address and proxy_type:
@@ -188,18 +304,24 @@ class PolkadotRpcWrapper():
                     "real": address,
                     "force_proxy_type": proxy_type,
                     "call": call,
-                }
+                },
             )
         else:
             final_call = call
 
+        if "enjin" in chain_name.lower():
+            extrinsic = self._create_enjin_signed_extrinsic(substrate, final_call, keypair)
         # A work around to deal with this issue: https://github.com/JAMdotTech/py-polkadot-sdk/issues/412
-        if "kilt" in self.get_chain_name().lower():
-            substrate.runtime_config.update_type_registry_types({'Index': 'U64'})
+        elif "kilt" in chain_name.lower():
+            substrate.runtime_config.update_type_registry_types({"Index": "U64"})
+            extrinsic = substrate.create_signed_extrinsic(call=final_call, keypair=keypair)
+        else:
+            extrinsic = substrate.create_signed_extrinsic(call=final_call, keypair=keypair)
 
-        extrinsic = substrate.create_signed_extrinsic(call=final_call, keypair=keypair)
-
-        result = substrate.submit_extrinsic(extrinsic, wait_for_inclusion=True)
+        try:
+            result = substrate.submit_extrinsic(extrinsic, wait_for_inclusion=True)
+        except SubstrateRequestException as e:
+            raise ValueError(str(e)) from e
         if not result.is_success:
             raise ValueError(result.error_message)
         return result.get_extrinsic_identifier()

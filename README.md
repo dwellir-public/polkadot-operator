@@ -8,7 +8,7 @@ This repository is maintained by Dwellir, https://dwellir.com - Infrastructure p
 
 [Polkadot](https://polkadot.network/) is a web3 blockchain ecosystem. This charm can be deployed as a validator, collator, bootnode, or RPC on any Polkadot derived blockchain, also known as parachains. The deployment config differs depending on the chain that is being deployed.
 
-The charm starts the Polkadot client as a service, which takes its arguments from `/etc/default/polkadot` which in turn are set by the Juju config *service-args*. The Polkadot client itself is downloaded and installed from the config *binary-url*. Blockchain data is stored in the default client path unless the Juju config `data-dir` is set at deployment time.
+The charm starts the Polkadot client as a service, which takes its arguments from `/etc/default/<juju-app-name>` which in turn are set by the Juju config *service-args*. The Polkadot client itself is downloaded and installed from the config *binary-url*. Blockchain data is stored in the default client path unless the Juju config `data-dir` is set at deployment time.
 
 ## Building
 
@@ -19,7 +19,7 @@ Though this charm is published on Charmhub there is also the alternative to buil
 
 ## System requirements
 
-*Disclaimer: the system requriements to run a node in the Polkadot ecosystem varies, both depending on which chain is being run and which type of node it is. The example below should therefore be vetted against updated and reliable resources depending on your deployment specifications.*
+*Disclaimer: the system requirements to run a node in the Polkadot ecosystem varies, both depending on which chain is being run and which type of node it is. The example below should therefore be vetted against updated and reliable resources depending on your deployment specifications.*
 
 This list of reference hardware is from [the official Polkadot docs](https://wiki.polkadot.network/docs/maintain-guides-how-to-validate-polkadot) and is an example of good practice for a validator node:
 
@@ -52,6 +52,9 @@ However, there are some configs which are required by the charm to correctly ins
     - Note: from Polkadot release 1.1.0, the binary is split into three separate parts which means three separate URL:s will need to be set to the `binary-url` config, in a space separated list.
 - `service-args="... ..."` with the tags `--chain=...` and `--rpc-port=...` set
 - Optional: `data-dir=/mnt/blockchaindata0/polkadot` to override the Polkadot `--base-path` for either binary or snap workloads. This must be set at deployment time.
+- Optional: set `--prometheus-port=...` in `service-args` when multiple nodes run on the same machine. If omitted, the charm advertises the default Polkadot metrics port `9615`.
+
+When deploying multiple applications to the same machine, use a distinct Juju application name for each deployment, for example `juju deploy polkadot foo-bar`. Binary deployments use that application name for the Unix user, home directory, systemd service, and `/etc/default` file. Snap deployments use snap parallel instances; the snap instance key is the first 10 characters of the SHA1 hash of the Juju application name.
 
 With those configs included, a standard deployment of the Polkadot node could look like:
 
@@ -73,19 +76,19 @@ There are a number of different node types in the Polkadot ecosystem, all which 
 
     juju deploy polkadot --config binary-url=... --config service-args="--validator --chain=... --rpc-port=..."
 
-Once a validator has been deployed, use the Juju action `get-session-key` to generate and return a new session key, which then can be used as a paramater in the extrinsic call on [polkadot.js](https://polkadot.js.org/).
+Once a validator has been deployed, use the Juju action `get-session-key` to generate and return a new session key, which then can be used as a parameter in the extrinsic call on [polkadot.js](https://polkadot.js.org/).
 
 #### Deploying a collator
 
     juju deploy polkadot --config binary-url=... --config service-args="--collator --chain=... --rpc-port=..."
 
-Running a collator also requries setting a node key, which can be done by running the Juju action `set-node-key`. The node key itself can be generated using the [subkey tool](https://github.com/paritytech/substrate/tree/master/bin/utils/subkey).
+Running a collator also requires setting a node key, which can be done by running the Juju action `set-node-key`. The node key itself can be generated using the [subkey tool](https://github.com/paritytech/substrate/tree/master/bin/utils/subkey).
 
 #### Deploying a bootnode
 
     juju deploy polkadot --config binary-url=... --config service-args="--chain=... --rpc-port=... --listen-addr=/ip4/0.0.0.0/tcp/<port> --listen-addr=/ip4/0.0.0.0/tcp/<port>/ws"
 
-Running a bootnode also requries setting a node key, which can be done by running the Juju action `set-node-key`. The node key itself can be generated using the [subkey tool](https://github.com/paritytech/substrate/tree/master/bin/utils/subkey).
+Running a bootnode also requires setting a node key, which can be done by running the Juju action `set-node-key`. The node key itself can be generated using the [subkey tool](https://github.com/paritytech/substrate/tree/master/bin/utils/subkey).
 
 #### Deploying an RPC node
 
@@ -133,6 +136,27 @@ The `cos_agent` interface is already supported by this Polkadot operator charm s
 
 Find more details on how to deploy and use COS [here](https://charmhub.io/topics/canonical-observability-stack/tutorials/instrumenting-machine-charms).
 
+#### Machine observability relation
+
+The charm also provides `machine-observability` for machine-local collectors
+such as `alloy-sub` and `alloy-vm`.
+
+The published payload now uses the v2 `machine_observability` schema and
+includes:
+
+- `schema_version: 2`
+- `charm_name: polkadot`
+- `source_topology` with the unit's Juju model, application, unit, and charm
+  identity
+- a metrics endpoint at `localhost:9615`
+- the runtime systemd unit name, for example:
+  - `polkadot.service` for binary deployments
+  - `snap.<snap-name>.<snap-name>.service` for snap deployments
+
+This is backward-compatible with the updated `alloy-sub` consumer, which still
+derives subordinate attachment context from `juju-info` while accepting the v2
+payload.
+
 #### Using an external relaychain node
 
 A parachain node can use an external relaychain node instead of the internal one. It's useful for scaling where multiple parachain nodes can share a relaychain node. It's also useful to get faster in sync since the parachain node does not have to sync a relaychain node by itself. This can be set with the service argument `--relay-chain-rpc-urls`, which takes one or more weboscket URLs to relaychain nodes to use. Setting multiple URLs is for fallback where the parachain node will try accessing the URLs in a round-robin fashion. Instead of setting this manually, the interface `rpc-url` can be used:
@@ -172,3 +196,7 @@ You can verify that this node will be validating next era:
 - [Polkadot node on Charmhub](https://charmhub.io/polkadot)
 - [polkadot-operator repo on GitHub](https://github.com/dwellir-public/polkadot-operator)
 - [Dwellir](https://dwellir.com/)
+
+For a validated local build, deploy, and refresh flow against the model
+`alloy-sub-e2e-20260419`, see
+[docs/build-test-deploy.md](docs/build-test-deploy.md).

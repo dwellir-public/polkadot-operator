@@ -1,6 +1,7 @@
-from core.managers.workload import WorkloadManager, WorkloadType
 from core.managers.polkadot_binary import PolkadotBinaryManager
 from core.managers.polkadot_snap import PolkadotSnapManager
+from core.managers.workload import WorkloadManager, WorkloadType
+
 
 class WorkloadFactory:
     BINARY_MANAGER = PolkadotBinaryManager()

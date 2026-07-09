@@ -5,7 +5,7 @@ display-name: Polkadot node
 summary: |
   Polkadot is a web3 blockchain ecosystem.
 description: |
-    The charm starts the Polkadot client as a service, taking startup arguments from /etc/default/polkadot and is set by the juju config *service-args*. The Polkadot client itself is downloaded and installed from the charm config *binary-url*. See: https://github.com/paritytech/polkadot/ for available releases.
+    The charm starts the Polkadot client as a service, taking startup arguments from /etc/default/<juju-app-name> and is set by the juju config *service-args*. The Polkadot client itself is downloaded and installed from the charm config *binary-url*. See: https://github.com/paritytech/polkadot/ for available releases.
 
     The charm is capable of running all polkadot parachains by setting the service-args.
     

@@ -1,7 +1,8 @@
-import shutil
 import logging
-from pathlib import Path
+import shutil
+
 import core.constants as c
+from core import runtime as r
 
 logger = logging.getLogger(__name__)
 
@@ -11,20 +12,20 @@ def migrate_node_key(snap_name: str, dry_run: bool = False, reverse: bool = Fals
     Migrate the node key from the old location to the new location.
     """
 
-    if not snap_name or snap_name not in c.SNAP_CONFIG:
-        message = f"Invalid or missing 'snap-name' parameter for migration operation. The snap-name must be one of the supported applications: {', '.join(c.SNAP_CONFIG.keys())}. Please specify a valid snap name to proceed with the migration."
+    if not snap_name or snap_name not in r.snap_config:
+        message = f"Invalid or missing 'snap-name' parameter for migration operation. The snap-name must be one of the supported applications: {', '.join(r.snap_config.keys())}. Please specify a valid snap name to proceed with the migration."
         logger.error(message)
         raise ValueError(message)
 
     # Normal migration from legacy to snap
-    src_path = c.NODE_KEY_FILE
-    dest_path = c.SNAP_CONFIG.get(snap_name).get('node_key_file')
+    src_path = r.node_key_file
+    dest_path = r.snap_config.get(snap_name).get("node_key_file")
     owner = c.SNAP_USER
 
     if reverse:
         # If reverse is True, swap the paths
         src_path, dest_path = dest_path, src_path
-        owner = c.USER
+        owner = r.user
 
     if not src_path.exists():
         logger.info("No node key found to migrate.")
