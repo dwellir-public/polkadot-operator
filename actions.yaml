@@ -26,6 +26,13 @@ stop-node-service:
 # Actions to manage keys
 get-session-key:
   description: "Runs author_rotateKeys and returns a new session-key."
+get-session-key-with-owner:
+  description: "Runs author_rotateKeysWithOwner for the supplied owner address and returns a new session-key with ownership proof."
+  params:
+    address:
+      description: "Owner address used to generate the ownership proof. E.g. address='DuLr6CeLXezrfumF6EkqLeAx9paMcADYU6zHpSZVB8gvjht'"
+      type: string
+  required: [ address ]
 has-session-key:
   description: "Checks if node has a session key, using an RPC call."
   params:

@@ -33,6 +33,48 @@ from core.managers import WorkloadType  # noqa: E402
 from core.service_args import ServiceArgs  # noqa: E402
 
 
+def test_actions_yaml_declares_get_session_key_with_owner_action():
+    actions_yaml = Path("actions.yaml").read_text()
+
+    assert "get-session-key-with-owner:" in actions_yaml
+    assert "address:" in actions_yaml
+    assert "required: [ address ]" in actions_yaml
+
+
+def test_get_session_key_with_owner_action_returns_session_keys_and_proof():
+    action_results = {}
+    logs = []
+    requested_owners = []
+
+    def set_results(*, results: dict) -> None:
+        action_results.update(results)
+
+    event = SimpleNamespace(
+        params={"address": "owner-address"},
+        log=lambda message: logs.append(message),
+        set_results=set_results,
+        fail=lambda message: (_ for _ in ()).throw(AssertionError(message)),
+    )
+    session_key = "0x" + "".join(f"{i:02x}" * 32 for i in range(1, 7))
+    proof = "0x" + "99" * 64
+    wrapper = SimpleNamespace(get_session_key_with_owner=lambda owner: requested_owners.append(owner) or (session_key, proof))
+    charm = SimpleNamespace(config={}, rpc_urls=lambda: [])
+
+    with (
+        patch("charm.ss58_decode", return_value="aa" * 32),
+        patch("charm.ServiceArgs", return_value=SimpleNamespace(rpc_port="9933")),
+        patch("charm.PolkadotRpcWrapper", return_value=wrapper),
+    ):
+        PolkadotCharm._on_get_session_key_with_owner_action(charm, event)
+
+    assert logs == ["Getting new session key with ownership proof through RPC..."]
+    assert requested_owners == ["0x" + "aa" * 32]
+    assert action_results["session-keys-merged"] == session_key
+    assert action_results["proof"] == proof
+    assert action_results["session-key-0"] == "0x" + "01" * 32
+    assert action_results["session-key-5"] == "0x" + "06" * 32
+
+
 def test_has_valid_client_config_allows_single_source():
     charm = SimpleNamespace(
         config={
