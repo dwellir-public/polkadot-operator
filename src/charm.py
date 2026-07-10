@@ -18,6 +18,7 @@ from charms.dwellir_observability.v0.machine_observability import (
 )
 from charms.grafana_agent.v0.cos_agent import COSAgentProvider
 from requests.exceptions import ConnectionError as RequestsConnectionError
+from substrateinterface.utils.ss58 import ss58_decode
 from urllib3.exceptions import MaxRetryError, NewConnectionError
 
 from core import constants as c
@@ -74,6 +75,7 @@ class PolkadotCharm(ops.CharmBase):
         self.framework.observe(self.on.stop, self._on_stop)
         # Actions
         self.framework.observe(self.on.get_session_key_action, self._on_get_session_key_action)
+        self.framework.observe(self.on.get_session_key_with_owner_action, self._on_get_session_key_with_owner_action)
         self.framework.observe(self.on.has_session_key_action, self._on_has_session_key_action)
         self.framework.observe(self.on.insert_key_action, self._on_insert_key_action)
         self.framework.observe(self.on.restart_node_service_action, self._on_restart_node_service_action)
@@ -483,6 +485,23 @@ class PolkadotCharm(ops.CharmBase):
         key = PolkadotRpcWrapper(rpc_port).get_session_key()
         if key:
             event.set_results(results={"session-keys-merged": key})
+
+            # For convenience, also print a split version of the session key
+            keys_split = general_util.split_session_key(key)
+            for i, key in enumerate(keys_split):
+                event.set_results(results={f"session-key-{i}": key})
+        else:
+            event.fail("Unable to get new session key")
+
+    def _on_get_session_key_with_owner_action(self, event: ops.ActionEvent) -> None:
+        logger.debug("Handling get-session-key-with-owner action")
+        event.log("Getting new session key with ownership proof through RPC...")
+        address = event.params["address"]
+        owner_public_key = address if address.startswith("0x") else f"0x{ss58_decode(address)}"
+        rpc_port = ServiceArgs(self.config, self.rpc_urls()).rpc_port
+        key, proof = PolkadotRpcWrapper(rpc_port).get_session_key_with_owner(owner_public_key)
+        if key:
+            event.set_results(results={"session-keys-merged": key, "proof": proof})
 
             # For convenience, also print a split version of the session key
             keys_split = general_util.split_session_key(key)
