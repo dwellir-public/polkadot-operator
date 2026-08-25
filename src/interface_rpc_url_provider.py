@@ -6,6 +6,7 @@ import logging
 
 from ops.charm import RelationJoinedEvent
 from ops.framework import Object
+from ops.model import ModelError
 
 from core.managers import WorkloadFactory, WorkloadType
 from core.service_args import ServiceArgs
@@ -30,11 +31,14 @@ class RpcUrlProvider(Object):
         """This event is used to broadcast the rpc url to the parachain clients."""
 
         service_args_obj = ServiceArgs(self._charm.config, "")
-        bind_address = getattr(
-            self.model.get_binding(self._relation_name).network,
-            "bind_address",
-            None,
-        )
+        try:
+            bind_address = getattr(
+                self.model.get_binding(self._relation_name).network,
+                "bind_address",
+                None,
+            )
+        except ModelError:
+            bind_address = event.relation.data[self.model.unit].get("ingress-address")
         if not bind_address:
             event.defer()
             return
