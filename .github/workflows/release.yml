@@ -3,33 +3,45 @@ name: Release Charm to Charmhub and GitHub
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: polkadot-release
+  cancel-in-progress: false
+
+env:
+  RELEASE_CHANNEL: latest/edge
+
 jobs:
   unit-tests:
-    name: Run unit tests
+    if: github.ref == 'refs/heads/main' && github.repository == 'dwellir-public/polkadot-operator'
+    name: Run charm checks
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
 
       - name: Set up uv
-        uses: astral-sh/setup-uv@v6
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
 
-      - name: Run unit tests
-        run: make unit-test
+      - name: Run charm checks
+        run: make charm-test
 
   build-ubuntu-22:
+    if: github.ref == 'refs/heads/main' && github.repository == 'dwellir-public/polkadot-operator'
     name: Build charm on ubuntu-22.04
     needs:
       - unit-tests
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Install Charmcraft
         run: sudo snap install charmcraft --classic --channel latest/stable
@@ -37,21 +49,27 @@ jobs:
       - name: Build charm for ubuntu@22.04:amd64
         run: sudo charmcraft pack --quiet --destructive-mode --platform ubuntu@22.04:amd64
 
+      - name: Checksum charm artifact
+        run: sha256sum polkadot_ubuntu@22.04-amd64.charm > polkadot_ubuntu@22.04-amd64.charm.sha256
+
       - name: Upload charm artifact (ubuntu@22.04:amd64)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: charm-ubuntu-22-amd64
-          path: ./polkadot_ubuntu@22.04-amd64.charm
+          path: |
+            ./polkadot_ubuntu@22.04-amd64.charm
+            ./polkadot_ubuntu@22.04-amd64.charm.sha256
           if-no-files-found: error
 
   build-ubuntu-24:
+    if: github.ref == 'refs/heads/main' && github.repository == 'dwellir-public/polkadot-operator'
     name: Build charm on ubuntu-24.04
     needs:
       - unit-tests
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Install Charmcraft
         run: sudo snap install charmcraft --classic --channel latest/stable
@@ -59,15 +77,22 @@ jobs:
       - name: Build charm for ubuntu@24.04:amd64
         run: sudo charmcraft pack --quiet --destructive-mode --platform ubuntu@24.04:amd64
 
+      - name: Checksum charm artifact
+        run: sha256sum polkadot_ubuntu@24.04-amd64.charm > polkadot_ubuntu@24.04-amd64.charm.sha256
+
       - name: Upload charm artifact (ubuntu@24.04:amd64)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: charm-ubuntu-24-amd64
-          path: ./polkadot_ubuntu@24.04-amd64.charm
+          path: |
+            ./polkadot_ubuntu@24.04-amd64.charm
+            ./polkadot_ubuntu@24.04-amd64.charm.sha256
           if-no-files-found: error
 
   release:
-    name: Release to CharmHub
+    if: github.ref == 'refs/heads/main' && github.repository == 'dwellir-public/polkadot-operator'
+    name: Release to Charmhub
+    environment: edge
     needs:
       - build-ubuntu-22
       - build-ubuntu-24
@@ -75,20 +100,21 @@ jobs:
     outputs:
       rev_ubuntu_22: ${{ steps.upload_ubuntu_22.outputs.revision }}
       rev_ubuntu_24: ${{ steps.upload_ubuntu_24.outputs.revision }}
-      release_channel: latest/edge
-    permissions:
-      actions: read
-      contents: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Download built charm artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: charm-ubuntu-*-amd64
           merge-multiple: true
           path: .
+
+      - name: Verify charm checksums
+        run: |
+          sha256sum --check polkadot_ubuntu@22.04-amd64.charm.sha256
+          sha256sum --check polkadot_ubuntu@24.04-amd64.charm.sha256
 
       - name: Install Charmcraft
         run: sudo snap install charmcraft --classic --channel latest/stable
@@ -100,7 +126,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          output="$(charmcraft upload --format json --release latest/edge ./polkadot_ubuntu@22.04-amd64.charm)"
+          output="$(charmcraft upload --format json --release "$RELEASE_CHANNEL" ./polkadot_ubuntu@22.04-amd64.charm)"
           echo "$output"
 
           revision="$(python3 -c 'import json, sys; print(json.loads(sys.stdin.read())["revision"])' <<< "$output")"
@@ -118,7 +144,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          output="$(charmcraft upload --format json --release latest/edge ./polkadot_ubuntu@24.04-amd64.charm)"
+          output="$(charmcraft upload --format json --release "$RELEASE_CHANNEL" ./polkadot_ubuntu@24.04-amd64.charm)"
           echo "$output"
 
           revision="$(python3 -c 'import json, sys; print(json.loads(sys.stdin.read())["revision"])' <<< "$output")"
@@ -130,30 +156,35 @@ jobs:
           echo "revision=$revision" >> "$GITHUB_OUTPUT"
 
   github-release:
+    if: github.ref == 'refs/heads/main' && github.repository == 'dwellir-public/polkadot-operator'
     name: Create GitHub release
     needs:
       - release
     runs-on: ubuntu-latest
     permissions:
-      actions: read
       contents: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Download built charm artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: charm-ubuntu-*-amd64
           merge-multiple: true
           path: .
+
+      - name: Verify charm checksums
+        run: |
+          sha256sum --check polkadot_ubuntu@22.04-amd64.charm.sha256
+          sha256sum --check polkadot_ubuntu@24.04-amd64.charm.sha256
 
       - name: Build release metadata from Charmhub revisions
         id: release_meta
         run: |
           set -euo pipefail
 
-          channel='${{ needs.release.outputs.release_channel }}'
+          channel="$RELEASE_CHANNEL"
           rev22='${{ needs.release.outputs.rev_ubuntu_22 }}'
           rev24='${{ needs.release.outputs.rev_ubuntu_24 }}'
 
@@ -179,13 +210,16 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub release and upload charm artifacts
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
         with:
           tag_name: ${{ steps.release_meta.outputs.tag }}
           name: ${{ steps.release_meta.outputs.name }}
           target_commitish: ${{ github.sha }}
           body: ${{ steps.release_meta.outputs.body }}
           generate_release_notes: true
+          fail_on_unmatched_files: true
           files: |
             ./polkadot_ubuntu@22.04-amd64.charm
+            ./polkadot_ubuntu@22.04-amd64.charm.sha256
             ./polkadot_ubuntu@24.04-amd64.charm
+            ./polkadot_ubuntu@24.04-amd64.charm.sha256

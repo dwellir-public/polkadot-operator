@@ -190,13 +190,17 @@ You can verify that this node will be validating next era:
     
     juju run polkadot/0 is-validating-next-era address=<validator-address>
 
+## Development and releases
+
+Create feature branches from `main` and target pull requests at `main`. Merging
+code runs checks; publishing to Charmhub and GitHub is a separate manual step.
+See [Development, testing, deployment, and releases](docs/operations/development-and-releases.md)
+for the contribution workflow, local build and deployment steps, and release
+procedure.
+
 ## Resources
 
 - [Polkadot](https://polkadot.network/)
 - [Polkadot node on Charmhub](https://charmhub.io/polkadot)
 - [polkadot-operator repo on GitHub](https://github.com/dwellir-public/polkadot-operator)
 - [Dwellir](https://dwellir.com/)
-
-For a validated local build, deploy, and refresh flow against the model
-`alloy-sub-e2e-20260419`, see
-[docs/build-test-deploy.md](docs/build-test-deploy.md).
