@@ -21,7 +21,9 @@ make charm-test
 Review any formatting changes before committing.
 
 The Charm Tests workflow runs formatting, lint, and unit tests for pull requests
-and pushes to `main`.
+and pushes to `main`. It also packs the charm for both supported platforms and
+runs Actionlint against the GitHub workflows. Dependabot checks action versions
+weekly and groups updates into reviewable pull requests.
 
 ## Integration testing
 
@@ -87,6 +89,9 @@ receives metrics and logs with the expected topology labels.
 ## Manual release
 
 Merging into `main` does not publish a charm or create a GitHub release.
+Release jobs only run from `main` in this repository. A concurrency group allows
+one release run at a time without cancelling an active release. Avoid queuing
+multiple releases: GitHub may replace an older pending run with a newer one.
 
 1. Merge the changes to release into `main` and confirm that Charm Tests passes.
 2. Complete integration verification for the intended changes.
@@ -94,11 +99,27 @@ Merging into `main` does not publish a charm or create a GitHub release.
 4. Select **Run workflow**, choose `main`, and start the workflow.
 5. Confirm that both Charmhub uploads and the GitHub release succeed.
 
-The release workflow runs unit tests, then builds separate amd64 charms on
-Ubuntu 22.04 and 24.04. It uploads both artifacts to Charmhub `latest/edge` using
-the repository's `CHARMHUB_TOKEN` secret. It then creates a GitHub release tagged
-`latest-edge-r<rev22>-r<rev24>`, attaching both charm files and recording their
-Charmhub revisions and source commit.
+The release workflow runs formatting, lint, and unit tests, then builds separate
+amd64 charms on Ubuntu 22.04 and 24.04. It generates SHA256 checksums alongside
+the artifacts and verifies both before uploading either to Charmhub. The upload
+job uses the `edge` GitHub environment and publishes to the channel defined by
+`RELEASE_CHANNEL` in the workflow (currently `latest/edge`).
+
+The workflow then verifies the artifacts again and creates a GitHub release
+tagged `latest-edge-r<rev22>-r<rev24>`, attaching both charm files and their
+checksums and recording their Charmhub revisions and source commit.
+
+### Release environment setup
+
+Configure the `edge` environment in the repository's GitHub settings. Store
+`CHARMHUB_TOKEN` as an environment secret, restrict deployment branches to
+`main`, and configure required reviewers if release approval is needed.
+
+If the token is currently a repository secret, an administrator must supply its
+value again as the environment secret before removing the repository secret.
+GitHub does not allow reading back existing secret values. A repository secret
+with the same name remains available as a fallback until it is removed; adding
+an environment to the workflow alone does not change the secret's scope.
 
 Publishing to other Charmhub channels is outside this workflow. Avoid starting
 overlapping release runs. If a run fails after an upload, inspect the completed
