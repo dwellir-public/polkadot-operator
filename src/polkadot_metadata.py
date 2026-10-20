@@ -73,15 +73,12 @@ def collect_upload_metadata(charm: Any) -> None:
         upload_base = Path("/tmp/dwellir-metadata-uploader")
         no_upload = creds is None
         logger.info(
-            "invoking collect_and_upload with credentials=%s, model=%s, app=%s, unit=%s, meta=%s, base_dir=%s, blockchain=%s, no_upload=%s",
-            creds,
-            charm.model,
-            charm.app,
-            charm.unit,
-            charm.meta,
+            "invoking collect_and_upload for model=%s, app=%s, unit=%s, base_dir=%s, upload_enabled=%s",
+            charm.model.name,
+            charm.app.name,
+            charm.unit.name,
             upload_base,
-            my_blockchain,
-            no_upload,
+            not no_upload,
         )
 
         upload_dest = collect_and_upload(
