@@ -68,6 +68,22 @@ There are many more arguments available for the client, regardless of if it is t
     # For an already deployed charm
     juju run polkadot/0 get-node-help --format json | jq -r '.["polkadot/0"].results["help-output"]'
 
+#### Installing a binary from a tar archive
+
+Set `binary-url` to a single archive URL and `binary-archive-member` to the binary's member name, for example `bin/node`. The shared `charms-dwellir-blockchain-common` installer extracts the selected member into the existing workload binary path. A basename must be unique within the archive; use its full archive path when necessary. Without an explicit member, the charm selects `polkadot`.
+
+Supported suffixes are `.tar`, `.tar.gz`, `.tgz`, `.tar.bz2`, `.tbz2`, `.tar.xz`, `.txz`, and `.tar.zst` (requires `zstd` on the unit). URL query strings are supported. `binary-sha256-url`, when set, must contain the checksum of the complete archive. Downloading, checksum verification, extraction, and member selection complete before the service is stopped. The existing lifecycle hook restarts a previously running service after installation.
+
+Set the archive URL and member together after deploying a charm containing this support:
+
+```bash
+juju config -m <controller:owner/model> polkadot \
+  binary-url=https://example.org/releases/node-v1.2.3-linux-amd64.tar.gz \
+  binary-archive-member=bin/node
+```
+
+Changing `binary-archive-member` with `binary-url` set reinstalls the binary, even if the URL is unchanged. Archives containing several required binaries (such as Polkadot worker binaries) are not installed as a group; keep using the existing space-separated raw binary URLs for those deployments.
+
 #### Deploying other node types
 
 There are a number of different node types in the Polkadot ecosystem, all which use the same client software to run. That means that by changing the client's service arguments in the deployment of this charm, one can easily change which node type to deploy. Read more about the specific node types on the Polkadot docs pages; [validator](https://wiki.polkadot.network/docs/learn-validator), [collator](https://wiki.polkadot.network/docs/learn-collator), [bootnode](https://wiki.polkadot.network/docs/maintain-bootnode), [RPC](https://wiki.polkadot.network/docs/maintain-rpc).

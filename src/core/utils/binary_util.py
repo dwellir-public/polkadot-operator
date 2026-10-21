@@ -6,14 +6,16 @@ import subprocess as sp
 import time
 from pathlib import Path
 from string import Template
+from urllib.parse import urlsplit
 
 import requests
+from charms.dwellir.blockchain_common.v1 import install_binary_from_archive
+from charms.dwellir.blockchain_common.v1.downloads import SUPPORTED_TAR_URL_SUFFIXES
 
 from core import constants as c
 from core import runtime as r
 from core.utils import general_util
 from core.utils.docker import Docker
-from core.utils.tarball import Tarball
 
 logger = logging.getLogger(__name__)
 
@@ -38,13 +40,15 @@ def install_docker_runtime() -> None:
         sp.run(["usermod", "-aG", "docker", r.user], check=False)
 
 
-def install_binary(chain_name: str, binary_url: str, binary_sha256_url: str | None = None) -> None:
-    if binary_url.endswith(".deb"):
-        install_deb_from_url(binary_url)
-    elif binary_url.endswith(".tar.gz") or binary_url.endswith(".tgz"):
-        install_tarball_from_url(binary_url, chain_name)
-    elif len(binary_url.split()) > 1:
+def install_binary(chain_name: str, binary_url: str, binary_sha256_url: str | None = None, archive_member: str = "") -> None:
+    """Install configured binaries, including a selected member of a tar archive."""
+    url_path = urlsplit(binary_url).path.lower()
+    if len(binary_url.split()) > 1:
         install_binaries_from_urls(binary_url, binary_sha256_url, chain_name)
+    elif url_path.endswith(".deb"):
+        install_deb_from_url(binary_url)
+    elif url_path.endswith(SUPPORTED_TAR_URL_SUFFIXES):
+        install_tarball_from_url(binary_url, binary_sha256_url, archive_member)
     else:
         install_binary_from_url(binary_url, binary_sha256_url)
 
@@ -83,19 +87,20 @@ def install_deb_from_url(url: str) -> None:
     os.remove(deb_path)
 
 
-def install_tarball_from_url(url, chain_name):
-    tarball_response = requests.get(url, allow_redirects=True, timeout=None)
-    tarball_path = Path(r.home_dir, url.split("/")[-1])
-    if tarball_response.status_code != 200:
-        raise ValueError(f"Download binary failed with: {tarball_response.text}. Check 'binary-url'!")
-
-    # TODO: Add sha256 checksum verification here in case some future chain provides them
-    with open(tarball_path, "wb") as f:
-        f.write(tarball_response.content)
-
-    stop_service()
-    tarball = Tarball(tarball_path, chain_name)
-    tarball.extract_resources_from_tarball()
+def install_tarball_from_url(url: str, sha256_url: str | None = None, archive_member: str = "") -> None:
+    """Validate and stage an archive member before stopping the running service."""
+    member = archive_member.strip() or r.binary_file.name
+    try:
+        install_binary_from_archive(
+            url=url,
+            target_path=r.binary_file,
+            members_to_extract=[member],
+            sha256_url=sha256_url,
+            stop_func=stop_service,
+            owner=(r.user, r.user),
+        )
+    except (FileNotFoundError, sp.CalledProcessError) as exc:
+        raise ValueError(f"Archive binary installation failed: {exc}") from exc
 
 
 def parse_install_urls(binary_urls: str, sha256_urls: str) -> list:
