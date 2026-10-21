@@ -48,7 +48,7 @@ def install_binary(chain_name: str, binary_url: str, binary_sha256_url: str | No
     elif url_path.endswith(".deb"):
         install_deb_from_url(binary_url)
     elif url_path.endswith(SUPPORTED_TAR_URL_SUFFIXES):
-        install_tarball_from_url(binary_url, chain_name, binary_sha256_url, archive_member)
+        install_tarball_from_url(binary_url, binary_sha256_url, archive_member)
     else:
         install_binary_from_url(binary_url, binary_sha256_url)
 
@@ -87,9 +87,9 @@ def install_deb_from_url(url: str) -> None:
     os.remove(deb_path)
 
 
-def install_tarball_from_url(url: str, chain_name: str, sha256_url: str | None = None, archive_member: str = "") -> None:
+def install_tarball_from_url(url: str, sha256_url: str | None = None, archive_member: str = "") -> None:
     """Validate and stage an archive member before stopping the running service."""
-    member = archive_member.strip() or ("data-avail" if chain_name == "goldberg" else r.binary_file.name)
+    member = archive_member.strip() or r.binary_file.name
     try:
         install_binary_from_archive(
             url=url,

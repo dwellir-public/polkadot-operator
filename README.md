@@ -70,7 +70,7 @@ There are many more arguments available for the client, regardless of if it is t
 
 #### Installing a binary from a tar archive
 
-Set `binary-url` to a single archive URL and `binary-archive-member` to the binary's member name, for example `bin/node`. The shared `charms-dwellir-blockchain-common` installer extracts the selected member into the existing workload binary path. A basename must be unique within the archive; use its full archive path when necessary. Without an explicit member, the charm selects `polkadot`, retaining `data-avail` for the legacy `goldberg` chain.
+Set `binary-url` to a single archive URL and `binary-archive-member` to the binary's member name, for example `bin/node`. The shared `charms-dwellir-blockchain-common` installer extracts the selected member into the existing workload binary path. A basename must be unique within the archive; use its full archive path when necessary. Without an explicit member, the charm selects `polkadot`.
 
 Supported suffixes are `.tar`, `.tar.gz`, `.tgz`, `.tar.bz2`, `.tbz2`, `.tar.xz`, `.txz`, and `.tar.zst` (requires `zstd` on the unit). URL query strings are supported. `binary-sha256-url`, when set, must contain the checksum of the complete archive. Downloading, checksum verification, extraction, and member selection complete before the service is stopped. The existing lifecycle hook restarts a previously running service after installation.
 

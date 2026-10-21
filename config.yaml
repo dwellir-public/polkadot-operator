@@ -11,7 +11,7 @@ options:
       Example 1: https://github.com/paritytech/polkadot-sdk/releases/download/polkadot-v1.1.0/polkadot-parachain
       Example 2: "https://github.com/paritytech/polkadot-sdk/releases/download/polkadot-v1.1.0/polkadot https://github.com/paritytech/polkadot-sdk/releases/download/polkadot-v1.1.0/polkadot-execute-worker https://github.com/paritytech/polkadot-sdk/releases/download/polkadot-v1.1.0/polkadot-prepare-worker"
       Example 3: https://github.com/ComposableFi/composable/releases/download/release-v9.10035.5/composable-node_8.10035.5-1_amd64.deb
-      Example 4: https://github.com/availproject/avail/releases/download/v1.9.0.0/x86_64-ubuntu-2204-data-avail.tar.gz
+      Example 4: https://example.org/releases/node-v1.2.3-linux-amd64.tar.gz (set binary-archive-member to select the binary)
 
       NOTE 1: Different installation methods will be used depending on the downloaded file type.
       NOTE 2: Multiple binary install is currently only supported for the Polkadot relaychains, parachain support is not confirmed.
@@ -19,9 +19,9 @@ options:
     type: string
     default: ""
     description: |
-      Binary member to install from a single tar archive, for example humanode-peer.
+      Binary member to install from a single tar archive, for example bin/node.
       A basename must match exactly one archive entry; use a full member path to disambiguate.
-      If empty, selects polkadot, or data-avail for the legacy goldberg chain.
+      If empty, selects polkadot.
       Supported suffixes: .tar, .tar.gz, .tgz, .tar.bz2, .tbz2, .tar.xz, .txz, .tar.zst.
       Changing this value with binary-url set reinstalls the binary.
   binary-sha256-url:

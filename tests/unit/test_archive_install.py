@@ -69,7 +69,7 @@ def make_archive(path, members, mode="w:gz"):
     [
         ("using_chainspec_config", "humanode-peer", ["./humanode-peer"], ".tar.gz", "w:gz"),
         ("generic", "client", ["release/bin/client", "README"], ".tar.xz", "w:xz"),
-        ("goldberg", "", ["data-avail"], ".tgz", "w:gz"),
+        ("generic", "", ["polkadot"], ".tgz", "w:gz"),
         ("polkadot", "", ["bin/polkadot"], ".tar", "w"),
         ("generic", "bin/client", ["bin/client", "other/client"], ".tar.bz2", "w:bz2"),
     ],
