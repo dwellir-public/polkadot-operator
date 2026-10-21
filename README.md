@@ -70,16 +70,16 @@ There are many more arguments available for the client, regardless of if it is t
 
 #### Installing a binary from a tar archive
 
-Set `binary-url` to a single archive URL and `binary-archive-member` to the binary's member name, for example `humanode-peer`. The shared `charms-dwellir-blockchain-common` installer extracts the selected member into the existing workload binary path. A basename must be unique within the archive; use its full archive path when necessary. Without an explicit member, the charm selects `polkadot`, retaining `data-avail` for the legacy `goldberg` chain.
+Set `binary-url` to a single archive URL and `binary-archive-member` to the binary's member name, for example `bin/node`. The shared `charms-dwellir-blockchain-common` installer extracts the selected member into the existing workload binary path. A basename must be unique within the archive; use its full archive path when necessary. Without an explicit member, the charm selects `polkadot`, retaining `data-avail` for the legacy `goldberg` chain.
 
 Supported suffixes are `.tar`, `.tar.gz`, `.tgz`, `.tar.bz2`, `.tbz2`, `.tar.xz`, `.txz`, and `.tar.zst` (requires `zstd` on the unit). URL query strings are supported. `binary-sha256-url`, when set, must contain the checksum of the complete archive. Downloading, checksum verification, extraction, and member selection complete before the service is stopped. The existing lifecycle hook restarts a previously running service after installation.
 
-For Humanode, set both options together after deploying a charm containing this support:
+Set the archive URL and member together after deploying a charm containing this support:
 
 ```bash
 juju config -m <controller:owner/model> polkadot \
-  binary-url=https://github.com/humanode-network/humanode/releases/download/v0.0.0-it6-2026-10-20/humanode-peer-x86_64-unknown-linux-gnu-ubuntu2204.tar.gz \
-  binary-archive-member=humanode-peer
+  binary-url=https://example.org/releases/node-v1.2.3-linux-amd64.tar.gz \
+  binary-archive-member=bin/node
 ```
 
 Changing `binary-archive-member` with `binary-url` set reinstalls the binary, even if the URL is unchanged. Archives containing several required binaries (such as Polkadot worker binaries) are not installed as a group; keep using the existing space-separated raw binary URLs for those deployments.
