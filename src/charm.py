@@ -94,6 +94,7 @@ class PolkadotCharm(ops.CharmBase):
 
         self._stored.set_default(
             binary_url=self.config.get("binary-url"),
+            archive_member=self.config.get("binary-archive-member") or "",
             docker_tag=self.config.get("docker-tag"),
             service_args=self.config.get("service-args"),
             data_dir=self.config.get("data-dir"),
@@ -114,6 +115,7 @@ class PolkadotCharm(ops.CharmBase):
             self._workload.configure(
                 charm_base_dir=self.charm_dir,
                 binary_url=self._stored.binary_url,
+                archive_member=self._stored.archive_member,
                 docker_tag=self._stored.docker_tag,
                 binary_sha256_url=self.config.get("binary-sha256-url"),
                 chain_name=ServiceArgs(self.config, self.rpc_urls()).chain_name,
@@ -207,7 +209,11 @@ class PolkadotCharm(ops.CharmBase):
         # to ensure that data and key migration can or should be applied afterwards.
         try:
             # Update of polkadot binary requested
-            if self._stored.binary_url != self.config.get("binary-url") or self._stored.docker_tag != self.config.get("docker-tag"):
+            if (
+                self._stored.binary_url != self.config.get("binary-url")
+                or self._stored.docker_tag != self.config.get("docker-tag")
+                or (self.config.get("binary-url") and self._stored.archive_member != (self.config.get("binary-archive-member") or ""))
+            ):
                 restart_after_install = was_running
                 # If either binary-url or docker-tag is set, switch to binary manager
                 # and configure it with the current settings
@@ -223,6 +229,7 @@ class PolkadotCharm(ops.CharmBase):
                         self.unit.status = ops.MaintenanceStatus("Updating binary")
                     self._workload.configure(
                         binary_url=self.config.get("binary-url"),
+                        archive_member=self.config.get("binary-archive-member") or "",
                         docker_tag=self.config.get("docker-tag"),
                         charm_base_dir=self.charm_dir,
                         binary_sha256_url=self.config.get("binary-sha256-url"),
@@ -276,6 +283,7 @@ class PolkadotCharm(ops.CharmBase):
 
             # Update stored configurations
             self._stored.binary_url = self.config.get("binary-url")
+            self._stored.archive_member = self.config.get("binary-archive-member") or ""
             self._stored.docker_tag = self.config.get("docker-tag")
             self._stored.snap_revision = self.config.get("snap-revision")
             self._stored.snap_channel = self.config.get("snap-channel")

@@ -14,6 +14,7 @@ class PolkadotBinaryManager(WorkloadManager):
         self._chain_name = kwargs.get("chain_name")
         self._binary_url = kwargs.get("binary_url")
         self._binary_sha256_url = kwargs.get("binary_sha256_url")
+        self._archive_member = kwargs.get("archive_member", "")
         self._docker_tag = kwargs.get("docker_tag")
         self._data_dir = Path(kwargs.get("data_dir")) if kwargs.get("data_dir") else None
         self._base_path = self._data_dir or r.base_path
@@ -27,7 +28,7 @@ class PolkadotBinaryManager(WorkloadManager):
         if self._data_dir and not general_util.setup_data_dir(self._base_path, r.user):
             raise ValueError(f"Failed to set up data-dir {self._base_path}")
         if self._binary_url:
-            binary_util.install_binary(self._chain_name, self._binary_url, self._binary_sha256_url)
+            binary_util.install_binary(self._chain_name, self._binary_url, self._binary_sha256_url, self._archive_member)
         else:
             binary_util.install_binary_from_docker_container(self._chain_name, self._docker_tag)
         binary_util.create_env_file_for_service()

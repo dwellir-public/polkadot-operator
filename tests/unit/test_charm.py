@@ -333,6 +333,7 @@ class _FakeWorkload:
         self.start_calls = 0
         self.set_service_args_calls = 0
         self.configure_calls = 0
+        self.configure_kwargs = {}
         self.install_calls = 0
         self.uninstall_calls = 0
         self.stop_calls = 0
@@ -363,6 +364,7 @@ class _FakeWorkload:
 
     def configure(self, **kwargs):
         self.configure_calls += 1
+        self.configure_kwargs = kwargs
 
     def install(self):
         self.install_calls += 1
@@ -378,6 +380,7 @@ def _config_changed_charm(workload, stored):
     config = {
         "binary-url": "",
         "binary-sha256-url": "",
+        "binary-archive-member": "",
         "docker-tag": "",
         "service-args": "--chain polkadot --rpc-port 9933",
         "data-dir": "",
@@ -419,6 +422,7 @@ def _config_changed_charm(workload, stored):
 def _stored_state(initial_start_pending=False):
     return SimpleNamespace(
         binary_url="",
+        archive_member="",
         docker_tag="",
         service_args="--chain polkadot --rpc-port 9933",
         data_dir="",
@@ -495,3 +499,26 @@ def test_config_changed_downloads_chain_spec_for_url_and_target_changes():
     assert download_chain_spec.call_count == 2
     download_chain_spec.assert_any_call("https://example.invalid/chain-spec.json", "chain-spec.json", Path("/var/snap/polkadot/common/spec"), "root")
     assert event.deferred is False
+
+
+def test_archive_member_change_reinstalls_and_restarts_running_binary():
+    workload = _FakeWorkload(running=True)
+    workload.get_type = lambda: WorkloadType.BINARY
+    stored = _stored_state()
+    stored.binary_url = "https://example.invalid/release.tar.gz"
+    charm = _config_changed_charm(workload, stored)
+    charm.charm_dir = Path(".")
+    charm.config.update({"binary-url": stored.binary_url, "binary-archive-member": "humanode-peer", "snap-name": ""})
+    event = SimpleNamespace(deferred=False, defer=lambda: setattr(event, "deferred", True))
+
+    PolkadotCharm._on_config_changed(charm, event)
+
+    assert not event.deferred
+    assert stored.archive_member == "humanode-peer"
+    assert workload.configure_kwargs["archive_member"] == "humanode-peer"
+    assert workload.install_calls == 1
+    assert workload.restart_calls == 1
+
+    PolkadotCharm._on_config_changed(charm, event)
+    assert workload.install_calls == 1
+    assert workload.restart_calls == 1

@@ -15,11 +15,20 @@ options:
 
       NOTE 1: Different installation methods will be used depending on the downloaded file type.
       NOTE 2: Multiple binary install is currently only supported for the Polkadot relaychains, parachain support is not confirmed.
+  binary-archive-member:
+    type: string
+    default: ""
+    description: |
+      Binary member to install from a single tar archive, for example humanode-peer.
+      A basename must match exactly one archive entry; use a full member path to disambiguate.
+      If empty, selects polkadot, or data-avail for the legacy goldberg chain.
+      Supported suffixes: .tar, .tar.gz, .tgz, .tar.bz2, .tbz2, .tar.xz, .txz, .tar.zst.
+      Changing this value with binary-url set reinstalls the binary.
   binary-sha256-url:
     type: string
     default: ""
     description: |
-      If the URL is provided, the charm downloads the sha256 and performs a checksum check against the binary.
+      If the URL is provided, the charm downloads the sha256 and performs a checksum check against the binary (or the complete archive for tarball installs).
 
       NOTE 1: Needs to point to the sha256 corresponding to the 'binary-url' ahead of downloading the binary to actually perform the check!
       NOTE 2: If multiple binary URL:s are supplied, multiple sha256 URL:s should be supplied as well, in the same order.
