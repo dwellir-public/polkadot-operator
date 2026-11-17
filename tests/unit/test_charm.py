@@ -1,36 +1,23 @@
 # Copyright 2021 dwellir
 # See LICENSE file for licensing details.
 
-import sys
-import types
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
-substrateinterface = types.ModuleType("substrateinterface")
-substrateinterface_exceptions = types.ModuleType("substrateinterface.exceptions")
-substrateinterface_utils = types.ModuleType("substrateinterface.utils")
-substrateinterface_utils_ss58 = types.ModuleType("substrateinterface.utils.ss58")
-substrateinterface.SubstrateInterface = object
-substrateinterface.Keypair = object
-substrateinterface_exceptions.SubstrateRequestException = Exception
-substrateinterface_utils_ss58.ss58_decode = lambda address: address
-sys.modules.setdefault("substrateinterface", substrateinterface)
-sys.modules.setdefault("substrateinterface.exceptions", substrateinterface_exceptions)
-sys.modules.setdefault("substrateinterface.utils", substrateinterface_utils)
-sys.modules.setdefault("substrateinterface.utils.ss58", substrateinterface_utils_ss58)
-
-from charms.dwellir_observability.v0.machine_observability import (  # noqa: E402
+import pytest
+from charms.dwellir_observability.v0.machine_observability import (
     MACHINE_OBSERVABILITY_SCHEMA_VERSION_V1,
     MACHINE_OBSERVABILITY_SCHEMA_VERSION_V2,
     MachineObservabilityPayload,
     SourceTopology,
     build_machine_observability_payload,
 )
+from requests.exceptions import Timeout
 
-from charm import PolkadotCharm  # noqa: E402
-from core.managers import WorkloadType  # noqa: E402
-from core.service_args import ServiceArgs  # noqa: E402
+from charm import PolkadotCharm
+from core.managers import WorkloadType
+from core.service_args import ServiceArgs
 
 
 def test_actions_yaml_declares_get_session_key_with_owner_action():
@@ -522,3 +509,97 @@ def test_archive_member_change_reinstalls_and_restarts_running_binary():
     PolkadotCharm._on_config_changed(charm, event)
     assert workload.install_calls == 1
     assert workload.restart_calls == 1
+
+
+def _key_action_event(params):
+    results, errors = {}, []
+    return SimpleNamespace(params=params, log=lambda message: None, set_results=lambda **kwargs: results.update(kwargs["results"]), fail=errors.append), results, errors
+
+
+def test_find_validator_reports_authority_and_missing_auxiliary_key():
+    event, results, errors = _key_action_event({})
+    charm = SimpleNamespace(config={}, rpc_urls=lambda: [])
+    current = {"validator": "address", "authority_key": "0x01", "key_type": "aura", "session_key": "0x0102", "missing_keys": ["offchain_worker"]}
+    with patch("charm.ServiceArgs", return_value=SimpleNamespace(rpc_port="9933")), patch("charm.PolkadotRpcWrapper") as wrapper:
+        wrapper.return_value.is_validating_this_era.return_value = current
+        PolkadotCharm._on_find_validator_address_action(charm, event)
+    assert not errors
+    assert results["validator-address"] == "address"
+    assert results["queued-missing-keys"] == ["offchain_worker"]
+    assert "production is not checked" in results["message"]
+
+
+@pytest.mark.parametrize("missing", [[], ["offchain_worker"], ["aura", "offchain_worker"]])
+def test_legacy_next_era_action_reports_registration_and_readiness(missing):
+    event, results, errors = _key_action_event({"address": "address"})
+    charm = SimpleNamespace(config={}, rpc_urls=lambda: [])
+    with patch("charm.ServiceArgs", return_value=SimpleNamespace(rpc_port="9933")), patch("charm.PolkadotRpcWrapper") as wrapper:
+        wrapper.return_value.is_validating_next_era.return_value = {"session_key": "0x01", "missing_keys": missing}
+        PolkadotCharm._on_is_validating_next_era_action(charm, event)
+    assert not errors
+    assert results["registered"]
+    assert results["all-keys-present"] == (not missing)
+    assert results["missing-keys"] == missing
+    assert "does not establish future election" in results["message"]
+
+
+@pytest.mark.parametrize(
+    "handler,params",
+    [
+        ("_on_find_validator_address_action", {}),
+        ("_on_is_validating_next_era_action", {"address": "address"}),
+        ("_on_has_session_key_action", {"key": "0x01"}),
+        ("_on_insert_key_action", {"mnemonic": "secret", "address": "0x01", "key-type": "ofcw"}),
+        ("_on_get_session_key_action", {}),
+        ("_on_get_session_key_with_owner_action", {"address": "0x01"}),
+    ],
+)
+def test_key_actions_fail_on_rpc_errors(handler, params):
+    event, results, errors = _key_action_event(params)
+    charm = SimpleNamespace(config={}, rpc_urls=lambda: [])
+    with patch("charm.ServiceArgs", return_value=SimpleNamespace(rpc_port="9933")), patch("charm.PolkadotRpcWrapper", side_effect=Timeout("RPC timed out")):
+        getattr(PolkadotCharm, handler)(charm, event)
+    assert not results
+    assert errors == ["Node RPC operation failed: RPC timed out"]
+
+
+@pytest.mark.parametrize(
+    "outcome,expected",
+    [
+        (False, "Validating: No"),
+        ({"missing_keys": ["offchain_worker"]}, "Validating: Yes, queued keys missing: offchain_worker"),
+        ({"readiness_unknown": True}, "Validating: Yes, queued key readiness: Unknown"),
+    ],
+)
+def test_status_distinguishes_authority_membership_and_queued_readiness(outcome, expected):
+    with patch("charm.PolkadotRpcWrapper") as wrapper:
+        wrapper.return_value.is_validating_this_era.return_value = outcome
+        assert PolkadotCharm._validator_status_message("9933") == expected
+
+
+def test_status_check_error_is_unknown_instead_of_no():
+    with patch("charm.PolkadotRpcWrapper") as wrapper:
+        wrapper.return_value.is_validating_this_era.side_effect = ValueError("unsupported runtime")
+        assert PolkadotCharm._validator_status_message("9933") == "Validating: Unknown"
+
+
+def test_start_validating_reports_rpc_failure_without_success_results():
+    event, results, errors = _key_action_event({})
+    secret = SimpleNamespace(get_content=lambda **kwargs: {"mnemonic": "test mnemonic"})
+    charm = SimpleNamespace(config={"mnemonic-secret-id": "secret:test"}, rpc_urls=lambda: [], model=SimpleNamespace(get_secret=lambda **kwargs: secret))
+    with patch("charm.ServiceArgs", return_value=SimpleNamespace(rpc_port="9933")), patch("charm.PolkadotRpcWrapper") as wrapper:
+        wrapper.return_value.set_session_key_on_chain.side_effect = Timeout("RPC timed out")
+        PolkadotCharm._on_start_validating_action(charm, event)
+    assert not results
+    assert errors == ["Node RPC operation failed: RPC timed out"]
+
+
+def test_start_validating_rejects_empty_mnemonic_before_calling_node():
+    event, results, errors = _key_action_event({})
+    secret = SimpleNamespace(get_content=lambda **kwargs: {})
+    charm = SimpleNamespace(config={"mnemonic-secret-id": "secret:test"}, rpc_urls=lambda: [], model=SimpleNamespace(get_secret=lambda **kwargs: secret))
+    with patch("charm.ServiceArgs", return_value=SimpleNamespace(rpc_port="9933")), patch("charm.PolkadotRpcWrapper") as wrapper:
+        PolkadotCharm._on_start_validating_action(charm, event)
+        wrapper.assert_not_called()
+    assert not results
+    assert "nonempty 'mnemonic'" in errors[0]

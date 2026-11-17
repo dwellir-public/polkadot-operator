@@ -1,306 +1,229 @@
+from hashlib import blake2b
+
 import pytest
 from scalecodec.base import ScaleBytes
+from substrateinterface import Keypair
+from substrateinterface.exceptions import SubstrateRequestException
 
 import polkadot_rpc_wrapper
 from polkadot_rpc_wrapper import PolkadotRpcWrapper
+from session_keys import SessionKeyCodec
+
+TEST_MNEMONIC = "bottom drive obey lake curtain smoke basket hold race lonely fit walk"
 
 
-class FakeKeypair:
-    public_key = bytes.fromhex("bb" * 32)
+@pytest.fixture
+def wrapper(runtime, monkeypatch):
+    instance = PolkadotRpcWrapper("9933")
+    instance.recorded_rpc = []
+    instance.owner_rotation = True
 
-    @classmethod
-    def create_from_mnemonic(cls, mnemonic):
-        assert mnemonic == "test mnemonic"
-        return cls()
+    def rpc(method, params=None):
+        params = params or []
+        instance.recorded_rpc.append((method, params))
+        if method == "author_hasKey":
+            return tuple(params) in runtime.local_keys
+        if method == "rpc_methods":
+            return {"methods": ["author_rotateKeysWithOwner"] if instance.owner_rotation else []}
+        if method in ("author_rotateKeys", "author_rotateKeysWithOwner"):
+            bundle = SessionKeyCodec(runtime, runtime.block_hash).encode(runtime.keys)
+            return {"keys": bundle, "proof": "0x1234"} if method.endswith("WithOwner") else bundle
+        if method == "system_chain":
+            return runtime.chain_name
+        raise AssertionError(method)
 
-
-class FakeReceipt:
-    is_success = True
-    error_message = None
-
-    def get_extrinsic_identifier(self):
-        return "1-2"
-
-
-class RecordingSubstrate:
-    def __init__(self, url):
-        self.url = url
-        self.composed_calls = []
-
-    def compose_call(self, call_module, call_function, call_params):
-        self.composed_calls.append(
-            {
-                "call_module": call_module,
-                "call_function": call_function,
-                "call_params": call_params,
-            }
-        )
-        return self.composed_calls[-1]
-
-    def create_signed_extrinsic(self, call, keypair):
-        return {"call": call, "keypair": keypair}
-
-    def submit_extrinsic(self, extrinsic, wait_for_inclusion):
-        assert wait_for_inclusion is True
-        return FakeReceipt()
+    monkeypatch.setattr(instance, "_rpc", rpc)
+    monkeypatch.setattr(polkadot_rpc_wrapper, "SubstrateInterface", lambda **kwargs: runtime)
+    return instance
 
 
-def install_recording_substrate(monkeypatch):
-    captured = {}
-
-    def create_fake_substrate(url):
-        captured["substrate"] = RecordingSubstrate(url)
-        return captured["substrate"]
-
-    monkeypatch.setattr(polkadot_rpc_wrapper, "Keypair", FakeKeypair)
-    monkeypatch.setattr(polkadot_rpc_wrapper, "SubstrateInterface", create_fake_substrate)
-    monkeypatch.setattr(PolkadotRpcWrapper, "get_chain_name", lambda self: "Polkadot")
-    return captured
+@pytest.mark.parametrize("runtime", ["relay", "matrix"], indirect=True)
+def test_current_authority_is_found_when_offchain_key_is_missing(runtime, wrapper):
+    runtime.local_keys = {key for key in runtime.local_keys if key[1] != "ofcw"}
+    result = wrapper.is_validating_this_era()
+    assert result["validator"] == runtime.address
+    assert result["key_type"] == ("babe" if runtime.kind == "relay" else "aura")
+    assert result["missing_keys"] == ["offchain_worker"]
+    assert runtime.closed
+    assert all(call[3] == runtime.block_hash for call in runtime.query_calls)
 
 
-def test_set_session_key_on_chain_uses_owner_rotation_proof_when_rpc_method_exists(monkeypatch):
-    def fake_post(url, headers, data):
-        request = polkadot_rpc_wrapper.json.loads(data)
-        if request["method"] == "rpc_methods":
-            return type("Response", (), {"text": polkadot_rpc_wrapper.json.dumps({"result": {"methods": ["author_rotateKeysWithOwner"]}})})()
-        if request["method"] == "author_rotateKeysWithOwner":
-            assert request["params"] == ["0x" + "aa" * 32]
-            return type(
-                "Response",
-                (),
-                {
-                    "text": polkadot_rpc_wrapper.json.dumps(
-                        {
-                            "result": {
-                                "keys": "0x" + "11" * 32 * 6,
-                                "proof": "0x" + "22" * 64,
-                            }
-                        }
-                    )
-                },
-            )()
-        raise AssertionError(f"unexpected RPC method: {request['method']}")
-
-    captured = install_recording_substrate(monkeypatch)
-    monkeypatch.setattr(polkadot_rpc_wrapper.requests, "post", fake_post)
-    monkeypatch.setattr(polkadot_rpc_wrapper, "ss58_decode", lambda address: "aa" * 32, raising=False)
-
-    result = PolkadotRpcWrapper("9933").set_session_key_on_chain("test mnemonic", None, "owner-address")
-
-    assert result == "1-2"
-    fake_substrate = captured["substrate"]
-    assert fake_substrate.composed_calls[0]["call_module"] == "Session"
-    assert fake_substrate.composed_calls[0]["call_function"] == "set_keys"
-    assert fake_substrate.composed_calls[0]["call_params"]["proof"] == "0x" + "22" * 64
+@pytest.mark.parametrize("runtime", ["relay", "matrix"], indirect=True)
+def test_current_authority_does_not_depend_on_incoming_queued_keys(runtime, wrapper):
+    keys = dict(runtime.keys)
+    field = "babe" if runtime.kind == "relay" else "aura"
+    keys[field] = "0x" + "99" * 32
+    runtime.storage[("Session", "QueuedKeys")] = [[runtime.address, keys]]
+    result = wrapper.is_validating_this_era()
+    assert result["authority_key"] == runtime.keys[field]
+    assert "session_key" not in result
+    assert "missing_keys" not in result
 
 
-def test_set_session_key_on_chain_uses_signing_key_as_owner_when_address_is_missing(monkeypatch):
-    def fake_post(url, headers, data):
-        request = polkadot_rpc_wrapper.json.loads(data)
-        if request["method"] == "rpc_methods":
-            return type("Response", (), {"text": polkadot_rpc_wrapper.json.dumps({"result": {"methods": ["author_rotateKeysWithOwner"]}})})()
-        if request["method"] == "author_rotateKeysWithOwner":
-            assert request["params"] == ["0x" + "bb" * 32]
-            return type(
-                "Response",
-                (),
-                {
-                    "text": polkadot_rpc_wrapper.json.dumps(
-                        {
-                            "result": {
-                                "keys": "0x" + "11" * 32 * 6,
-                                "proof": "0x" + "22" * 64,
-                            }
-                        }
-                    )
-                },
-            )()
-        raise AssertionError(f"unexpected RPC method: {request['method']}")
-
-    captured = install_recording_substrate(monkeypatch)
-    monkeypatch.setattr(polkadot_rpc_wrapper.requests, "post", fake_post)
-
-    result = PolkadotRpcWrapper("9933").set_session_key_on_chain("test mnemonic", None, None)
-
-    assert result == "1-2"
-    fake_substrate = captured["substrate"]
-    assert fake_substrate.composed_calls[0]["call_params"]["proof"] == "0x" + "22" * 64
+@pytest.mark.parametrize("runtime", ["relay", "matrix"], indirect=True)
+def test_incoming_node_is_not_reported_as_current_authority(runtime, wrapper):
+    field = "babe" if runtime.kind == "relay" else "aura"
+    runtime.local_keys = {("0x" + "99" * 32, runtime.key_types[field])}
+    incoming = dict(runtime.keys, **{field: "0x" + "99" * 32})
+    runtime.storage[("Session", "QueuedKeys")] = [[runtime.address, incoming]]
+    assert wrapper.is_validating_this_era() is False
 
 
-def test_set_session_key_on_chain_falls_back_to_rotate_keys_when_owner_rpc_method_is_missing(monkeypatch):
-    def fake_post(url, headers, data):
-        request = polkadot_rpc_wrapper.json.loads(data)
-        if request["method"] == "rpc_methods":
-            return type("Response", (), {"text": polkadot_rpc_wrapper.json.dumps({"result": {"methods": ["author_rotateKeys"]}})})()
-        if request["method"] == "author_rotateKeys":
-            return type("Response", (), {"text": polkadot_rpc_wrapper.json.dumps({"result": "0x" + "11" * 32 * 6})})()
-        raise AssertionError(f"unexpected RPC method: {request['method']}")
-
-    captured = install_recording_substrate(monkeypatch)
-    monkeypatch.setattr(polkadot_rpc_wrapper.requests, "post", fake_post)
-
-    result = PolkadotRpcWrapper("9933").set_session_key_on_chain("test mnemonic", None, "owner-address")
-
-    assert result == "1-2"
-    fake_substrate = captured["substrate"]
-    assert fake_substrate.composed_calls[0]["call_params"]["proof"] == "0x00"
+def test_unalignable_authorities_fail_instead_of_claiming_no_validation(runtime, wrapper):
+    runtime.storage[("Session", "Validators")] = []
+    with pytest.raises(ValueError, match="aligned"):
+        wrapper.is_validating_this_era()
+    assert runtime.closed
 
 
-def test_set_session_key_on_chain_reports_substrate_request_errors(monkeypatch):
-    class FakeSubstrateRequestError(Exception):
-        pass
-
-    class FakeKeypair:
-        @classmethod
-        def create_from_mnemonic(cls, mnemonic):
-            return cls()
-
-    class FakeSubstrate:
-        def __init__(self, url):
-            self.url = url
-
-        def compose_call(self, *args, **kwargs):
-            return {"args": args, "kwargs": kwargs}
-
-        def create_signed_extrinsic(self, call, keypair):
-            return {"call": call, "keypair": keypair}
-
-        def submit_extrinsic(self, extrinsic, wait_for_inclusion):
-            raise FakeSubstrateRequestError({"code": 1002, "message": "Verification Error: Runtime error"})
-
-    monkeypatch.setattr(polkadot_rpc_wrapper, "SubstrateRequestException", FakeSubstrateRequestError)
-    monkeypatch.setattr(polkadot_rpc_wrapper, "Keypair", FakeKeypair)
-    monkeypatch.setattr(polkadot_rpc_wrapper, "SubstrateInterface", FakeSubstrate)
-    monkeypatch.setattr(PolkadotRpcWrapper, "get_chain_name", lambda self: "Polkadot")
-    monkeypatch.setattr(PolkadotRpcWrapper, "rpc_method_exists", lambda self, method: False)
-    monkeypatch.setattr(PolkadotRpcWrapper, "get_session_key", lambda self: "0x" + "11" * 32 * 6)
-
-    with pytest.raises(ValueError, match="Verification Error: Runtime error"):
-        PolkadotRpcWrapper("9933").set_session_key_on_chain(
-            "test mnemonic",
-            "Staking",
-            "enBU8hyQvkP7qJLxyfNYRiviNcUQXZtB1Xg1FNifJZnZBaTRE",
-        )
+def test_unsupported_consensus_fails_explicitly(runtime, wrapper, monkeypatch):
+    monkeypatch.setattr(runtime, "get_metadata_storage_function", lambda *args, **kwargs: None)
+    with pytest.raises(ValueError, match="no supported"):
+        wrapper.is_validating_this_era()
 
 
-def test_create_enjin_signed_extrinsic_uses_runtime_signed_extension_order():  # noqa: C901
-    signed_extensions = {
-        "CheckMortality": {"extrinsic": "EraType", "additional_signed": "BlockHashType"},
-        "CheckMetadataHash": {"extrinsic": "ModeType", "additional_signed": "MetadataHashType"},
-        "CheckNonce": {"extrinsic": "NonceType", "additional_signed": "UnitType"},
-        "ChargeTransactionPayment": {"extrinsic": "TipType", "additional_signed": "UnitType"},
-        "CheckSpecVersion": {"extrinsic": "UnitType", "additional_signed": "SpecVersionType"},
-        "CheckTxVersion": {"extrinsic": "UnitType", "additional_signed": "TxVersionType"},
-        "CheckGenesis": {"extrinsic": "UnitType", "additional_signed": "GenesisHashType"},
+def test_readiness_failure_preserves_current_authority_result(runtime, wrapper, monkeypatch):
+    monkeypatch.setattr(wrapper, "_key_readiness", lambda *args: (_ for _ in ()).throw(ValueError("runtime failure")))
+    result = wrapper.is_validating_this_era()
+    assert result["validator"] == runtime.address
+    assert result["readiness_unknown"]
+
+
+@pytest.mark.parametrize("runtime", ["relay", "matrix"], indirect=True)
+def test_registered_keys_report_missing_auxiliary_key_without_promising_election(runtime, wrapper):
+    runtime.local_keys = {key for key in runtime.local_keys if key[1] != "ofcw"}
+    runtime.storage[("Session", "Validators")] = []
+    result = wrapper.is_validating_next_era(runtime.address)
+    assert result["missing_keys"] == ["offchain_worker"]
+    assert result["session_key"] == SessionKeyCodec(runtime, runtime.block_hash).encode(runtime.keys)
+
+
+def test_unregistered_account_has_no_readiness(runtime, wrapper):
+    runtime.storage[("Session", "NextKeys")] = None
+    assert wrapper.is_validating_next_era(runtime.address) is None
+
+
+@pytest.mark.parametrize("runtime", ["relay", "matrix"], indirect=True)
+@pytest.mark.parametrize("proxy", [False, True])
+def test_registration_uses_real_runtime_codec_and_owner_proof(runtime, wrapper, proxy):
+    owner = Keypair.create_from_seed("0x" + "22" * 32)
+    address = owner.ss58_address if proxy else None
+    assert wrapper.set_session_key_on_chain(TEST_MNEMONIC, "Staking" if proxy else None, address) == "1-2"
+    expected_owner = owner if proxy else Keypair.create_from_mnemonic(TEST_MNEMONIC)
+    assert ("author_rotateKeysWithOwner", ["0x" + expected_owner.public_key.hex()]) in wrapper.recorded_rpc
+    assert runtime.calls[0].value["call_function"] == "set_keys"
+    assert runtime.calls[-1].value["call_function"] == ("proxy" if proxy else "set_keys")
+    args = runtime.calls[0].value["call_args"]
+    assert args["keys"] == runtime.keys
+    assert args["proof"] == "0x1234"
+    assert len(runtime.submitted) == 1
+    assert runtime.closed
+
+
+def test_registration_preserves_legacy_rotation_fallback(runtime, wrapper):
+    wrapper.owner_rotation = False
+    assert wrapper.set_session_key_on_chain(TEST_MNEMONIC, None, None) == "1-2"
+    assert ("author_rotateKeys", []) in wrapper.recorded_rpc
+    args = runtime.calls[0].value["call_args"]
+    assert args["proof"] == "0x00"
+
+
+def test_unsupported_key_layout_fails_before_rotation(runtime, wrapper, monkeypatch):
+    monkeypatch.setattr(runtime, "get_metadata_call_function", lambda *args, **kwargs: None)
+    with pytest.raises(ValueError, match="does not support"):
+        wrapper.set_session_key_on_chain(TEST_MNEMONIC, None, None)
+    assert not any("rotate" in method for method, _ in wrapper.recorded_rpc)
+    assert not runtime.submitted
+    assert runtime.closed
+
+
+def test_unsupported_signing_layout_fails_before_rotation(runtime, wrapper, monkeypatch):
+    extensions = runtime.metadata.get_signed_extensions()
+    extensions["UnknownPayment"] = {"extrinsic": "u32", "additional_signed": "()"}
+    monkeypatch.setattr(runtime.metadata, "get_signed_extensions", lambda: extensions)
+    with pytest.raises(ValueError, match="Unsupported Enjin"):
+        wrapper.set_session_key_on_chain(TEST_MNEMONIC, None, None)
+    assert not any("rotate" in method for method, _ in wrapper.recorded_rpc)
+    assert not runtime.submitted
+
+
+def test_submission_errors_are_reported_and_sdk_is_closed(runtime, wrapper, monkeypatch):
+    monkeypatch.setattr(runtime, "submit_extrinsic", lambda *args, **kwargs: (_ for _ in ()).throw(SubstrateRequestException("Verification Error")))
+    with pytest.raises(ValueError, match="Verification Error"):
+        wrapper.set_session_key_on_chain(TEST_MNEMONIC, None, None)
+    assert runtime.closed
+
+
+@pytest.mark.parametrize("runtime", ["relay", "matrix"], indirect=True)
+def test_enjin_signature_matches_captured_signed_extension_metadata(runtime):
+    PolkadotRpcWrapper._validate_enjin_signed_extensions(runtime)
+    call = runtime.compose_call("Session", "set_keys", {"keys": runtime.keys, "proof": "0x00"})
+    signer = Keypair.create_from_mnemonic(TEST_MNEMONIC)
+    extrinsic = PolkadotRpcWrapper._create_enjin_signed_extrinsic(runtime, call, signer)
+    extras = {"CheckMortality": "00", "CheckMetadataHash": "Disabled", "CheckNonce": 51, "ChargeTransactionPayment": 0}
+    additional = {
+        "CheckSpecVersion": runtime.runtime_version,
+        "CheckTxVersion": runtime.transaction_version,
+        "CheckGenesis": runtime.get_block_hash(0),
+        "CheckMortality": runtime.get_block_hash(0),
+        "CheckMetadataHash": None,
     }
+    payload = call.data
+    for part, values in [("extrinsic", extras), ("additional_signed", additional)]:
+        for name, types in runtime.metadata.get_signed_extensions().items():
+            codec = runtime.runtime_config.create_scale_object(types[part])
+            value = values[name] if name in values else codec.decode(ScaleBytes("0x"))
+            payload = payload + codec.encode(value)
+    signed = blake2b(payload.data, digest_size=32).digest() if payload.length > 256 else bytes(payload.data)
+    assert signer.verify(signed, next(iter(extrinsic.value["signature"].values())))
 
-    class FakeMetadata:
-        def get_signed_extensions(self):
-            return signed_extensions
 
-    class FakePayload:
-        def __init__(self):
-            self.type_mapping = []
-            self.encoded = None
-            self.data = ScaleBytes("0x1234")
+@pytest.mark.parametrize("method,params", [("author_hasKey", ["0x00", "babe"]), ("author_hasSessionKeys", ["0x00"]), ("author_insertKey", ["ofcw", "secret mnemonic", "0x00"])])
+def test_rpc_errors_surface_without_echoing_params(monkeypatch, method, params):
+    def post(url, headers, data, timeout):
+        assert timeout == 30
+        return type("Response", (), {"raise_for_status": lambda self: None, "json": lambda self: {"error": {"message": "Method not found"}}})()
 
-        def encode(self, value):
-            self.encoded = value
+    monkeypatch.setattr(polkadot_rpc_wrapper.requests, "post", post)
+    with pytest.raises(ValueError, match="Method not found") as error:
+        PolkadotRpcWrapper("9933")._rpc(method, params)
+    assert "secret mnemonic" not in str(error.value)
 
-    class FakeExtrinsic:
-        def __init__(self):
-            self.encoded = None
 
-        def encode(self, value):
-            self.encoded = value
+def test_insert_key_defaults_to_aura_and_accepts_explicit_runtime_key_type(monkeypatch):
+    wrapper = PolkadotRpcWrapper("9933")
+    calls = []
+    monkeypatch.setattr(wrapper, "_rpc", lambda *args: calls.append(args))
+    wrapper.insert_key("mnemonic", "0x00")
+    wrapper.insert_key("mnemonic", "0x00", "ofcw")
+    assert [args[1][0] for args in calls] == ["aura", "ofcw"]
+    with pytest.raises(ValueError, match="four ASCII"):
+        wrapper.insert_key("mnemonic", "0x00", "invalid")
 
-    class FakeRuntimeConfig:
-        def __init__(self):
-            self.type_registry_updates = []
-            self.payload = FakePayload()
-            self.extrinsic = FakeExtrinsic()
 
-        def update_type_registry_types(self, types):
-            self.type_registry_updates.append(types)
+def test_queued_query_failure_preserves_current_authority(runtime, wrapper, monkeypatch):
+    original = runtime.query
 
-        def create_scale_object(self, type_string, **kwargs):
-            if type_string == "ExtrinsicPayloadValue":
-                return self.payload
-            if type_string == "Extrinsic":
-                return self.extrinsic
-            raise AssertionError(f"unexpected scale object: {type_string}")
+    def query(module, storage_function, **kwargs):
+        if storage_function == "QueuedKeys":
+            raise SubstrateRequestException("State unavailable")
+        return original(module, storage_function, **kwargs)
 
-    class FakeSubstrate:
-        def __init__(self):
-            self.metadata = FakeMetadata()
-            self.runtime_config = FakeRuntimeConfig()
-            self.runtime_version = 1070
-            self.transaction_version = 18
-            self.initialized = False
+    monkeypatch.setattr(runtime, "query", query)
+    assert wrapper.is_validating_this_era()["readiness_unknown"]
 
-        def init_runtime(self):
-            self.initialized = True
 
-        def get_account_nonce(self, address):
-            assert address == "signer"
-            return 51
+def test_registration_keeps_websocket_transport_for_inclusion(runtime, wrapper, monkeypatch):
+    connections = []
+    monkeypatch.setattr(polkadot_rpc_wrapper, "SubstrateInterface", lambda **kwargs: connections.append(kwargs) or runtime)
+    wrapper.set_session_key_on_chain(TEST_MNEMONIC, None, None)
+    assert connections == [{"url": "ws://localhost:9933", "ws_options": {"timeout": 120}}]
 
-        def get_block_hash(self, block_number):
-            assert block_number == 0
-            return "0x" + "aa" * 32
 
-    class FakeCall:
-        data = "0x1234"
-        value = {
-            "call_function": "proxy",
-            "call_module": "Proxy",
-            "call_args": {"real": "validator"},
-        }
+def test_insert_key_redacts_mnemonic_echoed_in_rpc_error(monkeypatch):
+    def post(*args, **kwargs):
+        return type("Response", (), {"raise_for_status": lambda self: None, "json": lambda self: {"error": {"message": "Invalid seed: secret mnemonic"}}})()
 
-    class FakeKeypair:
-        ss58_address = "signer"
-        public_key = bytes.fromhex("11" * 32)
-        crypto_type = 1
-
-        def sign(self, payload):
-            assert str(payload) == "0x1234"
-            return bytes.fromhex("22" * 64)
-
-    substrate = FakeSubstrate()
-
-    extrinsic = PolkadotRpcWrapper._create_enjin_signed_extrinsic(substrate, FakeCall(), FakeKeypair())
-
-    assert substrate.initialized is True
-    assert substrate.runtime_config.type_registry_updates == [
-        {
-            "ExtrinsicV4": {
-                "type": "struct",
-                "type_mapping": [
-                    ["address", "Address"],
-                    ["signature", "ExtrinsicSignature"],
-                    ["era", "EraType"],
-                    ["mode", "ModeType"],
-                    ["nonce", "NonceType"],
-                    ["tip", "TipType"],
-                    ["call", "Call"],
-                ],
-            }
-        }
-    ]
-    assert substrate.runtime_config.payload.type_mapping == [
-        ["call", "CallBytes"],
-        ["era", "EraType"],
-        ["mode", "ModeType"],
-        ["nonce", "NonceType"],
-        ["tip", "TipType"],
-        ["spec_version", "SpecVersionType"],
-        ["transaction_version", "TxVersionType"],
-        ["genesis_hash", "GenesisHashType"],
-        ["block_hash", "BlockHashType"],
-        ["metadata_hash", "MetadataHashType"],
-    ]
-    assert substrate.runtime_config.payload.encoded["mode"] == "Disabled"
-    assert substrate.runtime_config.payload.encoded["nonce"] == 51
-    assert extrinsic.encoded["mode"] == "Disabled"
-    assert extrinsic.encoded["nonce"] == 51
-    assert extrinsic.encoded["signature"] == "0x" + "22" * 64
+    monkeypatch.setattr(polkadot_rpc_wrapper.requests, "post", post)
+    with pytest.raises(ValueError, match="Invalid seed: <redacted>"):
+        PolkadotRpcWrapper("9933").insert_key("secret mnemonic", "0x01")
