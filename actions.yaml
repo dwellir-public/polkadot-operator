@@ -34,7 +34,7 @@ get-session-key-with-owner:
       type: string
   required: [ address ]
 has-session-key:
-  description: "Checks if node has a session key, using an RPC call."
+  description: "Checks possession of the complete supplied session-key bundle, including auxiliary keys. Does not check election or production."
   params:
     key:
       description: "Key to check if exist on node. E.g. key='0xhjd39djk309'"
@@ -45,6 +45,10 @@ insert-key:
     Inserts a key in the keystore of the node using a local RPC call. WARNING: don't do double signing by inserting the same key for two nodes!
     Keys are generated using the external tool subkey (not provided by the charm) E.g 'subkey generate --network efinity'
   params:
+    key-type:
+      description: "Four-character runtime key type, for example aura, babe, gran or ofcw."
+      type: string
+      default: aura
     mnemonic:
       description: "The private part of the key as a seed phrase. E.g. mnemonic='reunion learn town satisfy social split ticket improve sunset faculty tail adjust'"
       type: string
@@ -66,16 +70,16 @@ set-node-key:
 # Actions to manage a validator node
 find-validator-address:
   description: |
-    Checks if this node is currently validating for any validator address found on-chain.
-    It does so by checking if any session key on-chain is present on this node.
-    Returns the validator address and the session key if this node is validating.
-    This action does the same as the `update-status` hook does for a validator/collator.
-    However, the `update-status` only shows if the node is validating or not, while this action also gives the validator address and the session key used.
+    Finds a locally held key in the current finalized BABE/Aura authority set.
+    Reports the authority address/key and, when applicable, missing queued keys.
+    This checks authority-key possession, not recent block production.
+    The session-key result is included only if the queued bundle uses the same
+    consensus key. Queued keys can already target another node after rotation.
 is-validating-next-era:
   description: |
-    Checks if this node will be validating next era for the validator address passed as parameter.
-    It does so by checking if the session key that will be used for that validator is present on this node.
-    Returns a message whether this node will be validating next era or not. If it will, the session key is returned as well.
+    Legacy action name: checks registered Session.NextKeys and local possession
+    of each key. Reports missing keys separately. Registration does not prove
+    election, activation in the next era, or block production.
   params:
     address:
       description: |
@@ -84,9 +88,11 @@ is-validating-next-era:
   required: [ address ]
 start-validating:
   description: |
-    Makes this node start validating. It will use the config parameter 'mnemonic-secret-id' to sign the transaction and therefore start validating for that address.
-    It does so by setting a new session key on-chain. The actual move of the validator might thus take some time to have effect.
-    NOTE: Make sure the wallet is correct and has funds to pay for the transaction, or this will fail.
+    Generates and registers session keys using mnemonic-secret-id, optionally
+    through a proxy. Validates runtime key/signing support before generating keys.
+    Registration does not bond funds, declare validation intent, register a
+    collator candidate, enable authority mode, or establish election/activation.
+    The signer must have funds to pay transaction fees.
   params:
     address:
       description: |

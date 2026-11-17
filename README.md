@@ -198,13 +198,18 @@ Configure the application to use the secret, example:
     
     juju config polkadot mnemonic-secret-id="secret:ctr90nhaeavjam32tflg"
 
-Run the action to make this node start validating (where 'address' is only needed if the secret is a proxy account):
+Run the action to generate and register session keys (where 'address' is only needed if the secret is a proxy account):
     
     juju run polkadot/0 start-validating address=<validator-address>
 
-You can verify that this node will be validating next era:
+Check registered keys and local key readiness with the legacy action name below. This does not prove election or activation in the next era:
     
     juju run polkadot/0 is-validating-next-era address=<validator-address>
+
+Registration alone does not bond funds, declare validator intent, register a
+collator candidate, or enable authority mode. See
+[Validator and session-key checks](docs/operations/validator-checks.md) for status
+semantics, Enjin layouts, missing auxiliary keys, and action results.
 
 ## Development and releases
 

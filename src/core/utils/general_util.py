@@ -93,51 +93,6 @@ def split_session_key(key: str) -> list:
     return keys_with_prefix
 
 
-def name_session_keys(chain_name: str, keys: list) -> dict:
-    """
-    Map the session keys in 'keys' to their names in the chain 'chain_name'.
-    It's needed for extrinsics like 'session.set_keys()'
-    """
-    if "enjin" in chain_name.lower():
-        # Enjin ecosystem
-        if len(keys) == 8:
-            # Enjin relay chain
-            return {
-                "grandpa": keys[0],
-                "babe": keys[1],
-                "para_validator": keys[2],
-                "para_assignment": keys[3],
-                "authority_discovery": keys[4],
-                "nomination_pools": keys[5],
-                "fuel_tanks": keys[6],
-                "marketplace": keys[7],
-            }
-        elif len(keys) == 1:
-            # Enjin parachain
-            return {
-                "aura": keys[0],
-            }
-        else:
-            raise ValueError(f"Enjin chain with {len(keys)} session keys not supported")
-    elif len(keys) == 6:
-        # Relay chain in Polkadot ecosystem
-        return {
-            "grandpa": keys[0],
-            "babe": keys[1],
-            "para_validator": keys[2],
-            "para_assignment": keys[3],
-            "authority_discovery": keys[4],
-            "beefy": keys[5],
-        }
-    elif len(keys) == 1:
-        # Parachain in Polkadot ecosystem
-        return {
-            "aura": keys[0],
-        }
-    else:
-        raise ValueError(f"Mismatch between chain {chain_name} and number of session keys ({len(keys)})")
-
-
 def get_wasm_info(wasm_path: Path) -> str:
     if wasm_path.exists():
         files = list(wasm_path.glob("*.wasm"))

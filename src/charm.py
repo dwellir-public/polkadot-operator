@@ -8,6 +8,7 @@ import json
 import logging
 import re
 import time
+from functools import wraps
 
 import ops
 from charms.dwellir_observability.v0.machine_observability import (
@@ -18,8 +19,11 @@ from charms.dwellir_observability.v0.machine_observability import (
 )
 from charms.grafana_agent.v0.cos_agent import COSAgentProvider
 from requests.exceptions import ConnectionError as RequestsConnectionError
+from requests.exceptions import RequestException
+from substrateinterface.exceptions import SubstrateRequestException
 from substrateinterface.utils.ss58 import ss58_decode
 from urllib3.exceptions import MaxRetryError, NewConnectionError
+from websocket import WebSocketException
 
 from core import constants as c
 from core import runtime as r
@@ -35,6 +39,19 @@ from polkadot_metadata import collect_upload_metadata
 from polkadot_rpc_wrapper import PolkadotRpcWrapper
 
 logger = logging.getLogger(__name__)
+
+
+def _rpc_action(handler):
+    """Fail key actions explicitly when the node or runtime cannot answer."""
+
+    @wraps(handler)
+    def wrapped(self, event):
+        try:
+            return handler(self, event)
+        except (ValueError, RequestException, SubstrateRequestException, WebSocketException) as exc:
+            event.fail(f"Node RPC operation failed: {exc}")
+
+    return wrapped
 
 
 class PolkadotCharm(ops.CharmBase):
@@ -450,10 +467,7 @@ class PolkadotCharm(ops.CharmBase):
                     is_syncing = str(PolkadotRpcWrapper(rpc_port).is_syncing())
                     status_message = f"Syncing: {is_syncing}"
                     if validator_check and service_args.is_validator:
-                        if PolkadotRpcWrapper(rpc_port).is_validating_this_era():
-                            status_message += ", Validating: Yes"
-                        else:
-                            status_message += ", Validating: No"
+                        status_message += ", " + self._validator_status_message(rpc_port)
                     status_message += f", client-type: {self._get_client_type()}"
                     self.unit.status = ops.ActiveStatus(status_message)
                     self.unit.set_workload_version(self._get_workload_version())
@@ -466,6 +480,23 @@ class PolkadotCharm(ops.CharmBase):
                 self.unit.status = ops.WaitingStatus("Service running but not responding to HTTP")
         else:
             self.unit.status = ops.BlockedStatus(f"Service not running, client-type: {self._get_client_type()}")
+
+    @staticmethod
+    def _validator_status_message(rpc_port):
+        """Keep an unavailable check distinct from a negative authority match."""
+        try:
+            result = PolkadotRpcWrapper(rpc_port).is_validating_this_era()
+        except (ValueError, RequestException, SubstrateRequestException, WebSocketException) as exc:
+            logger.warning("Unable to check current authority keys: %s", exc)
+            return "Validating: Unknown"
+        if not result:
+            return "Validating: No"
+        message = "Validating: Yes"
+        if result.get("missing_keys"):
+            message += ", queued keys missing: " + ", ".join(result["missing_keys"])
+        if result.get("readiness_unknown"):
+            message += ", queued key readiness: Unknown"
+        return message
 
     def update_status_simple(self, iterations=4) -> None:
         """
@@ -487,7 +518,9 @@ class PolkadotCharm(ops.CharmBase):
         self._workload.stop_service()
         self.update_status_simple()
 
+    @_rpc_action
     def _on_get_session_key_action(self, event: ops.ActionEvent) -> None:
+        logger.debug("Handling get-session-key action")
         event.log("Getting new session key through RPC...")
         rpc_port = ServiceArgs(self.config, self.rpc_urls()).rpc_port
         key = PolkadotRpcWrapper(rpc_port).get_session_key()
@@ -501,6 +534,7 @@ class PolkadotCharm(ops.CharmBase):
         else:
             event.fail("Unable to get new session key")
 
+    @_rpc_action
     def _on_get_session_key_with_owner_action(self, event: ops.ActionEvent) -> None:
         logger.debug("Handling get-session-key-with-owner action")
         event.log("Getting new session key with ownership proof through RPC...")
@@ -518,7 +552,9 @@ class PolkadotCharm(ops.CharmBase):
         else:
             event.fail("Unable to get new session key")
 
+    @_rpc_action
     def _on_has_session_key_action(self, event: ops.ActionEvent) -> None:
+        logger.debug("Handling has-session-key action")
         key = event.params["key"]
         keypattern = re.compile(r"^0x")
         if not re.match(keypattern, key):
@@ -528,7 +564,9 @@ class PolkadotCharm(ops.CharmBase):
             has_session_key = PolkadotRpcWrapper(rpc_port).has_session_key(key)
             event.set_results(results={"has-key": has_session_key})
 
+    @_rpc_action
     def _on_insert_key_action(self, event: ops.ActionEvent) -> None:
+        logger.debug("Handling insert-key action")
         mnemonic = event.params["mnemonic"]
         address = event.params["address"]
         keypattern = re.compile(r"^0x")
@@ -536,7 +574,7 @@ class PolkadotCharm(ops.CharmBase):
             event.fail("Illegal key pattern, did your public key/address start with 0x ?")
         else:
             rpc_port = ServiceArgs(self.config, self.rpc_urls()).rpc_port
-            PolkadotRpcWrapper(rpc_port).insert_key(mnemonic, address)
+            PolkadotRpcWrapper(rpc_port).insert_key(mnemonic, address, event.params.get("key-type", "aura"))
 
     def _on_restart_node_service_action(self, event: ops.ActionEvent) -> None:
         self._workload.restart_service()
@@ -569,28 +607,52 @@ class PolkadotCharm(ops.CharmBase):
             self._workload.start_service()
         self.update_status_simple()
 
+    @_rpc_action
     def _on_find_validator_address_action(self, event: ops.ActionEvent) -> None:
+        logger.debug("Handling find-validator-address action")
         event.log("Checking sessions key through RPC...")
         rpc_port = ServiceArgs(self.config, self.rpc_urls()).rpc_port
         result = PolkadotRpcWrapper(rpc_port).is_validating_this_era()
         if result:
-            event.set_results(results={"message": f"This node is currently validating for address {result['validator']}"})
-            event.set_results(results={"session-key": result["session_key"]})
+            event.set_results(
+                results={
+                    "message": f"This node holds a current consensus authority key for address {result['validator']}. Block production is not checked.",
+                    "validator-address": result["validator"],
+                    "authority-key": result["authority_key"],
+                    "key-type": result["key_type"],
+                }
+            )
+            if "session_key" in result:
+                event.set_results(results={"session-key": result["session_key"], "queued-missing-keys": result["missing_keys"]})
+            if result.get("readiness_unknown"):
+                event.set_results(results={"queued-key-readiness": "unknown"})
         else:
-            event.set_results(results={"message": "This node is not currently validating for any address."})
+            event.set_results(results={"message": "This node holds no key in the current BABE/Aura authority set."})
 
+    @_rpc_action
     def _on_is_validating_next_era_action(self, event: ops.ActionEvent) -> None:
+        logger.debug("Handling is-validating-next-era action")
         validator_address = event.params["address"]
         event.log("Checking sessions key through RPC...")
         rpc_port = ServiceArgs(self.config, self.rpc_urls()).rpc_port
-        session_key = PolkadotRpcWrapper(rpc_port).is_validating_next_era(validator_address)
-        if session_key:
-            event.set_results(results={"message": f"This node will be validating next era for address {validator_address}"})
-            event.set_results(results={"session-key": session_key})
-        else:
-            event.set_results(results={"message": f"This node will not be validating next era for address {validator_address}"})
+        result = PolkadotRpcWrapper(rpc_port).is_validating_next_era(validator_address)
+        if result is None:
+            event.set_results(results={"message": f"No session keys are registered for address {validator_address}.", "registered": False})
+            return
+        missing = result["missing_keys"]
+        event.set_results(
+            results={
+                "message": f"Session keys are registered for address {validator_address}. This does not establish future election or block production.",
+                "registered": True,
+                "all-keys-present": not missing,
+                "missing-keys": missing,
+                "session-key": result["session_key"],
+            }
+        )
 
+    @_rpc_action
     def _on_start_validating_action(self, event: ops.ActionEvent) -> None:
+        logger.debug("Handling start-validating action")
         mnemonic_secret_id = self.config.get("mnemonic-secret-id")
         if not mnemonic_secret_id:
             event.fail("No secret id provided. Please provide a secret id using the mnemonic-secret-id config option.")
@@ -600,10 +662,9 @@ class PolkadotCharm(ops.CharmBase):
         if not secret:
             event.fail(f"No secret found with the provided id {mnemonic_secret_id}")
             return
-        try:
-            mnemonic = secret.get_content(refresh=True).get("mnemonic")
-        except KeyError:
-            event.fail(f"Secret with id {mnemonic_secret_id} does not contain a 'mnemonic' key")
+        mnemonic = secret.get_content(refresh=True).get("mnemonic")
+        if not mnemonic:
+            event.fail(f"Secret with id {mnemonic_secret_id} does not contain a nonempty 'mnemonic' key")
             return
         address = event.params.get("address", None)
         proxy_type = secret.get_content(refresh=True).get("proxy-type", None)
@@ -613,13 +674,9 @@ class PolkadotCharm(ops.CharmBase):
         if proxy_type and not address:
             event.fail(f"Parameter 'address' must be used since the secret {mnemonic_secret_id} is configured as a proxy account with 'proxy-type' set.")
             return
-        try:
-            result = PolkadotRpcWrapper(rpc_port).set_session_key_on_chain(mnemonic, proxy_type, address)
-        except ValueError as e:
-            event.fail(str(e))
-            return
+        result = PolkadotRpcWrapper(rpc_port).set_session_key_on_chain(mnemonic, proxy_type, address)
 
-        event.set_results(results={"message": "Session key successfully set on chain."})
+        event.set_results(results={"message": "Session keys successfully registered on chain. Election and activation are not checked."})
         event.set_results(results={"blocknumber-extrinsicindex": result})
 
     # TODO: this action is getting quite large and specialized, perhaps move all actions to an `actions.py` file?
