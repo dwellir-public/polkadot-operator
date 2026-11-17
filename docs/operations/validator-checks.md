@@ -93,5 +93,5 @@ Run `uv run --group dev tox -e lint,unit`. Before rolling out a repaired action,
 verify registration/signing in an explicitly selected nonproduction model. After
 a charm refresh, compare fresh status/actions with current authorities and
 canonical production. No production keys need to be rotated to verify the status
-fix. Fleet inventory, missing offchain keys and inaccessible models remain
-tracked in [NOD-5859](https://linear.app/dwellir/issue/NOD-5859/cleanup-enjin-validators-and-collators).
+fix. Fleet inventory, missing offchain keys and inaccessible models require
+separate operational follow-up.
