@@ -14,7 +14,9 @@ options:
       Example 4: https://example.org/releases/node-v1.2.3-linux-amd64.tar.gz (set binary-archive-member to select the binary)
 
       NOTE 1: Different installation methods will be used depending on the downloaded file type.
-      NOTE 2: Multiple binary install is currently only supported for the Polkadot relaychains, parachain support is not confirmed.
+      NOTE 2: Multiple binary install supports relay chains. Parachain support is not confirmed.
+      For zkVerify, provide exactly three URLs ending in zkv-relay,
+      zkv-relay-execute-worker, and zkv-relay-prepare-worker. This preserves the native worker filenames.
   binary-archive-member:
     type: string
     default: ""
