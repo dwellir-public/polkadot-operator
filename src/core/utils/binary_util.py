@@ -221,10 +221,11 @@ def perform_sha256_checksums(responses: list, sha256_urls: str) -> None:
         sha256_target_map = {}
         for binary_hash_pair in sha256_response.text.split("\n"):
             if binary_hash_pair:
-                binary_name = binary_hash_pair.split()[1]
+                binary_name = binary_hash_pair.split()[1].removeprefix("*")
                 sha256 = binary_hash_pair.split()[0]
                 sha256_target_map[binary_name] = sha256
-        for _, _, _, binary_name, binary_hash in responses:
+        for binary_url, _, _, _, binary_hash in responses:
+            binary_name = Path(urlsplit(binary_url).path).name
             try:
                 target_hash = sha256_target_map[binary_name]
             except KeyError:
