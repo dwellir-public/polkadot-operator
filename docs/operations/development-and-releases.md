@@ -7,6 +7,9 @@ LXD.
 
 ## Development
 
+See [multi-binary installation](../architecture/binary-installation.md) for the
+installer stages and where to extend bundle naming.
+
 Create feature or fix branches from `main` and open pull requests targeting
 `main`.
 
