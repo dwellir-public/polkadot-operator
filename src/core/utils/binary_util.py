@@ -4,8 +4,10 @@ import os
 import re
 import subprocess as sp
 import time
+from dataclasses import dataclass
 from pathlib import Path
 from string import Template
+from typing import NamedTuple
 from urllib.parse import urlsplit
 
 import requests
@@ -18,6 +20,28 @@ from core.utils import general_util
 from core.utils.docker import Docker
 
 logger = logging.getLogger(__name__)
+
+ZKVERIFY_WORKER_NAMES = frozenset({"zkv-relay-execute-worker", "zkv-relay-prepare-worker"})
+
+
+@dataclass(frozen=True)
+class BinaryTarget:
+    """A configured download and its resolved installation destination."""
+
+    url: str
+    checksum_url: str
+    source_name: str
+    target_path: Path
+
+
+class DownloadedBinary(NamedTuple):
+    """A staged binary retaining the tuple interface used by checksum verification."""
+
+    url: str
+    checksum_url: str
+    response: requests.Response
+    target_path: Path
+    sha256: str
 
 
 def install_fuse_overlayfs() -> None:
@@ -103,7 +127,7 @@ def install_tarball_from_url(url: str, sha256_url: str | None = None, archive_me
         raise ValueError(f"Archive binary installation failed: {exc}") from exc
 
 
-def parse_install_urls(binary_urls: str, sha256_urls: str) -> list:
+def parse_install_urls(binary_urls: str, sha256_urls: str) -> list[tuple[str, str]]:
     binary_url_list = binary_urls.split()
     sha256_url_list = sha256_urls.split()
     url_pairs = []
@@ -114,48 +138,49 @@ def parse_install_urls(binary_urls: str, sha256_urls: str) -> list:
     return url_pairs
 
 
+def resolve_binary_targets(binary_sha256_pairs: list[tuple[str, str]], chain_name: str) -> list[BinaryTarget]:
+    """Resolve bundle naming before downloading or changing installed files."""
+    source_names = [Path(urlsplit(url).path).name for url, _ in binary_sha256_pairs]
+    is_zkverify_bundle = len(source_names) == 3 and set(source_names) == ZKVERIFY_WORKER_NAMES | {"zkv-relay"}
+    worker_paths = {
+        "execute-worker": r.execute_worker_binary_file,
+        "prepare-worker": r.prepare_worker_binary_file,
+    }
+    targets = []
+    for (url, checksum_url), source_name in zip(binary_sha256_pairs, source_names, strict=True):
+        target_path = r.binary_file
+        if is_zkverify_bundle and source_name in ZKVERIFY_WORKER_NAMES:
+            target_path = r.home_dir / source_name
+        else:
+            for role, paths in worker_paths.items():
+                if role in source_name:
+                    target_path = paths.get(chain_name, paths["default"])
+                    break
+        targets.append(BinaryTarget(url, checksum_url, source_name, target_path))
+    return targets
+
+
 def install_binaries_from_urls(binary_urls: str, sha256_urls: str, chain_name: str) -> None:
+    """Download and verify the whole bundle before stopping and replacing binaries."""
     logger.debug("Installing multiple binaries!")
-    binary_sha256_pairs = parse_install_urls(binary_urls, sha256_urls)
-    # An exact upstream zkVerify bundle opts in without changing existing chains.
-    zkverify_workers = {"zkv-relay-execute-worker", "zkv-relay-prepare-worker"}
-    url_names = [Path(urlsplit(url).path).name for url, _ in binary_sha256_pairs]
-    is_zkverify_bundle = len(url_names) == 3 and set(url_names) == zkverify_workers | {"zkv-relay"}
-    responses = []
-    for (binary_url, sha256_url), url_name in zip(binary_sha256_pairs, url_names, strict=True):
-        logger.debug("Download binary from URL: %s", binary_url)
-        # Download polkadot binary to memory and compute sha256 hash
-        response = requests.get(binary_url, allow_redirects=True, timeout=None)
+    targets = resolve_binary_targets(parse_install_urls(binary_urls, sha256_urls), chain_name)
+    responses: list[DownloadedBinary] = []
+    for target in targets:
+        logger.debug("Download binary from URL: %s", target.url)
+        response = requests.get(target.url, allow_redirects=True, timeout=None)
         if response.status_code != 200:
             raise ValueError(f"Download binary failed with: {response.text}. Check 'binary-url'!")
         binary_hash = hashlib.sha256(response.content).hexdigest()
-        # Get correct execute worker binary name
-        if is_zkverify_bundle and url_name in zkverify_workers:
-            binary_name = r.home_dir / url_name
-        elif "execute-worker" in binary_url.split("/")[-1]:
-            if chain_name in r.execute_worker_binary_file:
-                binary_name = r.execute_worker_binary_file[chain_name]
-            else:
-                binary_name = r.execute_worker_binary_file["default"]
-        # Get correct prepare worker binary name
-        elif "prepare-worker" in binary_url.split("/")[-1]:
-            if chain_name in r.prepare_worker_binary_file:
-                binary_name = r.prepare_worker_binary_file[chain_name]
-            else:
-                binary_name = r.prepare_worker_binary_file["default"]
-        else:
-            binary_name = r.binary_file
-        responses += [(binary_url, sha256_url, response, binary_name, binary_hash)]
+        responses.append(DownloadedBinary(target.url, target.checksum_url, response, target.target_path, binary_hash))
 
     perform_sha256_checksums(responses, sha256_urls)
     stop_service()
-    for binary_url, _, response, binary_name, _ in responses:
-        logger.debug("Unpack binary downloaded from: %s", binary_url)
-        binary_path = r.home_dir / binary_name
-        with open(binary_path, "wb") as f:
-            f.write(response.content)
-            sp.run(["chown", f"{r.user}:{r.user}", binary_path], check=False)
-            sp.run(["chmod", "+x", binary_path], check=False)
+    for binary in responses:
+        logger.debug("Install binary downloaded from: %s", binary.url)
+        with open(binary.target_path, "wb") as f:
+            f.write(binary.response.content)
+            sp.run(["chown", f"{r.user}:{r.user}", binary.target_path], check=False)
+            sp.run(["chmod", "+x", binary.target_path], check=False)
 
 
 def install_binary_from_url(url: str, sha256_url: str) -> None:
