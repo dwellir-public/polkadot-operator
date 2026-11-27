@@ -117,8 +117,12 @@ def parse_install_urls(binary_urls: str, sha256_urls: str) -> list:
 def install_binaries_from_urls(binary_urls: str, sha256_urls: str, chain_name: str) -> None:
     logger.debug("Installing multiple binaries!")
     binary_sha256_pairs = parse_install_urls(binary_urls, sha256_urls)
+    # An exact upstream zkVerify bundle opts in without changing existing chains.
+    zkverify_workers = {"zkv-relay-execute-worker", "zkv-relay-prepare-worker"}
+    url_names = [Path(urlsplit(url).path).name for url, _ in binary_sha256_pairs]
+    is_zkverify_bundle = len(url_names) == 3 and set(url_names) == zkverify_workers | {"zkv-relay"}
     responses = []
-    for binary_url, sha256_url in binary_sha256_pairs:
+    for (binary_url, sha256_url), url_name in zip(binary_sha256_pairs, url_names, strict=True):
         logger.debug("Download binary from URL: %s", binary_url)
         # Download polkadot binary to memory and compute sha256 hash
         response = requests.get(binary_url, allow_redirects=True, timeout=None)
@@ -126,7 +130,9 @@ def install_binaries_from_urls(binary_urls: str, sha256_urls: str, chain_name: s
             raise ValueError(f"Download binary failed with: {response.text}. Check 'binary-url'!")
         binary_hash = hashlib.sha256(response.content).hexdigest()
         # Get correct execute worker binary name
-        if "execute-worker" in binary_url.split("/")[-1]:
+        if is_zkverify_bundle and url_name in zkverify_workers:
+            binary_name = r.home_dir / url_name
+        elif "execute-worker" in binary_url.split("/")[-1]:
             if chain_name in r.execute_worker_binary_file:
                 binary_name = r.execute_worker_binary_file[chain_name]
             else:
