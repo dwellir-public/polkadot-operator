@@ -4,11 +4,12 @@ Space-separated raw binary URLs are handled by
 [`binary_util.py`](../../src/core/utils/binary_util.py) in four stages:
 
 1. `resolve_binary_targets` selects destinations without IO. Each `BinaryTarget`
-   keeps the source URL, checksum URL, source basename, and destination path.
+   keeps the source URL, checksum URL, and destination path.
 2. The installer downloads every binary and records its response, destination,
    and SHA256 in a `DownloadedBinary`. This named tuple preserves the interface
    consumed by checksum verification.
-3. All configured checksums are verified before stopping the service.
+3. Configured checksums are verified before stopping the service. Verification
+   is skipped when no checksum URLs are configured.
 4. The service is stopped and the staged binaries are written with executable
    permissions. The calling lifecycle code handles restarting the service.
 

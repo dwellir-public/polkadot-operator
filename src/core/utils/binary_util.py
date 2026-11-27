@@ -22,6 +22,7 @@ from core.utils.docker import Docker
 logger = logging.getLogger(__name__)
 
 ZKVERIFY_WORKER_NAMES = frozenset({"zkv-relay-execute-worker", "zkv-relay-prepare-worker"})
+ZKVERIFY_BUNDLE_NAMES = ZKVERIFY_WORKER_NAMES | {"zkv-relay"}
 
 
 @dataclass(frozen=True)
@@ -30,7 +31,6 @@ class BinaryTarget:
 
     url: str
     checksum_url: str
-    source_name: str
     target_path: Path
 
 
@@ -141,7 +141,7 @@ def parse_install_urls(binary_urls: str, sha256_urls: str) -> list[tuple[str, st
 def resolve_binary_targets(binary_sha256_pairs: list[tuple[str, str]], chain_name: str) -> list[BinaryTarget]:
     """Resolve bundle naming before downloading or changing installed files."""
     source_names = [Path(urlsplit(url).path).name for url, _ in binary_sha256_pairs]
-    is_zkverify_bundle = len(source_names) == 3 and set(source_names) == ZKVERIFY_WORKER_NAMES | {"zkv-relay"}
+    is_zkverify_bundle = len(source_names) == len(ZKVERIFY_BUNDLE_NAMES) and set(source_names) == ZKVERIFY_BUNDLE_NAMES
     worker_paths = {
         "execute-worker": r.execute_worker_binary_file,
         "prepare-worker": r.prepare_worker_binary_file,
@@ -156,7 +156,7 @@ def resolve_binary_targets(binary_sha256_pairs: list[tuple[str, str]], chain_nam
                 if role in source_name:
                     target_path = paths.get(chain_name, paths["default"])
                     break
-        targets.append(BinaryTarget(url, checksum_url, source_name, target_path))
+        targets.append(BinaryTarget(url, checksum_url, target_path))
     return targets
 
 
@@ -164,18 +164,18 @@ def install_binaries_from_urls(binary_urls: str, sha256_urls: str, chain_name: s
     """Download and verify the whole bundle before stopping and replacing binaries."""
     logger.debug("Installing multiple binaries!")
     targets = resolve_binary_targets(parse_install_urls(binary_urls, sha256_urls), chain_name)
-    responses: list[DownloadedBinary] = []
+    downloads: list[DownloadedBinary] = []
     for target in targets:
         logger.debug("Download binary from URL: %s", target.url)
         response = requests.get(target.url, allow_redirects=True, timeout=None)
         if response.status_code != 200:
             raise ValueError(f"Download binary failed with: {response.text}. Check 'binary-url'!")
         binary_hash = hashlib.sha256(response.content).hexdigest()
-        responses.append(DownloadedBinary(target.url, target.checksum_url, response, target.target_path, binary_hash))
+        downloads.append(DownloadedBinary(target.url, target.checksum_url, response, target.target_path, binary_hash))
 
-    perform_sha256_checksums(responses, sha256_urls)
+    perform_sha256_checksums(downloads, sha256_urls)
     stop_service()
-    for binary in responses:
+    for binary in downloads:
         logger.debug("Install binary downloaded from: %s", binary.url)
         with open(binary.target_path, "wb") as f:
             f.write(binary.response.content)

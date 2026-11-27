@@ -80,8 +80,8 @@ def test_non_exact_zkverify_bundle_keeps_default_mapping(installation, source):
         "zkv-relay-execute-worker": "polkadot-execute-worker",
         "zkv-relay-prepare-worker": "polkadot-prepare-worker",
     }
-    assert [(target.url, target.checksum_url, target.source_name, target.target_path) for target in targets] == [
-        (url, checksum_url, name, installation / expected.get(name, "polkadot")) for (url, checksum_url), name in zip(pairs, source, strict=True)
+    assert [(target.url, target.checksum_url, target.target_path) for target in targets] == [
+        (url, checksum_url, installation / expected.get(name, "polkadot")) for (url, checksum_url), name in zip(pairs, source, strict=True)
     ]
 
 
